@@ -7,9 +7,9 @@
   <version>1.7.0</version>
   <description>The emulator of the computer "${project.name}"</description>
   <scm>
-    <connection>scm:svn:http://127.0.0.1/dummy</connection>
-    <developerConnection>scm:svn:https://127.0.0.1/dummy</developerConnection>
-    <url>http://127.0.0.1/dummy</url>
+    <connection>scm:git:https://github.com/${github_username}/${project.name}.git</connection>
+    <developerConnection>scm:git:https://github.com/${github_username}/${project.name}.git</developerConnection>
+    <url>https://github.com/${github_username}/${project.name}.git</url>
   </scm>
   <build>
     <resources>
@@ -48,7 +48,8 @@
           </execution>
         </executions>
         <configuration>
-          <revisionOnScmFailure>true</revisionOnScmFailure>
+          <doCheck>false</doCheck>
+          <doUpdate>false</doUpdate>
           <format>{0}.{1,number}</format>
           <items>
             <item>${project.version}</item>
@@ -170,6 +171,7 @@
   <properties>
     <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
     <copyright>Copyright © 2017 ${company.name}</copyright>
+    <github_username>AVSh-Soft</github_username>
     <lib.dir>lib</lib.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jdkVersion>1.8</jdkVersion>

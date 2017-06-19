@@ -61,10 +61,10 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <!-- Для работы с заглушкой -->
-                    <!-- revisionOnScmFailure>true</revisionOnScmFailure -->
                     <doCheck>false</doCheck>
                     <doUpdate>false</doUpdate>
+                    <!-- Для работы с заглушкой -->
+                    <!-- revisionOnScmFailure>true</revisionOnScmFailure -->
                     <!-- Major.Minor.Release.Build -->
                     <format>{0}.{1,number}</format>
                     <items>
