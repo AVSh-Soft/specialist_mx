@@ -17,7 +17,7 @@ import static avsh.specialist_mx.cConsStat.*;
  * Класс для формирования главного окна приложения (меню, кнопок, обработчиков событий).
  * @author -=AVSh=-
  */
-final class cSpMX_Frame extends JFrame {
+final class SpMxFrame extends JFrame {
     private static final String INI_OPTION_FRAME_WIDTH  = "MainFrameWidth" ;
     private static final String INI_OPTION_FRAME_HEIGHT = "MainFrameHeight";
 
@@ -26,9 +26,9 @@ final class cSpMX_Frame extends JFrame {
     private static final String NO_DISK  = "нет диска";
     private static final String ROM_PREF =  "[ROM] - ";
 
-    private final cSpMX fSpMX;
+    private final transient cSpMX fSpMX;
 
-    cSpMX_Frame(@NotNull cSpMX spMX) {
+    SpMxFrame(@NotNull cSpMX spMX) {
         fSpMX = spMX ;
 
         setIconImage(new ImageIcon(getClass().getResource(RESOURCES.concat(SPMX_ICON_FILE))).getImage());
@@ -243,7 +243,7 @@ final class cSpMX_Frame extends JFrame {
             fSpMX.pause(true , true);
             // Выводим информацию
             JOptionPane.showMessageDialog(this,
-                    String.format("%s\n%s\n\n%s", fSpMX.getGen().toString(), fSpMX.getCPU().toString(), fSpMX.getRAM().toString()),
+                    String.format("%s%n%s%n%n%s", fSpMX.getGen().toString(), fSpMX.getCPU().toString(), fSpMX.getRAM().toString()),
                     "Информация", JOptionPane.INFORMATION_MESSAGE);
             // Запускаем все устройства
             fSpMX.pause(false, true);
@@ -289,7 +289,7 @@ final class cSpMX_Frame extends JFrame {
             } catch (IOException ex) {
                 //
             }
-            JOptionPane.showMessageDialog(this, String.format("%s v%s\n\n%s", name, version, copyright), "Информация", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, String.format("%s v%s%n%n%s", name, version, copyright), "Информация", JOptionPane.INFORMATION_MESSAGE);
         });
 
          openItem.addActionListener( openBtn.getActionListeners()[0]);
@@ -389,7 +389,7 @@ final class cSpMX_Frame extends JFrame {
                 fSpMX.ejectDisk(fdd);
                 targetMenuItem.setSelected(false);
                 targetMenuItem.setText(diskName.concat(NO_DISK));
-                JOptionPane.showMessageDialog(this, String.format("Ошибка вставки образа диска: %s\n%s", fileName, e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
             }
         } else {
             fSpMX.ejectDisk(fdd);

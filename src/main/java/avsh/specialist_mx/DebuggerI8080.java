@@ -95,20 +95,24 @@ final class DebuggerI8080 extends JDialog {
     // Коды команд вызова подпрограммы (CALL/RST)
     private static final int[] CALL_CMD = {0xC4, 0xD4, 0xE4, 0xF4, 0xCC, 0xDC, 0xEC, 0xFC, 0xCD, 0xC7, 0xD7, 0xE7, 0xF7, 0xCF, 0xDF, 0xEF, 0xFF};
 
-    // Типы страниц памяти в отладчике:
-    // CPU  - страница, в которой работает CPU;
-    // CODE - страница, в которой просматривается код;
-    // DATA - страница, в которой просматриваются данные.
+    /**
+     * Типы страниц памяти в отладчике:
+     * CPU  - страница, в которой работает CPU;
+     * CODE - страница, в которой просматривается код;
+     * DATA - страница, в которой просматриваются данные.
+     */
     private enum TypesMemoryPages {
         CPU, CODE, DATA
     }
 
-    // Типы событий:
-    // REG_PAIR - изменилась регистровая пара;
-    // TRAPS    - изменились ловушки;
-    // MEMORY   - изменилась память;
-    // PAGE     - изменилась страница памяти;
-    // STEP     - выполнен шаг CPU (изменилось всё).
+    /**
+    * Типы событий:
+    * REG_PAIR - изменилась регистровая пара;
+    * TRAPS    - изменились ловушки;
+    * MEMORY   - изменилась память;
+    * PAGE     - изменилась страница памяти;
+    * STEP     - выполнен шаг CPU (изменилось всё).
+    */
     private enum TypesEvents {
         REG_PAIR, TRAPS, MEMORY, PAGE, STEP;
         // Для сохранения деталей события
@@ -197,7 +201,7 @@ final class DebuggerI8080 extends JDialog {
     // Статические структуры для сохранения положения окна отладчика и значений регистровых пар
     private static final Point fPrevLocation = new Point();
     private static final int[] fPrevRegPairs = new int[DebugRegPairs.values().length];
-    // Статические переменные для сохранения станицы и адреса памяти таблицы данных памяти
+    // Статические переменные для сохранения страницы и адреса памяти таблицы данных памяти
     private static int fPrevDataPage   ;
     private static int fPrevDataAddress;
     // Статическая переменная для сохранения строки поиска (строка из байт)
@@ -209,6 +213,38 @@ final class DebuggerI8080 extends JDialog {
     private final MemDatTable fMemDatTable;
 
     private int fFocusedAddress;
+
+    /**
+     * Сохраняет положение окна отладчика.
+     * @param prevLocation положение окна
+     */
+    private static synchronized void setPrevLocation(Point prevLocation) {
+        DebuggerI8080.fPrevLocation.setLocation(prevLocation);
+    }
+
+    /**
+     * Сохраняет номер страницы памяти для просмотра данных.
+     * @param prevDataPage страница памяти
+     */
+    private static synchronized void setPrevDataPage(int prevDataPage) {
+        DebuggerI8080.fPrevDataPage = prevDataPage;
+    }
+
+    /**
+     * Сохраняет текущий адрес страницы памяти для просмотра данных.
+     * @param prevDataAddress адрес
+     */
+    private static synchronized void setPrevDataAddress(int prevDataAddress) {
+        DebuggerI8080.fPrevDataAddress = prevDataAddress;
+    }
+
+    /**
+     * Сохраняет строку поиска.
+     * @param prevStringBytes строка поиска
+     */
+    private static synchronized void setPrevStringBytes(String prevStringBytes) {
+        DebuggerI8080.fPrevStringBytes = prevStringBytes;
+    }
 
     /**
      * Конструктор.
@@ -779,11 +815,11 @@ final class DebuggerI8080 extends JDialog {
             @Override
             public void windowClosed(WindowEvent e) {
                 // Запоминаем номер страницы Data RAM
-                fPrevDataPage    = fLayer.getDataPage();
+                setPrevDataPage(fLayer.getDataPage());
                 // Запоминаем адрес, выбранный в таблице данных памяти
-                fPrevDataAddress = fMemDatTable.getAddress();
+                setPrevDataAddress(fMemDatTable.getAddress());
                 // Запоминаем положение окна отладчика
-                fPrevLocation.setLocation(getLocation());
+                setPrevLocation(getLocation());
                 // Запоминаем размеры фрейма в ini-файл
                 fSpMX.putIni(cConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
                 fSpMX.putIni(cConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
@@ -2964,7 +3000,7 @@ final class DebuggerI8080 extends JDialog {
                 String strBytes = fBytes.getText().trim();
                 if (strBytes.matches(REGEXP_STRING_BYTES)) {
                     // Запоминаем поисковую строку
-                    fPrevStringBytes = strBytes;
+                    setPrevStringBytes(strBytes);
 
                     // Разбиваем строку из байт на отдельные байты
                     String[] s = strBytes.split(" +");
