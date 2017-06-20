@@ -203,10 +203,10 @@ final class cDebuggerI8080 extends JDialog {
     // Статическая переменная для сохранения строки поиска (строка из байт)
     private static String fPrevStringBytes = "";
 
-    private final cSpMX             fSpMX;
-    private final сLayer            fLayer;
-    private final cDisAsmTable      fDisAsmTable;
-    private final cMemDatTable      fMemDatTable;
+    private final transient cSpMX  fSpMX ;
+    private final transient сLayer fLayer;
+    private final cDisAsmTable fDisAsmTable;
+    private final cMemDatTable fMemDatTable;
 
     private int fFocusedAddress;
 
@@ -628,6 +628,8 @@ final class cDebuggerI8080 extends JDialog {
                         if ((fFocusedAddress >= 0) && ((cDisAsmTableModel) model).isJmpCmd(rowM)) {
                             fDisAsmTable.gotoAddress(fFocusedAddress, DA_COL_ADR);
                         }
+                        break;
+                    default:
                         break;
                 }
             }
@@ -1263,33 +1265,33 @@ final class cDebuggerI8080 extends JDialog {
                 fillBuffer(fStartBuffer, 0);
             }
 
-            int[][] cur_buf;
-            int moved_start = fStartBuffer[BUF_SIZE - 1][0] + CMD_LEN[fStartBuffer[BUF_SIZE - 1][1]]; // Начальный адрес данных после fStartBuffer
+            int[][] curBuf;
+            int movedStart = fStartBuffer[BUF_SIZE - 1][0] + CMD_LEN[fStartBuffer[BUF_SIZE - 1][1]]; // Начальный адрес данных после fStartBuffer
             // Определяем из какого буфера брать данные
-            if (address < moved_start) {
-                cur_buf = fStartBuffer;
+            if (address < movedStart) {
+                curBuf  = fStartBuffer;
             } else {
-                cur_buf = fMovedBuffer;
+                curBuf = fMovedBuffer;
                 // Если в буфере данных из текущих адресов нет необходимых данных - заполняем буфер
                 if ((address < fMovedBuffer[0][0]) || (address > fMovedBuffer[BUF_SIZE - 1][0])) {
-                    if (address >= moved_start    + THREE_QUARTER + FOR_ALIGNMENT) {
-                        if (address     >  0xFFFF - THREE_QUARTER) {
-                            moved_start =  0xFFFF - BUF_SIZE      - FOR_ALIGNMENT;
+                    if (address >= movedStart    + THREE_QUARTER + FOR_ALIGNMENT) {
+                        if (address    >  0xFFFF - THREE_QUARTER) {
+                            movedStart =  0xFFFF - BUF_SIZE      - FOR_ALIGNMENT;
                         } else {
-                            moved_start = address - THREE_QUARTER - FOR_ALIGNMENT;
+                            movedStart = address - THREE_QUARTER - FOR_ALIGNMENT;
                         }
                         // Пытаемся выполнить выравнивание кода (в надежде, что повезет :-)
                         //noinspection StatementWithEmptyBody
-                        for (int end_adr = moved_start + FOR_ALIGNMENT, page = fLayer.getCodePage(), len; moved_start + (len = CMD_LEN[fLayer.debugReadByte(page, end_adr)]) < end_adr; moved_start += len) {
+                        for (int end_adr = movedStart + FOR_ALIGNMENT, page = fLayer.getCodePage(), len; movedStart + (len = CMD_LEN[fLayer.debugReadByte(page, end_adr)]) < end_adr; movedStart += len) {
                         }
                     }
-                    fillBuffer(fMovedBuffer, moved_start);
+                    fillBuffer(fMovedBuffer, movedStart);
                 }
             }
             // Ищем в выбранном буфере данные по заданному адресу
             for (int i = 0; i < BUF_SIZE; i++) {
-                if (cur_buf[i][0] == address) {
-                    return cur_buf[i];
+                if (curBuf[i][0] == address) {
+                    return curBuf[i];
                 }
             }
             return null;
@@ -1386,8 +1388,9 @@ final class cDebuggerI8080 extends JDialog {
                     return "2";
                 case DA_COL_CMD:
                     return "Команда";
+                default:
+                    return super.getColumnName(column);
             }
-            return super.getColumnName(column);
         }
 
         @Override
@@ -1439,8 +1442,9 @@ final class cDebuggerI8080 extends JDialog {
                     return !getValueAt(rowIndex, columnIndex).equals("");
                 case DA_COL_CMD:
                     return false;
+                default:
+                    return super.isCellEditable(rowIndex, columnIndex);
             }
-            return super.isCellEditable(rowIndex, columnIndex);
         }
 
         @Override
@@ -1776,8 +1780,9 @@ final class cDebuggerI8080 extends JDialog {
                     return  "=";
                 case CR_COL_DAT:
                     return "Знач.";
+                default:
+                    return super.getColumnName(column);
             }
-            return super.getColumnName(column);
         }
 
         @Override
@@ -1789,8 +1794,9 @@ final class cDebuggerI8080 extends JDialog {
                     return "=";
                 case CR_COL_DAT:
                     return String.format("%04X", fLayer.getValRegPair(DebugRegPairs.values()[rowIndex]));
+                default:
+                    return null;
             }
-            return null;
         }
 
         @Override
@@ -1801,8 +1807,9 @@ final class cDebuggerI8080 extends JDialog {
                     return false;
                 case CR_COL_DAT:
                     return (rowIndex >= 0) && (rowIndex < CR_NUM_ROWS);
+                default:
+                    return super.isCellEditable(rowIndex, columnIndex);
             }
-            return super.isCellEditable(rowIndex, columnIndex);
         }
 
         @Override
@@ -1825,6 +1832,8 @@ final class cDebuggerI8080 extends JDialog {
                         JOptionPane.showMessageDialog(cDebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                     }
                     return;
+                default:
+                    break;
             }
             super.setValueAt(aValue, rowIndex, columnIndex);
         }
@@ -2123,8 +2132,9 @@ final class cDebuggerI8080 extends JDialog {
                     return "Страница";
                 case TP_COL_ADR:
                     return "Адрес";
+                default:
+                    return super.getColumnName(column);
             }
-            return super.getColumnName(column);
         }
 
         @Override
@@ -2135,8 +2145,9 @@ final class cDebuggerI8080 extends JDialog {
                     return fLayer.getNamePage(trap.getPage());
                 case TP_COL_ADR:
                     return String.format("%04X",trap.getAddress());
+                default:
+                    return null;
             }
-            return null;
         }
     }
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -2372,8 +2383,9 @@ final class cDebuggerI8080 extends JDialog {
                     return String.format("%H", column - MD_COL_B00);
                 case MD_COL_STR:
                     return "0123456789ABCDEF";
+                default:
+                    return super.getColumnName(column);
             }
-            return super.getColumnName(column);
         }
 
         @Override
@@ -2406,8 +2418,9 @@ final class cDebuggerI8080 extends JDialog {
                     }
                     return new String(str);
                 }
+                default:
+                    return null;
             }
-            return null;
         }
 
         @Override
@@ -2433,8 +2446,9 @@ final class cDebuggerI8080 extends JDialog {
                 case MD_COL_B15:
                 case MD_COL_STR:
                     return true;
+                default:
+                    return super.isCellEditable(rowIndex, columnIndex);
             }
-            return super.isCellEditable(rowIndex, columnIndex);
         }
 
         @Override
@@ -2484,8 +2498,10 @@ final class cDebuggerI8080 extends JDialog {
                             fLayer.sendEvent(TypesEvents.MEMORY, page);
                         }
                     }
+                    break;
                 }
-                break;
+                default:
+                    break;
             }
             super.setValueAt(aValue, rowIndex, columnIndex);
         }
@@ -2528,9 +2544,9 @@ final class cDebuggerI8080 extends JDialog {
                                     drawStringUnderlineCharAt(g, str, index, textX, textY);
                                     textX += g.getFontMetrics().stringWidth(str);
                                 }
+                                phase      = !phase;
                                 beginIndex = endIndex;
-                                endIndex   = (phase = !phase) ? endIndex + 1 : len;
-
+                                endIndex   = phase ? endIndex + 1 : len;
                             }
                         } else {
                             g.setColor(foreground);
@@ -2729,10 +2745,12 @@ final class cDebuggerI8080 extends JDialog {
 
                     @Override
                     public void ancestorRemoved(AncestorEvent event) {
+                        // не нужен
                     }
 
                     @Override
                     public void ancestorMoved(AncestorEvent event) {
+                        // не нужен
                     }
                 });
 
@@ -2875,6 +2893,7 @@ final class cDebuggerI8080 extends JDialog {
 
                     @Override
                     public void changedUpdate(DocumentEvent e) {
+                        // не нужен
                     }
                 });
 
@@ -2900,6 +2919,7 @@ final class cDebuggerI8080 extends JDialog {
 
                     @Override
                     public void changedUpdate(DocumentEvent e) {
+                        // не нужен
                     }
                 });
 
@@ -2915,7 +2935,7 @@ final class cDebuggerI8080 extends JDialog {
                         String strBytes = fBytes.getText().trim();
                         if (!( strBytes.equals("") || strBytes.matches(REGEXP_STRING_BYTES))) {
                             JOptionPane.showMessageDialog(cDebuggerI8080.this,
-                                    String.format("Некорректно заполнена строка из байт:\n[%s]\nПоиск невозможен!", strBytes),
+                                    String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes),
                                     "Ошибка", JOptionPane.ERROR_MESSAGE);
                         }
                     }
@@ -2983,7 +3003,7 @@ final class cDebuggerI8080 extends JDialog {
                 fMemDatTable.gotoAddress(address);
             } else if (address == -2) {
                 JOptionPane.showMessageDialog(cDebuggerI8080.this,
-                        String.format("Заданные для поиска данные:\n[%s]\nНе найдены!", fPrevStringBytes),
+                        String.format("Заданные для поиска данные:%n[%s]%nНе найдены!", fPrevStringBytes),
                         "Информация", JOptionPane.INFORMATION_MESSAGE);
             }
         }
