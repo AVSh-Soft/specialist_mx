@@ -20,14 +20,15 @@
         <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
         <copyright>Copyright © 2017 ${company.name}</copyright>
         <lib.dir>lib</lib.dir>
-        <github_username>AVSh-Soft</github_username>
+        <resources.dir>avsh/specialist_mx/resources</resources.dir>
+        <GitHubUsername>AVSh-Soft</GitHubUsername>
     </properties>
 
     <scm>
-        <connection>scm:git:https://github.com/${github_username}/${project.name}.git</connection>
-        <developerConnection>scm:git:https://github.com/${github_username}/${project.name}.git</developerConnection>
+        <connection>scm:git:https://github.com/${GitHubUsername}/${project.artifactId}.git</connection>
+        <developerConnection>scm:git:https://github.com/${GitHubUsername}/${project.artifactId}.git</developerConnection>
         <tag>HEAD</tag>
-        <url>https://github.com/${github_username}/${project.name}.git</url>
+        <url>https://github.com/${GitHubUsername}/${project.artifactId}.git</url>
     </scm>
 
     <!-- Заглушка -->
@@ -95,8 +96,8 @@
                             <!--addClasspath>true</addClasspath-->
                             <!--classpathPrefix>${lib.dir}/</classpathPrefix-->
                             <!--classpathLayoutType>simple</classpathLayoutType-->
-                            <packageName>avsh.specialist_mx</packageName>
-                            <mainClass>avsh.specialist_mx.Main</mainClass>
+                            <packageName>${project.groupId}</packageName>
+                            <mainClass>${project.groupId}.Main</mainClass>
                         </manifest>
                         <manifestEntries>
                             <Implementation-Build>${buildNumber}</Implementation-Build>
@@ -141,7 +142,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>avsh.specialist_mx.Main</mainClass>
+                                    <mainClass>${project.groupId}.Main</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
@@ -167,9 +168,9 @@
                             <errTitle>${product.name}</errTitle>
                             <downloadUrl>http://java.com/download</downloadUrl>
                             <priority>normal</priority>
-                            <icon>Specialist_MX.ico</icon>
+                            <icon>${project.artifactId}.ico</icon>
                             <classPath>
-                                <mainClass>avsh.specialist_mx.Main</mainClass>
+                                <mainClass>${project.groupId}.Main</mainClass>
                                 <addDependencies>false</addDependencies>
                                 <preCp>anything</preCp>
                             </classPath>
@@ -199,18 +200,18 @@
 
         <resources>
             <resource>
-                <targetPath>${project.build.outputDirectory}/avsh/specialist_mx/resources</targetPath>
+                <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
                 <filtering>false</filtering>
-                <directory>${project.build.sourceDirectory}/avsh/specialist_mx/resources</directory>
+                <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
                 <includes>
                     <include>**/*.rom</include>
                     <include>**/*.png</include>
                 </includes>
             </resource>
             <resource>
-                <targetPath>${project.build.outputDirectory}/avsh/specialist_mx/resources</targetPath>
+                <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
                 <filtering>true</filtering>
-                <directory>${project.build.sourceDirectory}/avsh/specialist_mx/resources</directory>
+                <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
                 <includes>
                     <include>**/*.properties</include>
                 </includes>
