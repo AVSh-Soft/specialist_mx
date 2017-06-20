@@ -1471,6 +1471,8 @@ final class cDebuggerI8080 extends JDialog {
                     return;
                 case DA_COL_CMD:
                     break;
+                default:
+                    break;
             }
             super.setValueAt(aValue, rowIndex, columnIndex);
         }
@@ -2023,7 +2025,7 @@ final class cDebuggerI8080 extends JDialog {
                         fLayer.sendEvent(TypesEvents.MEMORY, page);
                     }
                 }
-
+                return;
             }
             super.setValueAt(aValue, rowIndex, columnIndex);
         }
@@ -2478,7 +2480,7 @@ final class cDebuggerI8080 extends JDialog {
                     } catch (NumberFormatException e) {
                         JOptionPane.showMessageDialog(cDebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                     }
-                    break;
+                    return;
                 case MD_COL_STR: {
                     String str = (String) aValue;
                        int len = Math.min(str.length(), 16);
@@ -2498,7 +2500,7 @@ final class cDebuggerI8080 extends JDialog {
                             fLayer.sendEvent(TypesEvents.MEMORY, page);
                         }
                     }
-                    break;
+                    return;
                 }
                 default:
                     break;
