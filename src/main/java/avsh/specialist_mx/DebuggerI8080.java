@@ -30,7 +30,7 @@ import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharA
  * Класс "Отладчик для процессора i8080 (К580ВМ80А)".
  * @author -=AVSh=-
  */
-final class cDebuggerI8080 extends JDialog {
+final class DebuggerI8080 extends JDialog {
     private static final String INI_OPTION_FRAME_WIDTH  = "DebugFrameWidth" ;
     private static final String INI_OPTION_FRAME_HEIGHT = "DebugFrameHeight";
 
@@ -204,9 +204,9 @@ final class cDebuggerI8080 extends JDialog {
     private static String fPrevStringBytes = "";
 
     private final transient cSpMX  fSpMX ;
-    private final transient сLayer fLayer;
-    private final cDisAsmTable fDisAsmTable;
-    private final cMemDatTable fMemDatTable;
+    private final transient Layer fLayer;
+    private final DisAsmTable fDisAsmTable;
+    private final MemDatTable fMemDatTable;
 
     private int fFocusedAddress;
 
@@ -214,16 +214,16 @@ final class cDebuggerI8080 extends JDialog {
      * Конструктор.
      * @param spMX ссылка на главный класс эмулятора.
      */
-    cDebuggerI8080(@NotNull cSpMX spMX) {
+    DebuggerI8080(@NotNull cSpMX spMX) {
         super(spMX.getMainFrame(), true);
 
         // Запоминаем ссылку на главный класс эмулятора
         fSpMX = spMX;
         // Инициализируем слой для взаимодействия с CPU и памятью
-        fLayer = new сLayer(spMX.getCPU());
+        fLayer = new Layer(spMX.getCPU());
         // Инициализируем модели и таблицы для просмотра кода и данных
-        fDisAsmTable = new cDisAsmTable(new cDisAsmTableModel());
-        fMemDatTable = new cMemDatTable(new cMemDatTableModel());
+        fDisAsmTable = new DisAsmTable(new DisAsmTableModel());
+        fMemDatTable = new MemDatTable(new MemDatTableModel());
 
         fFocusedAddress = -1;
         // Инициализируем остальные компоненты и обработчики событий
@@ -275,7 +275,7 @@ final class cDebuggerI8080 extends JDialog {
         fMemDatTable.getColumnModel().getColumn(MD_COL_STR).setCellEditor(strCellEditorMDT);
 
         // Метка для вывода информации из регистра флагов CPU
-        cFlagsRegLabel flagsRegLabel = new cFlagsRegLabel();
+        FlagsRegLabel flagsRegLabel = new FlagsRegLabel();
 
         // Кнопки установки/сброса флагов CPU (FLAGS = SZ?A?P?C)
         JButton flagSButton = new JButton(new String(new char[]{FLAGS.charAt(0)}));
@@ -304,15 +304,15 @@ final class cDebuggerI8080 extends JDialog {
         }
 
         // Модель и таблица для вывода информации из регистровых пар CPU
-        cRegCpuTable regCpuTable = new cRegCpuTable(new cRegCpuTableModel());
+        RegCpuTable regCpuTable = new RegCpuTable(new RegCpuTableModel());
          regCpuTable.getColumnModel().getColumn(CR_COL_DAT).setCellEditor(wordCellEditorRCT);
 
         // Модель и таблица для вывода информации из стека CPU
-        cStackTable stackTable = new cStackTable(new cStackTableModel());
+        StackTable stackTable = new StackTable(new StackTableModel());
          stackTable.getColumnModel().getColumn(SP_COL_DAT).setCellEditor(wordCellEditorST);
 
         // Модель и таблица для вывода информации о ловушках
-        cTrapsTable trapsTable = new cTrapsTable(new cTrapsTableModel());
+        TrapsTable trapsTable = new TrapsTable(new TrapsTableModel());
 
         // Кнопки для работы с ловушками
         JButton deleteTrapButton = new JButton("Delete");
@@ -331,13 +331,13 @@ final class cDebuggerI8080 extends JDialog {
         }
 
         // Метка для вывода информации о текущей странице CPU
-        cCpuMemPageLabel cpuMemPageLabel = new cCpuMemPageLabel();
+        CpuMemPageLabel cpuMemPageLabel = new CpuMemPageLabel();
 
         // Переключатель страниц памяти для просмотра кода
-        cCodeMemPagesComboBox codeMemPagesComboBox = new cCodeMemPagesComboBox();
+        CodeMemPagesComboBox codeMemPagesComboBox = new CodeMemPagesComboBox();
 
         // Переключатель страниц памяти для просмотра данных
-        cDataMemPagesComboBox dataMemPagesComboBox = new cDataMemPagesComboBox();
+        DataMemPagesComboBox dataMemPagesComboBox = new DataMemPagesComboBox();
 
         JButton findButton = new JButton("Find");
         JButton    button2 = new JButton("---" );
@@ -625,7 +625,7 @@ final class cDebuggerI8080 extends JDialog {
                         }
                         break;
                     case DA_COL_CMD: // Переход по адресу в команде
-                        if ((fFocusedAddress >= 0) && ((cDisAsmTableModel) model).isJmpCmd(rowM)) {
+                        if ((fFocusedAddress >= 0) && ((DisAsmTableModel) model).isJmpCmd(rowM)) {
                             fDisAsmTable.gotoAddress(fFocusedAddress, DA_COL_ADR);
                         }
                         break;
@@ -643,9 +643,9 @@ final class cDebuggerI8080 extends JDialog {
                     int rowM =    getFocusedRowModel(table);
                     int colM = getFocusedColumnModel(table);
                     // Редактирование ячейки
-                    if ((   ((table instanceof cRegCpuTable) && (colM == CR_COL_DAT))
-                         || ((table instanceof cStackTable ) && (colM == SP_COL_DAT))
-                         || ((table instanceof cMemDatTable) && (colM >= MD_COL_B00))) && table.getModel().isCellEditable(rowM, colM)) {
+                    if ((   ((table instanceof RegCpuTable) && (colM == CR_COL_DAT))
+                         || ((table instanceof StackTable) && (colM == SP_COL_DAT))
+                         || ((table instanceof MemDatTable) && (colM >= MD_COL_B00))) && table.getModel().isCellEditable(rowM, colM)) {
                         table.editCellAt(table.convertRowIndexToView(rowM), table.convertColumnIndexToView(colM));
                     }
                 }
@@ -686,7 +686,7 @@ final class cDebuggerI8080 extends JDialog {
                 if ((   e.getClickCount() == 2)
                      && (getFocusedColumnModel(fDisAsmTable) == DA_COL_CMD)
                      && (fFocusedAddress  >= 0)
-                     && ((cDisAsmTableModel) fDisAsmTable.getModel()).isJmpCmd(getFocusedRowModel(fDisAsmTable))) {
+                     && ((DisAsmTableModel) fDisAsmTable.getModel()).isJmpCmd(getFocusedRowModel(fDisAsmTable))) {
                     fDisAsmTable.gotoAddress(fFocusedAddress, DA_COL_ADR); // Переход по адресу в команде
                 }
             }
@@ -825,7 +825,7 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Слой для взаимодействия отладчика с CPU и памятью".
      */
-    private class сLayer extends Observable {
+    private class Layer extends Observable {
         private final cI8080 fCPU;
 
         private boolean fDisableEvents;
@@ -835,7 +835,7 @@ final class cDebuggerI8080 extends JDialog {
         /**
          * Конструктор.
          */
-        сLayer(cI8080 cpu) {
+        Layer(cI8080 cpu) {
             fCPU = cpu;
             // Заполняем пустой массив предыдущих значений регистровых пар
             if ((getPrevValRegPair(DebugRegPairs.AF) & 0xFF) == 0) {
@@ -888,14 +888,14 @@ final class cDebuggerI8080 extends JDialog {
         /**
          * Выполняет проверку события.
          * @param event событие
-         * @param check_event проверочное событие
-         * @param check_detail проверочные детали события (для null детали не важны)
+         * @param checkEvent проверочное событие
+         * @param checkDetail проверочные детали события (для null детали не важны)
          * @return true = событие необходимо обработать
          */
-        private boolean eventCheck(Object event, @NotNull TypesEvents check_event, Object check_detail) {
-            if (check_event.equals(event)) {
+        private boolean eventCheck(Object event, @NotNull TypesEvents checkEvent, Object checkDetail) {
+            if (checkEvent.equals(event)) {
                 Object  detail = ((TypesEvents) event).getDetail();
-                return (detail == null) || (check_detail == null) || check_detail.equals(detail);
+                return (detail == null) || (checkDetail == null) || checkDetail.equals(detail);
             }
             return false;
         }
@@ -1156,13 +1156,13 @@ final class cDebuggerI8080 extends JDialog {
          * @return считанный байт
          */
         synchronized int readByte(int page, int address) {
-            int curr_page  = fSpMX.getPage();
-            if (curr_page !=  page) {
+            int curPage  = fSpMX.getPage();
+            if (curPage !=    page) {
                 fSpMX.setPage(page);
             }
             int result = fSpMX.readByte(address);
-            if (page  != curr_page) {
-                fSpMX.setPage(curr_page);
+            if (page  !=      curPage) {
+                fSpMX.setPage(curPage);
             }
             return result;
         }
@@ -1174,13 +1174,13 @@ final class cDebuggerI8080 extends JDialog {
          * @return считанный байт
          */
         synchronized int debugReadByte(int page, int address) {
-            int curr_page  = fSpMX.getPage();
-            if (curr_page !=  page) {
+            int curPage  = fSpMX.getPage();
+            if (curPage !=    page) {
                 fSpMX.setPage(page);
             }
             int result = fSpMX.debugReadByte(address);
-            if (page  != curr_page) {
-                fSpMX.setPage(curr_page);
+            if (page  !=      curPage) {
+                fSpMX.setPage(curPage);
             }
             return result;
         }
@@ -1192,13 +1192,13 @@ final class cDebuggerI8080 extends JDialog {
          * @param value байт
          */
         synchronized void writeByte(int page, int address, int value) {
-            int curr_page  = fSpMX.getPage();
-            if (curr_page !=  page) {
+            int curPage  = fSpMX.getPage();
+            if (curPage !=    page) {
                 fSpMX.setPage(page);
             }
             fSpMX.writeByte(address, value);
-            if (page != curr_page) {
-                fSpMX.setPage(curr_page);
+            if (page !=       curPage) {
+                fSpMX.setPage(curPage);
             }
             sendEvent(TypesEvents.MEMORY, page);
         }
@@ -1217,14 +1217,14 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Модель данных для дизассемблера".
      */
-    private class cDisAsmTableModel extends AbstractTableModel {
+    private class DisAsmTableModel extends AbstractTableModel {
         private final int[][] fStartBuffer;
         private final int[][] fMovedBuffer;
 
         /**
          * Конструктор.
          */
-        cDisAsmTableModel() {
+        DisAsmTableModel() {
             super();
             fStartBuffer = new int[BUF_SIZE][4]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
             fMovedBuffer = new int[BUF_SIZE][4]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
@@ -1466,7 +1466,7 @@ final class cDebuggerI8080 extends JDialog {
                     try {
                         fLayer.writeByte(page,rowIndex + columnIndex - DA_COL_BT0, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        JOptionPane.showMessageDialog(cDebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                     }
                     return;
                 case DA_COL_CMD:
@@ -1481,16 +1481,16 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Таблица с дизассемблированными данными (дизассемблер)".
      */
-    private class cDisAsmTable extends JTable implements Observer {
+    private class DisAsmTable extends JTable implements Observer {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик булевых полей дизассемблера".
          */
-        private class cDisAsmBooleanRenderer extends JCheckBox implements TableCellRenderer {
+        private class DisAsmBooleanRenderer extends JCheckBox implements TableCellRenderer {
             /**
              * Конструктор.
              */
-            cDisAsmBooleanRenderer() {
+            DisAsmBooleanRenderer() {
                 super();
                 setBorderPainted(true);
                 setHorizontalAlignment(CENTER);
@@ -1542,7 +1542,7 @@ final class cDebuggerI8080 extends JDialog {
         /**
          * Класс "Рисовальщик строковых полей дизассемблера".
          */
-        private class cDisAsmStringRenderer extends DefaultTableCellRenderer {
+        private class DisAsmStringRenderer extends DefaultTableCellRenderer {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
@@ -1550,7 +1550,7 @@ final class cDebuggerI8080 extends JDialog {
                     return this;
                 }
 
-                final cDisAsmTableModel model = (cDisAsmTableModel) table.getModel();
+                final DisAsmTableModel model = (DisAsmTableModel) table.getModel();
 
                 int address = table.convertRowIndexToModel   (row   );
                 int columnM = table.convertColumnIndexToModel(column);
@@ -1609,7 +1609,7 @@ final class cDebuggerI8080 extends JDialog {
          * Конструктор.
          * @param dm модель данных
          */
-        cDisAsmTable(TableModel dm) {
+        DisAsmTable(TableModel dm) {
             super(dm);
             // Настариваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
@@ -1623,8 +1623,8 @@ final class cDebuggerI8080 extends JDialog {
             getColumnModel().getColumn(DA_COL_CMD).setMaxWidth(94);
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщиков колонок
-            setDefaultRenderer(Boolean.class, new cDisAsmBooleanRenderer());
-            setDefaultRenderer( String.class, new cDisAsmStringRenderer ());
+            setDefaultRenderer(Boolean.class, new DisAsmBooleanRenderer());
+            setDefaultRenderer( String.class, new DisAsmStringRenderer());
             // Блокируем вывод пустых строк и отключаем сортировку колонок
             TableRowSorter<TableModel> sorter = new TableRowSorter<>(dm);
             for (int column = 0; column < sorter.getModel().getColumnCount(); column++) {
@@ -1662,7 +1662,8 @@ final class cDebuggerI8080 extends JDialog {
          * @param column колонка (в формате табличной модели), которую необходимо выделить
          */
         void gotoAddress(int address, int column) {
-            int rowV, colV = convertColumnIndexToView(column);
+            int rowV;
+            int colV = convertColumnIndexToView(column);
             if (colV != -1) {
                 // Пытаемся найти видимую строку <= address
                 address &= 0xFFFF;
@@ -1681,12 +1682,12 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Метка для отображения содержимого регистра флагов".
      */
-    private class cFlagsRegLabel extends JLabel implements Observer {
+    private class FlagsRegLabel extends JLabel implements Observer {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
-         * Класс "Рисовальщик для cFlagsRegLabel".
+         * Класс "Рисовальщик для FlagsRegLabel".
          */
-        private class cFlagsRegLabelUI extends BasicLabelUI {
+        private class FlagsRegLabelUI extends BasicLabelUI {
             @Override
             protected void paintEnabledText(JLabel l, Graphics g, String s, int textX, int textY) {
                 if (!s.isEmpty()) {
@@ -1719,10 +1720,10 @@ final class cDebuggerI8080 extends JDialog {
         /**
          * Конструктор.
          */
-        cFlagsRegLabel() {
+        FlagsRegLabel() {
             super(fLayer.getVisViewsFlagsReg());
             // Устанавливаем рисовальщик для метки
-            setUI(new cFlagsRegLabelUI());
+            setUI(new FlagsRegLabelUI());
             // Настариваем параметры отображения метки
             setOpaque(true);
             setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
@@ -1746,11 +1747,11 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Модель данных для отображения и редактирования регистровых пар CPU".
      */
-    private class cRegCpuTableModel extends AbstractTableModel {
+    private class RegCpuTableModel extends AbstractTableModel {
         /**
          * Конструктор.
          */
-        cRegCpuTableModel() {
+        RegCpuTableModel() {
             super();
         }
 
@@ -1831,7 +1832,7 @@ final class cDebuggerI8080 extends JDialog {
                             fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPairs.PC), DA_COL_ADR);
                         }
                     } catch (NumberFormatException e) {
-                        JOptionPane.showMessageDialog(cDebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                     }
                     return;
                 default:
@@ -1844,19 +1845,19 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Таблица для отображения и редактирования регистровых пар CPU".
      */
-    private class cRegCpuTable extends JTable implements Observer {
+    private class RegCpuTable extends JTable implements Observer {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик строковых полей таблицы регистровых пар".
          */
-        private class cRegCpuStringRenderer extends DefaultTableCellRenderer {
+        private class RegCpuStringRenderer extends DefaultTableCellRenderer {
             private int fPaintColumn, fCompareResult;
             //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             /**
              * Класс "Рисовальщик ячеек (JLabel) с регистровыми парами".
              * Раскрашивает разными цветами название регистровой пары, а также старший и младший байты регистровой пары.
              */
-            private class cMultiColorLabelUI extends BasicLabelUI {
+            private class MultiColorLabelUI extends BasicLabelUI {
                 @Override
                 protected void paintEnabledText(JLabel l, Graphics g, String s, int textX, int textY) {
                     if (!s.isEmpty()) {
@@ -1883,9 +1884,9 @@ final class cDebuggerI8080 extends JDialog {
             /**
              * Конструктор.
              */
-            cRegCpuStringRenderer() {
+            RegCpuStringRenderer() {
                 super();
-                setUI(new cMultiColorLabelUI());
+                setUI(new MultiColorLabelUI());
             }
 
             @Override
@@ -1929,7 +1930,7 @@ final class cDebuggerI8080 extends JDialog {
          * Конструктор.
          * @param dm модель данных для таблицы.
          */
-        cRegCpuTable(TableModel dm) {
+        RegCpuTable(TableModel dm) {
             super(dm);
             // Настариваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
@@ -1940,7 +1941,7 @@ final class cDebuggerI8080 extends JDialog {
             getColumnModel().getColumn(CR_COL_DAT).setMaxWidth(40);
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
-            setDefaultRenderer(String.class, new cRegCpuStringRenderer());
+            setDefaultRenderer(String.class, new RegCpuStringRenderer());
             // Подключаемся к fLayer для прослушивания
             fLayer.addObserver(this);
         }
@@ -1957,11 +1958,11 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Модель данных таблицы с данными стека".
      */
-    private class cStackTableModel extends AbstractTableModel {
+    private class StackTableModel extends AbstractTableModel {
         /**
          * Конструктор.
          */
-        cStackTableModel() {
+        StackTableModel() {
             super();
         }
 
@@ -2018,7 +2019,7 @@ final class cDebuggerI8080 extends JDialog {
                     fLayer.writeByte(page, address, value & 0xFF);
                     fLayer.writeByte(page, address + 1, value >> 8);
                 } catch (NumberFormatException e) {
-                    JOptionPane.showMessageDialog(cDebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                 } finally {
                     if (fLayer.isEventsDisabled()) {
                         fLayer.enableEvents();
@@ -2034,12 +2035,12 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Таблица с данными стека".
      */
-    private class cStackTable extends JTable implements Observer {
+    private class StackTable extends JTable implements Observer {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик строковых полей таблицы с данными стека".
          */
-        private class cStackStringRenderer extends DefaultTableCellRenderer {
+        private class StackStringRenderer extends DefaultTableCellRenderer {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 super.setHorizontalAlignment(CENTER);
@@ -2072,7 +2073,7 @@ final class cDebuggerI8080 extends JDialog {
          * Конструктор.
          * @param dm модель данных для таблицы.
          */
-        cStackTable(TableModel dm) {
+        StackTable(TableModel dm) {
             super(dm);
             // Настариваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
@@ -2081,7 +2082,7 @@ final class cDebuggerI8080 extends JDialog {
             getColumnModel().getColumn(SP_COL_DAT).setMaxWidth(40);
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
-            setDefaultRenderer(String.class, new cStackStringRenderer());
+            setDefaultRenderer(String.class, new StackStringRenderer());
             // Подключаемся к fLayer для прослушивания
             fLayer.addObserver(this);
         }
@@ -2100,11 +2101,11 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Модель данных таблицы с данными ловушек".
      */
-    private class cTrapsTableModel extends AbstractTableModel {
+    private class TrapsTableModel extends AbstractTableModel {
         /**
          * Конструктор.
          */
-        cTrapsTableModel() {
+        TrapsTableModel() {
             super();
         }
 
@@ -2156,12 +2157,12 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Таблица с данными ловушек".
      */
-    private class cTrapsTable extends JTable implements Observer {
+    private class TrapsTable extends JTable implements Observer {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик строковых полей таблицы с данными ловушек".
          */
-        private class cTrapsStringRenderer extends DefaultTableCellRenderer {
+        private class TrapsStringRenderer extends DefaultTableCellRenderer {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
@@ -2198,7 +2199,7 @@ final class cDebuggerI8080 extends JDialog {
          * Конструктор.
          * @param dm модель данных для таблицы.
          */
-        cTrapsTable(TableModel dm) {
+        TrapsTable(TableModel dm) {
             super(dm);
             // Настариваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
@@ -2208,7 +2209,7 @@ final class cDebuggerI8080 extends JDialog {
             getColumnModel().getColumn(TP_COL_ADR).setMaxWidth(46);
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
-            setDefaultRenderer(String.class, new cTrapsStringRenderer());
+            setDefaultRenderer(String.class, new TrapsStringRenderer());
             // Подключаемся к fLayer для прослушивания
             fLayer.addObserver(this);
         }
@@ -2230,11 +2231,11 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Метка для отображения информации о странице памяти CPU".
      */
-    private class cCpuMemPageLabel extends JLabel implements Observer {
+    private class CpuMemPageLabel extends JLabel implements Observer {
         /**
          * Конструктор.
          */
-        cCpuMemPageLabel() {
+        CpuMemPageLabel() {
             super();
             // Настариваем параметры отображения метки
             setOpaque(true);
@@ -2267,11 +2268,11 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Раскрывающийся список страниц памяти для просмотра кода".
      */
-    private class cCodeMemPagesComboBox extends JComboBox<String> implements Observer {
+    private class CodeMemPagesComboBox extends JComboBox<String> implements Observer {
         /**
          * Конструктор.
          */
-        cCodeMemPagesComboBox() {
+        CodeMemPagesComboBox() {
             super();
             // Настариваем параметры отображения метки
             setFont(DEFAULT_FONT);
@@ -2301,11 +2302,11 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Раскрывающийся список страниц памяти для просмотра данных".
      */
-    private class cDataMemPagesComboBox extends JComboBox<String> implements Observer {
+    private class DataMemPagesComboBox extends JComboBox<String> implements Observer {
         /**
          * Конструктор.
          */
-        cDataMemPagesComboBox() {
+        DataMemPagesComboBox() {
             super();
             // Настариваем параметры отображения списка
             setFont(DEFAULT_FONT);
@@ -2334,11 +2335,11 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Модель данных для данных оперативной памяти".
      */
-    private class cMemDatTableModel extends AbstractTableModel {
+    private class MemDatTableModel extends AbstractTableModel {
         /**
          * Конструктор.
          */
-        cMemDatTableModel() {
+        MemDatTableModel() {
             super();
         }
 
@@ -2478,7 +2479,7 @@ final class cDebuggerI8080 extends JDialog {
                     try {
                         fLayer.writeByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        JOptionPane.showMessageDialog(cDebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                     }
                     return;
                 case MD_COL_STR: {
@@ -2512,20 +2513,23 @@ final class cDebuggerI8080 extends JDialog {
     /**
      * Класс "Таблица с данными из оперативной памяти".
      */
-    private class cMemDatTable extends JTable implements Observer {
+    private class MemDatTable extends JTable implements Observer {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик строковых полей таблицы с данными памяти".
          */
-        private class cMemDatStringRenderer extends DefaultTableCellRenderer {
-            private int fPaintRow, fPaintColumn, fFocusedRow, fFocusedColumn;
+        private class MemDatStringRenderer extends DefaultTableCellRenderer {
+            private int fPaintRow     ;
+            private int fPaintColumn  ;
+            private int fFocusedRow   ;
+            private int fFocusedColumn;
 
             //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             /**
              * Класс "Рисовальщик ячеек (JLabel) с данными памяти".
              * Умеет подсвечивать символ, соответствующий выбранному коду.
              */
-            private class cMultiColorLabelUI extends BasicLabelUI {
+            private class MultiColorLabelUI extends BasicLabelUI {
                 @Override
                 protected void paintEnabledText(JLabel l, Graphics g, String s, int textX, int textY) {
                     if (!s.isEmpty()) {
@@ -2561,9 +2565,9 @@ final class cDebuggerI8080 extends JDialog {
             /**
              * Конструктор.
              */
-            cMemDatStringRenderer() {
+            MemDatStringRenderer() {
                 super();
-                setUI(new cMultiColorLabelUI());
+                setUI(new MultiColorLabelUI());
             }
 
             @Override
@@ -2606,7 +2610,7 @@ final class cDebuggerI8080 extends JDialog {
          * Конструктор.
          * @param dm модель данных для таблицы.
          */
-        cMemDatTable(TableModel dm) {
+        MemDatTable(TableModel dm) {
             super(dm);
             // Настариваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
@@ -2619,7 +2623,7 @@ final class cDebuggerI8080 extends JDialog {
             getColumnModel().getColumn(MD_COL_STR).setMaxWidth(130);
             setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
             // Подключаем рисовальщика полей
-            setDefaultRenderer(String.class, new cMemDatStringRenderer());
+            setDefaultRenderer(String.class, new MemDatStringRenderer());
             // Подключаемся к fLayer для прослушивания
             fLayer.addObserver(this);
         }
@@ -2713,12 +2717,12 @@ final class cDebuggerI8080 extends JDialog {
     private void gotoAddress() {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Класс "Панель для диалога ввода адреса".
-        class cInputAddressPanel extends JPanel {
+        class InputAddressPanel extends JPanel {
             private final cExtFormattedTextField fCodeAddress;
             private final cExtFormattedTextField fDataAddress;
 
             // Конструктор
-            private cInputAddressPanel() {
+            private InputAddressPanel() {
                 super(new GridLayout(2, 2));
 
                 JLabel codeLabel = new JLabel("Адрес (code):");
@@ -2772,14 +2776,14 @@ final class cDebuggerI8080 extends JDialog {
                 try {
                     result = Integer.parseInt((String) (type ? fDataAddress.getValue() : fCodeAddress.getValue()), 16);
                 } catch (NumberFormatException e) {
-                    JOptionPane.showMessageDialog(cDebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                 }
                 return result;
             }
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        cInputAddressPanel inputAddressPanel = new cInputAddressPanel();
-        int result =  JOptionPane.showConfirmDialog(cDebuggerI8080.this, inputAddressPanel,
+        InputAddressPanel inputAddressPanel = new InputAddressPanel();
+        int result =  JOptionPane.showConfirmDialog(DebuggerI8080.this, inputAddressPanel,
                 "Go to ...", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
         if (result == JOptionPane.OK_OPTION) {
             int codeAddress = inputAddressPanel.getAddress(false);
@@ -2800,14 +2804,14 @@ final class cDebuggerI8080 extends JDialog {
     private void findData() {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Класс "Панель для диалога ввода данных".
-        class cInputDataPanel extends JPanel {
+        class InputDataPanel extends JPanel {
             private final static String REGEXP_STRING_BYTES = "^([\\dA-F]{1,2}( +|$))+";
 
             private final JTextField fBytes;
             private final JTextField fChars;
 
             // Функция - преобразует строку из байт в строку из символов.
-            private final Function<String, String> bytesToChars = strBytes -> {
+            private final transient Function<String, String> bytesToChars = strBytes -> {
                     strBytes = strBytes.trim();
                 if (strBytes.matches(REGEXP_STRING_BYTES)) {
                     String[] b = strBytes.split(" +"); // разбиваем строку из байт на отдельные байты
@@ -2826,7 +2830,7 @@ final class cDebuggerI8080 extends JDialog {
             };
 
             // Конструктор
-            private cInputDataPanel() {
+            private InputDataPanel() {
                 super(new GridBagLayout());
 
                 JLabel bytesLabel = new JLabel("Байты :");
@@ -2936,7 +2940,7 @@ final class cDebuggerI8080 extends JDialog {
                     public void focusLost(FocusEvent e) {
                         String strBytes = fBytes.getText().trim();
                         if (!( strBytes.equals("") || strBytes.matches(REGEXP_STRING_BYTES))) {
-                            JOptionPane.showMessageDialog(cDebuggerI8080.this,
+                            JOptionPane.showMessageDialog(DebuggerI8080.this,
                                     String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes),
                                     "Ошибка", JOptionPane.ERROR_MESSAGE);
                         }
@@ -2990,8 +2994,8 @@ final class cDebuggerI8080 extends JDialog {
             }
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        cInputDataPanel inputDataPanel = new cInputDataPanel();
-        int result = JOptionPane.showConfirmDialog(cDebuggerI8080.this, inputDataPanel,
+        InputDataPanel inputDataPanel = new InputDataPanel();
+        int result = JOptionPane.showConfirmDialog(DebuggerI8080.this, inputDataPanel,
                 String.format("Поиск в странице: [%s]", fLayer.getNamePage(fLayer.getDataPage())),
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
 
@@ -3004,7 +3008,7 @@ final class cDebuggerI8080 extends JDialog {
                    if (address >=  0) {
                 fMemDatTable.gotoAddress(address);
             } else if (address == -2) {
-                JOptionPane.showMessageDialog(cDebuggerI8080.this,
+                JOptionPane.showMessageDialog(DebuggerI8080.this,
                         String.format("Заданные для поиска данные:%n[%s]%nНе найдены!", fPrevStringBytes),
                         "Информация", JOptionPane.INFORMATION_MESSAGE);
             }
@@ -3034,7 +3038,7 @@ final class cDebuggerI8080 extends JDialog {
         // Показываем код из страницы, в которой работает CPU
         fLayer.setCodePage(fLayer.getCpuPage());
         // Получаем адрес следующей команды после команды вызова подпрограммы (CALL/RST)
-        int address = ((cDisAsmTableModel) fDisAsmTable.getModel()).getAddressAfterCallCmd(fLayer.getValRegPair(DebugRegPairs.PC));
+        int address = ((DisAsmTableModel) fDisAsmTable.getModel()).getAddressAfterCallCmd(fLayer.getValRegPair(DebugRegPairs.PC));
         if (address == -1) {
             step();
         } else {

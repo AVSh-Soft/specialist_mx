@@ -1089,7 +1089,7 @@ final class cI8080 implements iClockedDevice {
                                    debugRemTrap(page, address);
                         }
                         // Выводим окно отладчика
-                        cDebuggerI8080 debug = new cDebuggerI8080(fSpMX);
+                        DebuggerI8080 debug = new DebuggerI8080(fSpMX);
                         // После окончания работы - убиваем отладчик
                         debug.getContentPane().removeAll();
                         debug.dispose();

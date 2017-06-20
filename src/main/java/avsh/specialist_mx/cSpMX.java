@@ -971,7 +971,7 @@ final class cSpMX {
                     // Отменяем режим "Пауза" только для CPU
                     fCPU.hold(false);
                     // Выводим окно отладчика
-                    cDebuggerI8080 debug = new cDebuggerI8080(this);
+                    DebuggerI8080 debug = new DebuggerI8080(this);
                     // После окончания работы - убиваем отладчик
                     debug.getContentPane().removeAll();
                     debug.dispose();
