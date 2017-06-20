@@ -809,7 +809,7 @@ final class DebuggerI8080 extends JDialog {
         // Устанавливаем курсор на адрес = PC в таблице fDisAsmTable
         fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPairs.PC), DA_COL_ADR);
 
-        if ((fPrevLocation.getX() == 0) && (fPrevLocation.getY() == 0)) {
+        if ((fPrevLocation.getX() < 1.0D) && (fPrevLocation.getY() < 1.0D)) {
             // Выводим окно отладчика в центре родительского окна
             setLocationRelativeTo(getOwner());
         } else {
@@ -1698,7 +1698,8 @@ final class DebuggerI8080 extends JDialog {
                     int pAF = fLayer.getPrevValRegPair(DebugRegPairs.AF);
                     int cAF = fLayer.getValRegPair    (DebugRegPairs.AF);
 
-                    char c; int width;
+                    char c;
+                    int  width;
                     for (int i = 0, mask = 0b1000_0000; i < 8; i++, mask >>= 1) {
                         c     = s.charAt(i);
                         width = g.getFontMetrics().charWidth(c);
@@ -1851,7 +1852,8 @@ final class DebuggerI8080 extends JDialog {
          * Класс "Рисовальщик строковых полей таблицы регистровых пар".
          */
         private class RegCpuStringRenderer extends DefaultTableCellRenderer {
-            private int fPaintColumn, fCompareResult;
+            private int fPaintColumn  ;
+            private int fCompareResult;
             //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             /**
              * Класс "Рисовальщик ячеек (JLabel) с регистровыми парами".
@@ -2220,7 +2222,8 @@ final class DebuggerI8080 extends JDialog {
                 // Обновляем данные в таблице
                 ((AbstractTableModel) getModel()).fireTableDataChanged();
                 // Позиционируемся на добавленную ловушку
-                int index; Object detail = TypesEvents.TRAPS.getDetail();
+                   int index;
+                Object detail = TypesEvents.TRAPS.getDetail();
                 if ((detail instanceof cTrap) && ((index = fLayer.getTrapIndex((cTrap) detail)) != -1)) {
                     gotoTableCell(this, convertRowIndexToView(index), convertColumnIndexToView(TP_COL_PAG), false);
                 }
@@ -2751,12 +2754,12 @@ final class DebuggerI8080 extends JDialog {
 
                     @Override
                     public void ancestorRemoved(AncestorEvent event) {
-                        // не нужен
+                        //
                     }
 
                     @Override
                     public void ancestorMoved(AncestorEvent event) {
-                        // не нужен
+                        //
                     }
                 });
 
@@ -2805,7 +2808,7 @@ final class DebuggerI8080 extends JDialog {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Класс "Панель для диалога ввода данных".
         class InputDataPanel extends JPanel {
-            private final static String REGEXP_STRING_BYTES = "^([\\dA-F]{1,2}( +|$))+";
+            private static final String REGEXP_STRING_BYTES = "^([\\dA-F]{1,2}( +|$))+";
 
             private final JTextField fBytes;
             private final JTextField fChars;
@@ -2874,10 +2877,12 @@ final class DebuggerI8080 extends JDialog {
 
                     @Override
                     public void ancestorRemoved(AncestorEvent event) {
+                        //
                     }
 
                     @Override
                     public void ancestorMoved(AncestorEvent event) {
+                        //
                     }
                 });
 
@@ -2899,7 +2904,7 @@ final class DebuggerI8080 extends JDialog {
 
                     @Override
                     public void changedUpdate(DocumentEvent e) {
-                        // не нужен
+                        //
                     }
                 });
 
@@ -2925,7 +2930,7 @@ final class DebuggerI8080 extends JDialog {
 
                     @Override
                     public void changedUpdate(DocumentEvent e) {
-                        // не нужен
+                        //
                     }
                 });
 
