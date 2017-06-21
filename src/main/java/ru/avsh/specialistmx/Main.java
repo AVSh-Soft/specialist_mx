@@ -9,7 +9,7 @@ class Main {
              JFrame.setDefaultLookAndFeelDecorated(true);
             JDialog.setDefaultLookAndFeelDecorated(true);
 
-            cSpMX  spMX  = new cSpMX();
+            SpMX spMX  = new SpMX();
             JFrame frame = new SpMxFrame(spMX);
 
             spMX.setMainFrame(frame);

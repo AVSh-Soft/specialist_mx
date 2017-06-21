@@ -9,7 +9,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Устройство памяти "Порт клавиатуры Specialist_MX на базе КР580ВВ55А (i8255A)".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_KeyPort implements iMemoryDevice {
+final class cMD_SpMX_KeyPort implements MemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     /*

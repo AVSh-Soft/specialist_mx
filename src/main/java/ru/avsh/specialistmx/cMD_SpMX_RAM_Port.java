@@ -8,7 +8,7 @@ import java.util.Objects;
  * Устройство памяти "Порт для управления страницами памяти Specialist_MX".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_RAM_Port implements iMemoryDevice {
+final class cMD_SpMX_RAM_Port implements MemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 3;
 
     private final cMD_SpMX_RAM fRAM;

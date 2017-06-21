@@ -1,7 +1,7 @@
 package ru.avsh.specialistmx;
 
 import ru.avsh.lib.ExtFormattedTextField;
-import ru.avsh.specialistmx.cI8080.DebugRegPairs;
+import ru.avsh.specialistmx.I8080.DebugRegPairs;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -207,7 +207,7 @@ final class DebuggerI8080 extends JDialog {
     // Статическая переменная для сохранения строки поиска (строка из байт)
     private static String fPrevStringBytes = "";
 
-    private final transient cSpMX  fSpMX ;
+    private final transient SpMX fSpMX ;
     private final transient Layer fLayer;
     private final DisAsmTable fDisAsmTable;
     private final MemDatTable fMemDatTable;
@@ -250,7 +250,7 @@ final class DebuggerI8080 extends JDialog {
      * Конструктор.
      * @param spMX ссылка на главный класс эмулятора.
      */
-    DebuggerI8080(@NotNull cSpMX spMX) {
+    DebuggerI8080(@NotNull SpMX spMX) {
         super(spMX.getMainFrame(), true);
 
         // Запоминаем ссылку на главный класс эмулятора
@@ -707,7 +707,7 @@ final class DebuggerI8080 extends JDialog {
             public void actionPerformed(ActionEvent e) {
                 int  rowM  = getFocusedRowModel((JTable) e.getSource());
                 if ((rowM != -1) && (rowM < fLayer.getTrapCount())) {
-                    cTrap trap = fLayer.getTrap(rowM);
+                    Trap trap = fLayer.getTrap(rowM);
                     // Переходим на ловушку в таблице с кодом
                           fLayer.setCodePage(trap.getPage());
                     fDisAsmTable.gotoAddress(trap.getAddress(), DA_COL_ADR);
@@ -735,7 +735,7 @@ final class DebuggerI8080 extends JDialog {
                 if (e.getClickCount() == 2) {
                     int  rowM  = getFocusedRowModel((JTable) e.getComponent());
                     if ((rowM != -1) && (rowM < fLayer.getTrapCount())) {
-                        cTrap trap = fLayer.getTrap(rowM);
+                        Trap trap = fLayer.getTrap(rowM);
                         // Переходим на ловушку в таблице с кодом
                               fLayer.setCodePage(trap.getPage());
                         fDisAsmTable.gotoAddress(trap.getAddress(), DA_COL_ADR);
@@ -765,7 +765,7 @@ final class DebuggerI8080 extends JDialog {
         deleteTrapButton.addActionListener(e -> {
             int  rowM  = getFocusedRowModel(trapsTable);
             if ((rowM != -1) && (rowM < fLayer.getTrapCount())) {
-                cTrap trap = fLayer.getTrap(rowM);
+                Trap trap = fLayer.getTrap(rowM);
                 fLayer.remTrap(trap.getPage(), trap.getAddress());
             }
         });
@@ -862,7 +862,7 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Слой для взаимодействия отладчика с CPU и памятью".
      */
     private class Layer extends Observable {
-        private final cI8080 fCPU;
+        private final I8080 fCPU;
 
         private boolean fDisableEvents;
         private int     fCodePage;
@@ -871,7 +871,7 @@ final class DebuggerI8080 extends JDialog {
         /**
          * Конструктор.
          */
-        Layer(cI8080 cpu) {
+        Layer(I8080 cpu) {
             fCPU = cpu;
             // Заполняем пустой массив предыдущих значений регистровых пар
             if ((getPrevValRegPair(DebugRegPairs.AF) & 0xFF) == 0) {
@@ -1040,7 +1040,7 @@ final class DebuggerI8080 extends JDialog {
             fCPU.debugAddTrap(page, address, stepOver);
             // Отправляем событие наблюдателям
             if (!stepOver) {
-                sendEvent(TypesEvents.TRAPS, new cTrap(page, address));
+                sendEvent(TypesEvents.TRAPS, new Trap(page, address));
             }
         }
 
@@ -1052,7 +1052,7 @@ final class DebuggerI8080 extends JDialog {
         void remTrap(int page,  int address) {
             fCPU.debugRemTrap(page, address);
             // Отправляем событие наблюдателям
-            sendEvent(TypesEvents.TRAPS, new cTrap(page, address));
+            sendEvent(TypesEvents.TRAPS, new Trap(page, address));
         }
 
         /**
@@ -1087,7 +1087,7 @@ final class DebuggerI8080 extends JDialog {
          * @param index индекс ловушки
          * @return ловушка
          */
-        cTrap getTrap(int index) {
+        Trap getTrap(int index) {
             return fCPU.debugGetTrap(index);
         }
 
@@ -1096,7 +1096,7 @@ final class DebuggerI8080 extends JDialog {
          * @param trap ловушка
          * @return индекс
          */
-        int getTrapIndex(cTrap trap) {
+        int getTrapIndex(Trap trap) {
             for (int index = getTrapCount() - 1; index >= 0; index--) {
                 if (trap.equals(getTrap(index))) {
                     return index;
@@ -1686,7 +1686,7 @@ final class DebuggerI8080 extends JDialog {
                 gotoAddress(rowM, colM);
             } else if (fLayer.eventCheck(arg, TypesEvents.TRAPS, null)) {
                 Object detail = TypesEvents.TRAPS.getDetail();
-                if ((detail == null) || ((detail instanceof cTrap) && (((cTrap) detail).getPage() == fLayer.getCodePage()))) {
+                if ((detail == null) || ((detail instanceof Trap) && (((Trap) detail).getPage() == fLayer.getCodePage()))) {
                     repaint();
                 }
             }
@@ -2180,7 +2180,7 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            cTrap trap = fLayer.getTrap(rowIndex);
+            Trap trap = fLayer.getTrap(rowIndex);
             switch (columnIndex) {
                 case TP_COL_PAG:
                     return fLayer.getNamePage(trap.getPage());
@@ -2260,7 +2260,7 @@ final class DebuggerI8080 extends JDialog {
                 // Позиционируемся на добавленную ловушку
                    int index;
                 Object detail = TypesEvents.TRAPS.getDetail();
-                if ((detail instanceof cTrap) && ((index = fLayer.getTrapIndex((cTrap) detail)) != -1)) {
+                if ((detail instanceof Trap) && ((index = fLayer.getTrapIndex((Trap) detail)) != -1)) {
                     gotoTableCell(this, convertRowIndexToView(index), convertColumnIndexToView(TP_COL_PAG), false);
                 }
             }

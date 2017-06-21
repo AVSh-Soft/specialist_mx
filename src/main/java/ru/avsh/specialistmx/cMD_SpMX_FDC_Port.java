@@ -8,7 +8,7 @@ import java.util.Objects;
  * Устройство памяти "Дополнительные порты контроллера НГМД"
  * @author -=AVSh=-
  */
-final class cMD_SpMX_FDC_Port implements iMemoryDevice {
+final class cMD_SpMX_FDC_Port implements MemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     private final cMD_SpMX_FDC fMainFDC;

@@ -12,7 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Класс "Процессор i8080 (К580ВМ80А)".
  * @author -=AVSh=-
  */
-final class cI8080 implements iClockedDevice {
+final class I8080 implements ClockedDevice {
     // Количество тактов для каждой команды CPU
     private static final int[] CYCLES = {
                  4, 10,      7,  5,      5,  5,  7,  4,      4, 10,      7,  5,      5,  5,  7,  4,
@@ -64,9 +64,9 @@ final class cI8080 implements iClockedDevice {
     private static final int HOLD_ACKNOWLEDGE = 2;
 
     private final int[] fRegs;
-    private final cSpMX fSpMX;
-    private final cTrap fCompareTrap;
-    private final List<cTrap> fTraps;
+    private final SpMX fSpMX;
+    private final Trap fCompareTrap;
+    private final List<Trap> fTraps;
     private final cMemoryDevicesManager fMDM ;
     private final cMemoryDevicesManager fIoDM;
 
@@ -76,12 +76,12 @@ final class cI8080 implements iClockedDevice {
     private volatile int fHoldPhase;
     private volatile boolean fDebugRun;
     private volatile boolean fTrapsFlag;
-    private volatile cTrap fTrapStepOver;
+    private volatile Trap fTrapStepOver;
 
     /**
      * Конструктор.
      */
-    cI8080(@NotNull cSpMX spMX, @NotNull cMemoryDevicesManager mDM, cMemoryDevicesManager ioDM) {
+    I8080(@NotNull SpMX spMX, @NotNull cMemoryDevicesManager mDM, cMemoryDevicesManager ioDM) {
         fSpMX = spMX;
         fMDM  =  mDM;
         fIoDM = ioDM;
@@ -89,7 +89,7 @@ final class cI8080 implements iClockedDevice {
         fRegs    = new int[10]; // B, C, D, E, H, L, F, A, SP, PC
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
 
-        fCompareTrap = new cTrap(0,0);
+        fCompareTrap = new Trap(0,0);
               fTraps = new CopyOnWriteArrayList<>();
     }
 
@@ -386,9 +386,6 @@ final class cI8080 implements iClockedDevice {
         boolean f;
 
         switch (fOpCode) {
-            default:
-                break;
-
             // NOP, 0x00, 00000000
             case 0x00:
             // Undocumented NOP.
@@ -982,6 +979,9 @@ final class cI8080 implements iClockedDevice {
             case 0xFE: // CPI data8
                 subByte(getReg(A), nextBytePC(), 0);
                 break;
+
+            default:
+                break;
         }
         // Проверям ловушку для следующей команды CPU
         if (fTrapsFlag) {
@@ -1010,6 +1010,7 @@ final class cI8080 implements iClockedDevice {
                     fHoldPhase = HOLD_IN_PROCESS;
                     // noinspection StatementWithEmptyBody
                     while (fHoldPhase == HOLD_IN_PROCESS) {
+                        //
                     }
                 }
             } else {
@@ -1173,7 +1174,7 @@ final class cI8080 implements iClockedDevice {
      * @param stepOver true = StepOver ловушка
      */
     void debugAddTrap(int page,  int address, boolean stepOver) {
-        cTrap trap = new cTrap(page, address);
+        Trap trap = new Trap(page, address);
         if (!stepOver && trap.equals(fTrapStepOver)) {
             fTrapStepOver = null;
         }
@@ -1213,7 +1214,7 @@ final class cI8080 implements iClockedDevice {
      * @param address адрес ловушки
      */
     void debugRemTrap(int page,  int address) {
-        cTrap trap = new cTrap(page, address);
+        Trap trap = new Trap(page, address);
         if (trap.equals(fTrapStepOver)) {
             fTrapStepOver = null;
         }
@@ -1239,7 +1240,7 @@ final class cI8080 implements iClockedDevice {
      * @return true = ловушка StepOver установлена
      */
     private boolean debugIsStepOverTrap(int page, int address) {
-        cTrap trap = new cTrap(page, address);
+        Trap trap = new Trap(page, address);
         return fTrapsFlag && trap.equals(fTrapStepOver) && (fTraps.indexOf(trap) != -1);
     }
 
@@ -1251,7 +1252,7 @@ final class cI8080 implements iClockedDevice {
      * @return true = ловушка установлена
      */
     boolean debugIsTrap(int page, int address) {
-        cTrap trap = new cTrap(page,  address);
+        Trap trap = new Trap(page,  address);
         return fTrapsFlag && !trap.equals(fTrapStepOver) && (fTraps.indexOf(trap) != -1);
     }
 
@@ -1270,7 +1271,7 @@ final class cI8080 implements iClockedDevice {
      * @param index индекс ловушки
      * @return ловушка
      */
-    cTrap debugGetTrap(int index) {
+    Trap debugGetTrap(int index) {
         int i = fTraps.indexOf(fTrapStepOver);
         if ((i != -1) && (i <= index)) {
             index++;
@@ -1305,10 +1306,10 @@ final class cI8080 implements iClockedDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cI8080 cI8080 = (cI8080) o;
-        return Objects.equals(fSpMX, cI8080.fSpMX) &&
-               Objects.equals( fMDM, cI8080.fMDM ) &&
-               Objects.equals(fIoDM, cI8080.fIoDM);
+        I8080 I8080 = (I8080) o;
+        return Objects.equals(fSpMX, I8080.fSpMX) &&
+               Objects.equals( fMDM, I8080.fMDM ) &&
+               Objects.equals(fIoDM, I8080.fIoDM);
     }
 
     @Override
@@ -1320,7 +1321,7 @@ final class cI8080 implements iClockedDevice {
 /**
  * Класс "Ловушка".
  */
-class cTrap {
+class Trap {
     private int fPage;
     private int fAddress;
 
@@ -1329,7 +1330,7 @@ class cTrap {
      * @param page номер страницы памяти
      * @param address адрес
      */
-    cTrap(int page, int address) {
+    Trap(int page, int address) {
         fPage    = page;
         fAddress = address;
     }
@@ -1362,8 +1363,8 @@ class cTrap {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof  cTrap) {
-            cTrap trap = (cTrap) o;
+        if (o instanceof Trap) {
+            Trap trap = (Trap) o;
             return ((fPage == trap.fPage) && (fAddress == trap.fAddress));
         }
         return super.equals(o);

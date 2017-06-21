@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Устройство памяти "Контроллер НГМД КР1818ВГ93 (FD1793-02)".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_FDC implements iMemoryDevice {
+final class cMD_SpMX_FDC implements MemoryDevice {
     private static final String THREAD_NAME          = "FloppyDiskController"; // Имя потока
     private static final int    MEMORY_DEVICE_LENGTH = 4;
 
@@ -53,7 +53,7 @@ final class cMD_SpMX_FDC implements iMemoryDevice {
     private final AtomicBoolean fWasDataRequest;
 
     // Переменные
-    private final cI8080 fCPU;
+    private final I8080 fCPU;
     private final Object fMutex;
     private final cDriveFDC fFDD_A;
     private final cDriveFDC fFDD_B;
@@ -343,7 +343,7 @@ final class cMD_SpMX_FDC implements iMemoryDevice {
                 for (int i = 0; i < length; i++) {
                     // Устанавливаем флаг "Запрос данных"
                     setStatusFlag(FLAG_INDEX__DATA_REQUEST, true);
-                    // Ожидаем, когда CPU заполнит регистр данных (время ожидания с учетом особенностей реализации CPU в классе cI8080)
+                    // Ожидаем, когда CPU заполнит регистр данных (время ожидания с учетом особенностей реализации CPU в классе I8080)
                     waitData(CPU_WAIT_TIME);
                     // Если CPU не заполнил регистр данных вовремя
                     if (getStatusFlag(FLAG_INDEX__DATA_REQUEST)) {
@@ -409,7 +409,7 @@ final class cMD_SpMX_FDC implements iMemoryDevice {
                     fRegData.getAndSet(fBuf[i] & 0xFF);
                     // Устанавливаем флаг "Запрос данных"
                     setStatusFlag(FLAG_INDEX__DATA_REQUEST, true);
-                    // Ожидаем, когда CPU прочитает данные из регистра данных (время ожидания с учетом особенностей реализации CPU в классе cI8080)
+                    // Ожидаем, когда CPU прочитает данные из регистра данных (время ожидания с учетом особенностей реализации CPU в классе I8080)
                     waitData(CPU_WAIT_TIME);
                     // Если CPU не прочитал вовремя данные из регистра данных
                     if (getStatusFlag(FLAG_INDEX__DATA_REQUEST)) {
@@ -532,7 +532,7 @@ final class cMD_SpMX_FDC implements iMemoryDevice {
     /**
      * Конструктор.
      */
-    cMD_SpMX_FDC(@NotNull cClockGenerator gen, cI8080 cpu) {
+    cMD_SpMX_FDC(@NotNull cClockGenerator gen, I8080 cpu) {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Устанавливаем ссылку на CPU

@@ -8,7 +8,7 @@ import java.util.Objects;
  * (на входы GATE всех таймеров подается логическая 1, Counter #1 соединен каскадно с Counter #2).
  * @author -=AVSh=-
  */
-final class cMD_SpMX_Timer implements iMemoryDevice, iClockedDevice {
+final class cMD_SpMX_Timer implements MemoryDevice, ClockedDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     // Режимы чтения/загрузки счетчика таймера

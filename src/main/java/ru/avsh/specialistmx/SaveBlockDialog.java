@@ -13,8 +13,6 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.ItemEvent;
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Paths;
 
 /**
@@ -168,7 +166,7 @@ final class SaveBlockDialog extends JDialog {
                 String s = fileNameTextField.getText();
                 if (!s.isEmpty()) {
                     String ext = fileTypeComboBox.getSelectedItem().toString().substring(0, 3);
-                    int ind = s.lastIndexOf(".");
+                    int ind = s.lastIndexOf('.');
                     if (ind > 0) {
                         s = s.substring(0, ind + 1).concat(ext);
                     } else {
@@ -194,7 +192,7 @@ final class SaveBlockDialog extends JDialog {
                 chooser.setSelectedFile(new File(fileName));
             } else {
                 file = new File(fileName);
-                if (Files.exists(Paths.get(file.getParent()), LinkOption.NOFOLLOW_LINKS)) {
+                if (Paths.get(file.getParent()).toFile().exists()) {
                     chooser.setSelectedFile(file);
                 } else {
                     chooser.setCurrentDirectory(new File(ConsStat.getCurPath()));
@@ -205,7 +203,7 @@ final class SaveBlockDialog extends JDialog {
             if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
                 file = chooser.getSelectedFile();
                 fileName = file.getPath();
-                int ind = fileName.lastIndexOf(".");
+                int ind = fileName.lastIndexOf('.');
                 if (ind != -1) {
                     fileName = fileName.substring(0, ind + 1).concat(fileType);
                 } else {
@@ -222,7 +220,7 @@ final class SaveBlockDialog extends JDialog {
                 String s = fileNameTextField.getText();
                 if (!s.isEmpty()) {
                     String ext = ((String) e.getItem()).substring(0, 3);
-                    int ind = s.lastIndexOf(".");
+                    int ind = s.lastIndexOf('.');
                     if (ind > 0) {
                         s = s.substring(0, ind + 1).concat(ext);
                     } else {
@@ -266,7 +264,7 @@ final class SaveBlockDialog extends JDialog {
             fFile = new File(s);
 
             s = fFile.getParent();
-            if (!Files.exists(Paths.get(s), LinkOption.NOFOLLOW_LINKS)) {
+            if (!Paths.get(s).toFile().exists()) {
                 JOptionPane.showMessageDialog(this, String.format("Не найден путь: \"%s\" для сохранения файла: \"%s\"", s, fFile.getName()), "Ошибка", JOptionPane.ERROR_MESSAGE);
                 fileNameTextField.requestFocusInWindow();
                 return;
@@ -286,7 +284,7 @@ final class SaveBlockDialog extends JDialog {
                 s = (String) curTextField.getValue();
                 fStartAddress = Integer.parseInt(s, 16);
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, String.format("Ошибка задания адреса: [%s]\n%s", s, ex.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, String.format("Ошибка задания адреса: [%s]%n%s", s, ex.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
                 curTextField.requestFocusInWindow();
                 return;
             }

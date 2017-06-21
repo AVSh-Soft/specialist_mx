@@ -13,10 +13,10 @@ import java.util.Properties;
  * Класс "Компьютер 'Специалист MX'".
  * @author -=AVSh=-
  */
-final class cSpMX {
+final class SpMX {
     private final String fProductName;
 
-    private final cI8080 fCPU;
+    private final I8080 fCPU;
     private final cMD_SpMX_RAM fRAM;
     private final cMD_SpMX_FDC fFDC;
     private final cClockGenerator fGen;
@@ -36,7 +36,7 @@ final class cSpMX {
     /**
      * Конструктор.
      */
-    cSpMX() {
+    SpMX() {
         // Создаем объект для работы с ini-файлом настроек
         fIni = new Wini();
         fIni.setFile(new File(ConsStat.INI_FILE));
@@ -58,7 +58,7 @@ final class cSpMX {
         // Создаем диспетчер устройств памяти
         fMemDevMng = new cMemoryDevicesManager();
         // Создаем CPU
-        fCPU = new cI8080(this, fMemDevMng, null); // fInOutDevMng - пока не используем!
+        fCPU = new I8080(this, fMemDevMng, null); // fInOutDevMng - пока не используем!
         // Создаем Speaker
         try {
             fSpc = new cSpeaker(fGen);
@@ -176,7 +176,7 @@ final class cSpMX {
      * Возвращает ссылку на CPU.
      * @return ссылка на CPU
      */
-    cI8080 getCPU() {
+    I8080 getCPU() {
         return fCPU;
     }
 
@@ -384,7 +384,7 @@ final class cSpMX {
     private void run(int address) {
         pause(true, true);
         fCPU.run(address);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе cI8080)
+        // Проверям ловушки (стартовые ловушки не отслеживаются в классе I8080)
         if (fCPU.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {
@@ -400,7 +400,7 @@ final class cSpMX {
     private void reset(int address, boolean resetMemoryDevices) {
         pause(true, true);
         fCPU.reset(address, resetMemoryDevices);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе cI8080)
+        // Проверям ловушки (стартовые ловушки не отслеживаются в классе I8080)
         if (fCPU.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {

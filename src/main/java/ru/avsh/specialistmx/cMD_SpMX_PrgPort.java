@@ -8,7 +8,7 @@ import java.util.Objects;
  * Устройство памяти "Порт программатора Specialist_MX на базе КР580ВВ55А (i8255A)".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_PrgPort implements iMemoryDevice {
+final class cMD_SpMX_PrgPort implements MemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     private int fPA, fPB, fPC, fPR;

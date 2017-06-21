@@ -7,7 +7,7 @@ import java.util.Objects;
  * Устройство памяти "Оперативная память".
  * @author -=AVSh=-
  */
-final class cMD_SimpleRAM implements iMemoryDevice {
+final class cMD_SimpleRAM implements MemoryDevice {
     private final int fLength;
     private final byte[] fRAM;
 

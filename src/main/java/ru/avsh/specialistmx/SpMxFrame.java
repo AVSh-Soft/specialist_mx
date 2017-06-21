@@ -26,9 +26,9 @@ final class SpMxFrame extends JFrame {
     private static final String NO_DISK  = "нет диска";
     private static final String ROM_PREF =  "[ROM] - ";
 
-    private final transient cSpMX fSpMX;
+    private final transient SpMX fSpMX;
 
-    SpMxFrame(@NotNull cSpMX spMX) {
+    SpMxFrame(@NotNull SpMX spMX) {
         fSpMX = spMX ;
 
         setIconImage(new ImageIcon(getClass().getResource(RESOURCES.concat(SPMX_ICON_FILE))).getImage());
