@@ -1,6 +1,6 @@
-package avsh.specialist_mx;
+package ru.avsh.specialistmx;
 
-import avsh.lib.cExtFormattedTextField;
+import ru.avsh.lib.cExtFormattedTextField;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -188,16 +188,16 @@ final class cSaveBlockDialog extends JDialog {
             JFileChooser chooser = new JFileChooser();
             chooser.setDialogTitle("Сохранить файл");
             if (fileName.isEmpty()) {
-                chooser.setCurrentDirectory(new File(cConsStat.getCurPath()));
+                chooser.setCurrentDirectory(new File(ConsStat.getCurPath()));
             } else if (fileName.matches("^[^:/\\\\]+$")) {
-                chooser.setCurrentDirectory(new File(cConsStat.getCurPath()));
+                chooser.setCurrentDirectory(new File(ConsStat.getCurPath()));
                 chooser.setSelectedFile(new File(fileName));
             } else {
                 file = new File(fileName);
                 if (Files.exists(Paths.get(file.getParent()), LinkOption.NOFOLLOW_LINKS)) {
                     chooser.setSelectedFile(file);
                 } else {
-                    chooser.setCurrentDirectory(new File(cConsStat.getCurPath()));
+                    chooser.setCurrentDirectory(new File(ConsStat.getCurPath()));
                     chooser.setSelectedFile(new File(file.getName()));
                 }
             }
@@ -212,7 +212,7 @@ final class cSaveBlockDialog extends JDialog {
                     fileName = fileName.concat(".").concat(fileType);
                 }
                 fileNameTextField.setText(fileName);
-                cConsStat.setCurPath(file.getParent());
+                ConsStat.setCurPath(file.getParent());
             }
         });
 
@@ -261,7 +261,7 @@ final class cSaveBlockDialog extends JDialog {
             }
 
             if (s.matches("^[^:/\\\\]+$")) {
-                s = cConsStat.getCurPath().concat(File.separator).concat(s);
+                s = ConsStat.getCurPath().concat(File.separator).concat(s);
             }
             fFile = new File(s);
 

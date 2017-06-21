@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>avsh.specialist_mx</groupId>
-    <artifactId>Specialist_MX</artifactId>
+    <groupId>ru.avsh.specialistmx</groupId>
+    <artifactId>specialist_mx</artifactId>
     <!-- Major.Minor.Release -->
     <version>1.7.0</version>
     <name>Specialist MX</name>
@@ -20,15 +20,15 @@
         <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
         <copyright>Copyright © 2017 ${company.name}</copyright>
         <lib.dir>lib</lib.dir>
-        <resources.dir>avsh/specialist_mx/resources</resources.dir>
-        <GitHubUsername>AVSh-Soft</GitHubUsername>
+        <resources.dir>ru/avsh/specialistmx/resources</resources.dir>
+        <GitHub.username>AVSh-Soft</GitHub.username>
     </properties>
 
     <scm>
-        <connection>scm:git:https://github.com/${GitHubUsername}/${project.artifactId}.git</connection>
-        <developerConnection>scm:git:https://github.com/${GitHubUsername}/${project.artifactId}.git</developerConnection>
+        <connection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git</connection>
+        <developerConnection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git</developerConnection>
         <tag>HEAD</tag>
-        <url>https://github.com/${GitHubUsername}/${project.artifactId}.git</url>
+        <url>https://github.com/${GitHub.username}/${project.artifactId}.git</url>
     </scm>
 
     <!-- Заглушка -->

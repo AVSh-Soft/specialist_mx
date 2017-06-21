@@ -1,4 +1,4 @@
-package avsh.lib;
+package ru.avsh.lib;
 
 import java.io.File;
 import java.util.ArrayList;

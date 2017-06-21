@@ -1,7 +1,7 @@
-package avsh.specialist_mx;
+package ru.avsh.specialistmx;
 
-import avsh.lib.cExtFormattedTextField;
-import avsh.specialist_mx.cI8080.DebugRegPairs;
+import ru.avsh.lib.cExtFormattedTextField;
+import ru.avsh.specialistmx.cI8080.DebugRegPairs;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -23,7 +23,7 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.function.Function;
 
-import static avsh.specialist_mx.cConsStat.NUMBER_PAGES_RAMDISK;
+import static ru.avsh.specialistmx.ConsStat.NUMBER_PAGES_RAMDISK;
 import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharAt;
 
 /**
@@ -821,8 +821,8 @@ final class DebuggerI8080 extends JDialog {
                 // Запоминаем положение окна отладчика
                 setPrevLocation(getLocation());
                 // Запоминаем размеры фрейма в ini-файл
-                fSpMX.putIni(cConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
-                fSpMX.putIni(cConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
+                fSpMX.putIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
+                fSpMX.putIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
             }
         });
 
@@ -833,8 +833,8 @@ final class DebuggerI8080 extends JDialog {
 
         // Восстанавливаем размеры фрейма из ini-файла
         {
-            Integer width  = fSpMX.getIni(cConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
-            Integer height = fSpMX.getIni(cConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
+            Integer width  = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
+            Integer height = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
             if ((width != null) && (height != null)) {
                 setSize(width, height);
             }

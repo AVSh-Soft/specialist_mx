@@ -1,4 +1,4 @@
-package avsh.specialist_mx;
+package ru.avsh.specialistmx;
 
 /**
  * Интерфейс "Тактируемое устройство".

@@ -1,6 +1,6 @@
-package avsh.specialist_mx;
+package ru.avsh.specialistmx;
 
-import avsh.lib.cFileFinder;
+import ru.avsh.lib.cFileFinder;
 import org.ini4j.Wini;
 
 import javax.sound.sampled.LineUnavailableException;
@@ -8,8 +8,6 @@ import javax.swing.*;
 import java.io.*;
 import java.util.List;
 import java.util.Properties;
-
-import static avsh.specialist_mx.cConsStat.*;
 
 /**
  * Класс "Компьютер 'Специалист MX'".
@@ -41,7 +39,7 @@ final class cSpMX {
     cSpMX() {
         // Создаем объект для работы с ini-файлом настроек
         fIni = new Wini();
-        fIni.setFile(new File(cConsStat.INI_FILE));
+        fIni.setFile(new File(ConsStat.INI_FILE));
         try {
             if (fIni.getFile().exists()) {
                 fIni.load (); // читаем настроки
@@ -69,7 +67,7 @@ final class cSpMX {
         }
         // Создаем устройства памяти
         fScr = new cMD_SpMX_Screen (    );
-        fRAM = new cMD_SpMX_RAM    (NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
+        fRAM = new cMD_SpMX_RAM    (ConsStat.NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
         fKey = new cMD_SpMX_KeyPort(fSpc);
         fFDC = new cMD_SpMX_FDC    (fGen, fCPU);
         cMD_SimpleRAM      excRAM  = new cMD_SimpleRAM     (0x20 );
@@ -360,7 +358,7 @@ final class cSpMX {
      */
     String getShortPath(File file) {
         String p0 = file.getPath();
-        String p1 = cConsStat.APP_PATH.relativize(file.toPath()).toString();
+        String p1 = ConsStat.APP_PATH.relativize(file.toPath()).toString();
         return (p0.length() < p1.length()) ? p0 : p1;
     }
 
@@ -370,12 +368,12 @@ final class cSpMX {
      */
     private String readProductName() {
         String ver  = "x.x.x.x";
-        try (InputStreamReader isr = new InputStreamReader(getClass().getResourceAsStream(RESOURCES.concat(SPMX_PROP_FILE)),"UTF-8")) {
+        try (InputStreamReader isr = new InputStreamReader(getClass().getResourceAsStream(ConsStat.RESOURCES.concat(ConsStat.SPMX_PROP_FILE)),"UTF-8")) {
             Properties property    = new Properties();
             property.load(isr);
-            return String.format(" - \"%s\" v%s", property.getProperty("appName", SPMX_NAME), property.getProperty("versionNumber", ver));
+            return String.format(" - \"%s\" v%s", property.getProperty("appName", ConsStat.SPMX_NAME), property.getProperty("versionNumber", ver));
         } catch (IOException e) {
-            return String.format(" - \"%s\" v%s", SPMX_NAME, ver);
+            return String.format(" - \"%s\" v%s", ConsStat.SPMX_NAME, ver);
         }
     }
 
@@ -443,7 +441,7 @@ final class cSpMX {
      */
     private void loadROM() throws IOException {
         // Если ROM-файл прописан в ini-файле и он имеется на диске, то загружаем внешний ROM-файл
-        String romPath   = getIni(cConsStat.INI_SECTION_CONFIG, cConsStat.INI_OPTION_ROM_FILE, String.class);
+        String romPath   = getIni(ConsStat.INI_SECTION_CONFIG, ConsStat.INI_OPTION_ROM_FILE, String.class);
         if ((  romPath  != null) && !romPath.equals("")) {
             File romFile =  new File(romPath);
             if ( romFile.exists() && romFile.isFile()) {
@@ -459,7 +457,7 @@ final class cSpMX {
         }
         // Иначе загружаем встроенный ROM-файл
         fCurRomFile = null;
-        try (BufferedInputStream bis = new BufferedInputStream(getClass().getResourceAsStream(RESOURCES.concat(SPMX_ROM_FILE)))) {
+        try (BufferedInputStream bis = new BufferedInputStream(getClass().getResourceAsStream(ConsStat.RESOURCES.concat(ConsStat.SPMX_ROM_FILE)))) {
             int length = bis.available();
             if (length < 0x10000) {
                 byte[] buf = new byte[length];
@@ -574,7 +572,7 @@ final class cSpMX {
             // Загружаем BIOS "Специалиста_MX"
             loadROM();
             // Запоминаем имя ROM-файла
-            fCurMonName = SPMX_ROM_FILE.toLowerCase();
+            fCurMonName = ConsStat.SPMX_ROM_FILE.toLowerCase();
             // Сбрасываем CPU с адреса 0x0000 (сброс устройств памяти устанавливает страницу памяти 0, что здесь не подходит)
             reset(0x0000, false);
             return true;
@@ -696,7 +694,7 @@ final class cSpMX {
                         case 2: // Проверяем соответствие монитора
                             if ((selected == JOptionPane.YES_OPTION) && (line.length() > 0) && !fCurMonName.equals(line)) {
                                 boolean result;
-                                if (SPMX_ROM_FILE.toLowerCase().endsWith(line)) {
+                                if (ConsStat.SPMX_ROM_FILE.toLowerCase().endsWith(line)) {
                                     // Запускаем стандартный BIOS
                                     result = restart(false, false);
                                 } else {
@@ -706,7 +704,7 @@ final class cSpMX {
                                     if (!listFiles.isEmpty()) {
                                         result = loadFileMON(listFiles.get(0));
                                     } else {
-                                        listFiles = fileFinder.findFiles(PATH_MON_FILES, line);
+                                        listFiles = fileFinder.findFiles(ConsStat.PATH_MON_FILES, line);
                                         if (!listFiles.isEmpty()) {
                                             result = loadFileMON(listFiles.get(0));
                                         } else {

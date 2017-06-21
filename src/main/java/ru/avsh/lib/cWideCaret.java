@@ -1,4 +1,4 @@
-package avsh.lib;
+package ru.avsh.lib;
 
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultCaret;

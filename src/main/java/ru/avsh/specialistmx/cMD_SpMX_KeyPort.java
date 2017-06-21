@@ -1,4 +1,4 @@
-package avsh.specialist_mx;
+package ru.avsh.specialistmx;
 
 import java.awt.event.KeyEvent;
 import java.util.List;

@@ -1,4 +1,4 @@
-package avsh.lib;
+package ru.avsh.lib;
 
 import javax.swing.*;
 import javax.swing.text.DefaultFormatterFactory;
