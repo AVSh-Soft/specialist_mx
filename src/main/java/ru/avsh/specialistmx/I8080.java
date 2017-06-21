@@ -1001,7 +1001,7 @@ final class I8080 implements ClockedDevice {
     void hold(boolean mode) {
         if ((fHoldPhase == HOLD_IS_NOT_SET) == mode) {
             if (mode) {
-                if ((fCycles <= 1) || Thread.currentThread().getName().equals(cClockGenerator.THREAD_NAME)) {
+                if ((fCycles <= 1) || Thread.currentThread().getName().equals(ClockGenerator.THREAD_NAME)) {
                     // Для потока тактового генератора останавливаем CPU сразу конечным значением HOLD_ACKNOWLEDGE,
                     // т.к. здесь вызов всегда происходит в последней фазе работы цикла CPU (из метода cmdFinish())
                     fHoldPhase = HOLD_ACKNOWLEDGE;
@@ -1069,7 +1069,7 @@ final class I8080 implements ClockedDevice {
      */
     private void startDebugger() {
         // Вызов возможен только для потока тактового генератора (блокирует вызов из потока Swing)
-        if (!fDebugRun && Thread.currentThread().getName().equals(cClockGenerator.THREAD_NAME)) {
+        if (!fDebugRun && Thread.currentThread().getName().equals(ClockGenerator.THREAD_NAME)) {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
              fDebugRun = true;
             // Останавливаем CPU и устройства памяти

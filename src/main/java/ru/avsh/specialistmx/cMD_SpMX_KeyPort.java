@@ -95,11 +95,11 @@ final class cMD_SpMX_KeyPort implements MemoryDevice {
     };
 
     private int fPA, fPB, fPC, fPR;
-    private final cSpeaker fSpeaker;
+    private final Speaker fSpeaker;
     private final List<Integer> fKeyBuffer;
     private volatile boolean fShiftKey, fKeyboardMode;
 
-    cMD_SpMX_KeyPort(cSpeaker speaker) {
+    cMD_SpMX_KeyPort(Speaker speaker) {
         fPR = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
         fSpeaker = speaker;
         fKeyBuffer = new CopyOnWriteArrayList<>();

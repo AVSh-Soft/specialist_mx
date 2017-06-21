@@ -19,7 +19,7 @@ final class SpMX {
     private final I8080 fCPU;
     private final cMD_SpMX_RAM fRAM;
     private final cMD_SpMX_FDC fFDC;
-    private final cClockGenerator fGen;
+    private final ClockGenerator fGen;
     private final cMD_SpMX_Screen fScr;
     private final cMD_SpMX_KeyPort fKey;
     private final cMemoryDevicesManager fMemDevMng;
@@ -27,7 +27,7 @@ final class SpMX {
     private final cMemoryDevicesManager fInOutDevMng; */
 
     private Wini     fIni;
-    private cSpeaker fSpc;
+    private Speaker fSpc;
     private boolean  fDebugRun;
     private JFrame   fMainFrame;
     private String   fCurMonName;
@@ -54,14 +54,14 @@ final class SpMX {
         fProductName = readProductName();
 
         // Создаем тактовый генератор
-        fGen = new cClockGenerator();
+        fGen = new ClockGenerator();
         // Создаем диспетчер устройств памяти
         fMemDevMng = new cMemoryDevicesManager();
         // Создаем CPU
         fCPU = new I8080(this, fMemDevMng, null); // fInOutDevMng - пока не используем!
         // Создаем Speaker
         try {
-            fSpc = new cSpeaker(fGen);
+            fSpc = new Speaker(fGen);
         } catch (LineUnavailableException e) {
             fSpc = null;
         }
@@ -160,7 +160,7 @@ final class SpMX {
      * Возвращает ссылку на тактовый генератор.
      * @return ссылка на тактовый генератор
      */
-    cClockGenerator getGen() {
+    ClockGenerator getGen() {
         return fGen;
     }
 
@@ -722,7 +722,7 @@ final class SpMX {
                                         Thread.currentThread().interrupt();
                                     }
                                     // Устанавливаем тктовую частоту по умолчанию
-                                    fGen.setClockSpeed(cClockGenerator.CLOCK_SPEED);
+                                    fGen.setClockSpeed(ClockGenerator.CLOCK_SPEED);
                                 } else {
                                     // Были ошибки при загрузке BIOSа/монитора
                                     return false;

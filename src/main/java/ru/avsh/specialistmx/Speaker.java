@@ -13,29 +13,29 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Класс "Speaker (динамик)".
  * @author -=AVSh=-
  */
-final class cSpeaker {
+final class Speaker {
     // Константы для разбивки на сэмплы
     private static final float SAMPLE_RATE            = 44100F;
-    private static final float CYCLES_PER_SAMPLE      = cClockGenerator.CLOCK_SPEED / SAMPLE_RATE;
+    private static final float CYCLES_PER_SAMPLE      = ClockGenerator.CLOCK_SPEED / SAMPLE_RATE;
     private static final float HALF_CYCLES_PER_SAMPLE =           CYCLES_PER_SAMPLE /  2;
     // Константы для отбора полупериодов
-    private static final int   BEG_HALF_CYCLE         = cClockGenerator.CLOCK_SPEED / 40; // Стартовая максимальная длина полупериода (частота от 20Гц)
-    private static final int   MAX_HALF_CYCLE         = cClockGenerator.CLOCK_SPEED /  4; // Максимальная длина полупериода для воспроизведения пауз без искажений (от 2Гц)
+    private static final int   BEG_HALF_CYCLE         = ClockGenerator.CLOCK_SPEED / 40; // Стартовая максимальная длина полупериода (частота от 20Гц)
+    private static final int   MAX_HALF_CYCLE         = ClockGenerator.CLOCK_SPEED /  4; // Максимальная длина полупериода для воспроизведения пауз без искажений (от 2Гц)
     // Константы для задания времени наполнения буфера
     private static final int   BUF_TIME               = 100; // В миллисекундах
     private static final int   BUF_SAMPLES_TIME       =      Math.round(SAMPLE_RATE * BUF_TIME / 1000); // В семплах
-    private static final int   BUF_CYCLES_TIME        = cClockGenerator.CLOCK_SPEED * BUF_TIME / 1000 ; // В тактах
+    private static final int   BUF_CYCLES_TIME        = ClockGenerator.CLOCK_SPEED * BUF_TIME / 1000 ; // В тактах
     // Прочие константы
     private static final float SAMPLES_PER_MS         = SAMPLE_RATE / 1000;
     private static final int   SAMPLES_PER_2MS        = Math.round(2 * SAMPLES_PER_MS) ;
     private static final float AUDIO_LEVEL_FACTOR     = 128 / HALF_CYCLES_PER_SAMPLE * 0.25F; // Уровень громкости 25%
-    private static final int   CPU_PULSE_TIME         = Math.round(cClockGenerator.TIME_OF_PULSE / 1_000_000F) * cClockGenerator.CLOCK_SPEED / 1000;
+    private static final int   CPU_PULSE_TIME         = Math.round(ClockGenerator.TIME_OF_PULSE / 1_000_000F) * ClockGenerator.CLOCK_SPEED / 1000;
 
     private final Object fMutex;
     private final SourceDataLine fSDL;
-    private final cClockGenerator fGen;
-    private final cSoundQueue fSoundQueue;
-    private final cSoundProcessor fSoundProcessor;
+    private final ClockGenerator fGen;
+    private final SoundQueue fSoundQueue;
+    private final SoundProcessor fSoundProcessor;
 
     private volatile long    fPrevTime;
     private volatile boolean fCurBit  ;
@@ -46,7 +46,7 @@ final class cSpeaker {
     /**
      * Внутренний класс "Звуковая очередь".
      */
-    private class cSoundQueue extends ConcurrentLinkedQueue<Integer> {
+    private class SoundQueue extends ConcurrentLinkedQueue<Integer> {
         // Счетчик времени всех полупериодов в очереди
         private final AtomicInteger fTime = new AtomicInteger();
 
@@ -81,7 +81,7 @@ final class cSpeaker {
     /**
      * Внутренний класс "Звуковой процессор".
      */
-    private class cSoundProcessor implements Runnable {
+    private class SoundProcessor implements Runnable {
         private final int    fBufSize = fSDL.getBufferSize(); // Размера буфера в SDL хватает на воспроизведение в течении 1/2 сек
         private final byte[] fBuf     =   new byte[fBufSize]; // Выделяем буфер под сэмплы == буферу SDL
 
@@ -93,7 +93,7 @@ final class cSpeaker {
          * @param buf буфер, содержащий звуковые данные
          * @param len длина звуковых данных (нужно соблюдать условие len <= SDL.getBufferSize())
          */
-        void play_sound(byte[] buf, int len) {
+        void playSound(byte[] buf, int len) {
             if (len > 0) {
                 // Если запущен SDL:
                 if (fSDL.isActive()) {
@@ -133,111 +133,111 @@ final class cSpeaker {
 
         @Override
         public void run() {
-            boolean bit = false;
-            float   positive = 0F, negative = 0F;
-            int     half_cycle, samples, index = 0;
-            long    samples_counter = fSDL.getLongFramePosition();
+            int     samples  ;
+            int     halfCycle;
+            int     index    = 0 ;
+            float   positive = 0F;
+            float   negative = 0F;
+            boolean bit      = false;
+            long    samplesCounter = fSDL.getLongFramePosition();
 
-            // noinspection InfiniteLoopStatement
-            for (; ; ) {
-                // Если очередь пуста -
-                if (fSoundQueue.isEmpty()) {
-                    // и если остались сэмплы в буфере -
-                    if (index > 0) {
-                        // выполняем воспроизведение оставшихся сэмплов
-                        play_sound(fBuf, index);
-                        // увеличиваем счетчик сэмплов
-                        samples_counter += index;
-                        index = 0;
-                        continue;
-                    }
-                    // Вычисляем примерное количество невоспроизведенных сэмплов
-                    samples = (int) (samples_counter - fSDL.getLongFramePosition());
-                    // Если воспроизведение завершилось - ждем звуковые данные
-                    if (samples <= 0) {
-                        // -= Обработка звука завершена =-
-                        fRunning = false;
-                        // Если SDL активен:
-                        if (fSDL.isActive()) {
-                            // - устанавливаем состояние "Звуковой процессор занят"
-                            fBusy = true;
-                            // - ожидаем полного завершения воспроизведения
-                            fSDL.drain();
-                            // - сбрасываем все данные в буфере SDL
-                            fSDL.flush();
-                            // - останавливаем SDL
-                            fSDL.stop ();
-                            // - устанавливаем состояние "Звуковой процессор не занят"
-                            fBusy = false;
+            try {
+                // noinspection InfiniteLoopStatement
+                for (; ; ) {
+                    // Если очередь пуста -
+                    if (fSoundQueue.isEmpty()) {
+                        // и если остались сэмплы в буфере -
+                        if (index > 0) {
+                            // выполняем воспроизведение оставшихся сэмплов
+                            playSound(fBuf, index);
+                            // увеличиваем счетчик сэмплов
+                            samplesCounter += index;
+                            index = 0;
+                            continue;
                         }
-                        // Переводим поток в ожидание
-                        synchronized (fMutex) {
-                            try {
+                        // Вычисляем примерное количество невоспроизведенных сэмплов
+                        samples = (int) (samplesCounter - fSDL.getLongFramePosition());
+                        // Если воспроизведение завершилось - ждем звуковые данные
+                        if (samples <= 0) {
+                            // -= Обработка звука завершена =-
+                            fRunning = false;
+                            // Если SDL активен:
+                            if (fSDL.isActive()) {
+                                // - устанавливаем состояние "Звуковой процессор занят"
+                                fBusy = true;
+                                // - ожидаем полного завершения воспроизведения
+                                fSDL.drain();
+                                // - сбрасываем все данные в буфере SDL
+                                fSDL.flush();
+                                // - останавливаем SDL
+                                fSDL.stop();
+                                // - устанавливаем состояние "Звуковой процессор не занят"
+                                fBusy = false;
+                            }
+                            // Если было прерывание потока - выходим из цикла
+                            if (Thread.currentThread().isInterrupted()) {
+                                break;
+                            }
+                            // Переводим поток в ожидание
+                            synchronized (fMutex) {
                                 while (fSoundQueue.isEmpty()) {
                                     fMutex.wait();
                                 }
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
                             }
-                        }
-                        // -= Обработка звука возобновлена =-
-                        fRunning = true;
-                        // Сбрасываем счетчики полупериодов
-                        positive = negative = 0F;
-                        // Читаем текущее значение счетчика сэмплов SDL
-                        samples_counter = fSDL.getLongFramePosition();
-                        // Перед обработкой звуковых данных, заполняем очередь до значения BUF_CYCLES_TIME
-                        for (long endTime = fGen.getCyclesCounter() + BUF_CYCLES_TIME - fSoundQueue.getTime(), timeLeft;
-                             (timeLeft = Math.min(endTime - fGen.getCyclesCounter(), BUF_CYCLES_TIME - fSoundQueue.getTime())) > 0; ) {
-                            if (timeLeft >= CPU_PULSE_TIME) {
-                                try {
+                            // -= Обработка звука возобновлена =-
+                            fRunning = true;
+                            // Сбрасываем счетчики полупериодов
+                            positive = negative = 0F;
+                            // Читаем текущее значение счетчика сэмплов SDL
+                            samplesCounter = fSDL.getLongFramePosition();
+                            // Перед обработкой звуковых данных, заполняем очередь до значения BUF_CYCLES_TIME
+                            for (long endTime = fGen.getCyclesCounter() + BUF_CYCLES_TIME - fSoundQueue.getTime(), timeLeft;
+                                 (timeLeft = Math.min(endTime - fGen.getCyclesCounter(), BUF_CYCLES_TIME - fSoundQueue.getTime())) > 0; ) {
+                                if (timeLeft >= CPU_PULSE_TIME) {
                                     Thread.sleep(1L);
-                                } catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
                                 }
                             }
-                        }
-                    } else {
-                        // Иначе - отправляем поток спать на 1мс для освобождения ядра процессора от 100% загрузки
-                        if (samples >= SAMPLES_PER_2MS) {
-                            try {
+                        } else {
+                            // Иначе - отправляем поток спать на 1мс для освобождения ядра процессора от 100% загрузки
+                            if (samples >= SAMPLES_PER_2MS) {
                                 Thread.sleep(1L);
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
                             }
                         }
-                    }
-                } else {
-                    // Иначе, инвертируем бит для перехода к следующему звуковому полупериоду
-                    bit = !bit;
-                    // Если очередь не пуста - извлекаем полупериод из очереди
-                    half_cycle = fSoundQueue.poll();
-                    // Разбиваем полупериод из очереди на семплы
-                    if (bit) {
-                        positive += half_cycle;
                     } else {
-                        negative += half_cycle;
-                    }
-                    for (; positive + negative >= CYCLES_PER_SAMPLE; index++) {
-                        // Выполняем воспроизведение, если буфер заполнен сэмплами до значения BUF_SAMPLES_TIME (или до fBufSize, если BUF_SAMPLES_TIME > fBufSize)
-                        if (index == Math.min(BUF_SAMPLES_TIME, fBufSize)) {
-                            play_sound(fBuf, index);
-                            // увеличиваем счетчик сэмплов
-                            samples_counter += index;
-                            index = 0;
-                        }
-                        // Амплитуду каждого сэмпла считаем как среднее арифметическое значений на участке CYCLES_PER_SAMPLE
+                        // Иначе, инвертируем бит для перехода к следующему звуковому полупериоду
+                        bit = !bit;
+                        // Если очередь не пуста - извлекаем полупериод из очереди
+                        halfCycle = fSoundQueue.poll();
+                        // Разбиваем полупериод из очереди на семплы
                         if (bit) {
-                            fBuf[index] = (byte) Math.round((HALF_CYCLES_PER_SAMPLE - negative) * AUDIO_LEVEL_FACTOR);
-                            positive   -= CYCLES_PER_SAMPLE - negative;
-                            negative    = 0F;
+                            positive += halfCycle;
                         } else {
-                            fBuf[index] = (byte) Math.round((positive - HALF_CYCLES_PER_SAMPLE) * AUDIO_LEVEL_FACTOR);
-                            negative   -= CYCLES_PER_SAMPLE - positive;
-                            positive    = 0F;
+                            negative += halfCycle;
+                        }
+                        for (; positive + negative >= CYCLES_PER_SAMPLE; index++) {
+                            // Выполняем воспроизведение, если буфер заполнен сэмплами до значения BUF_SAMPLES_TIME (или до fBufSize, если BUF_SAMPLES_TIME > fBufSize)
+                            if (index == Math.min(BUF_SAMPLES_TIME, fBufSize)) {
+                                playSound(fBuf, index);
+                                // увеличиваем счетчик сэмплов
+                                samplesCounter += index;
+                                index = 0;
+                            }
+                            // Амплитуду каждого сэмпла считаем как среднее арифметическое значений на участке CYCLES_PER_SAMPLE
+                            if (bit) {
+                                fBuf[index] = (byte) Math.round((HALF_CYCLES_PER_SAMPLE - negative) * AUDIO_LEVEL_FACTOR);
+                                positive -= CYCLES_PER_SAMPLE - negative;
+                                negative = 0F;
+                            } else {
+                                fBuf[index] = (byte) Math.round((positive - HALF_CYCLES_PER_SAMPLE) * AUDIO_LEVEL_FACTOR);
+                                negative -= CYCLES_PER_SAMPLE - positive;
+                                positive = 0F;
+                            }
                         }
                     }
                 }
+            } catch (InterruptedException e) {
+                // Restore the interrupted status
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -245,11 +245,11 @@ final class cSpeaker {
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Конструктор.
-     * @param  gen для связи cSpeaker с тактовым геренратором cClockGenerator
+     * @param  gen для связи Speaker с тактовым геренратором ClockGenerator
      * @throws LineUnavailableException if a matching source data line
      *         is not available due to resource restrictions
      */
-    cSpeaker(@NotNull cClockGenerator gen) throws LineUnavailableException {
+    Speaker(@NotNull ClockGenerator gen) throws LineUnavailableException {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Инициализируем и открываем SDL
@@ -261,9 +261,9 @@ final class cSpeaker {
         // Инициализируем флаг текущий бит
         fCurBit = true;
         // Создаем очередь под звуковые полупериоды
-        fSoundQueue = new cSoundQueue();
+        fSoundQueue = new SoundQueue();
         // Создаем звуковой процессор, который выполняет обработку очереди звуковых полупериодов (разбивку на сэмплы и воспроизведение)
-        fSoundProcessor = new cSoundProcessor();
+        fSoundProcessor = new SoundProcessor();
         // Запускаем звуковой процессор
         new Thread(fSoundProcessor).start();
     }
@@ -273,19 +273,19 @@ final class cSpeaker {
      */
     private void play() {
         // Эмулируем соединение выходов ВВ55 и ВИ53
-        boolean cur_bit = !(fCurBit8255 | fCurBit8253);
-        if (fCurBit ^ cur_bit) {
-            fCurBit = cur_bit;
+        boolean curBit = !(fCurBit8255 || fCurBit8253);
+        if (fCurBit ^ curBit) {
+            fCurBit = curBit;
 
             // Замеряем время звукового полупериода в тактах тактового генератора
-            long half_cycle = -fPrevTime + (fPrevTime = fGen.getCyclesCounter());
+            long halfCycle = -fPrevTime + (fPrevTime = fGen.getCyclesCounter());
 
             if (fSoundProcessor.isRunning()) {
-                if (half_cycle <= MAX_HALF_CYCLE) {
-                    fSoundQueue.offer((int) half_cycle);
+                if (halfCycle <= MAX_HALF_CYCLE) {
+                    fSoundQueue.offer((int) halfCycle);
                 }
             } else {
-                if (half_cycle <= BEG_HALF_CYCLE) {
+                if (halfCycle <= BEG_HALF_CYCLE) {
                     // Ждем готовности звукового процессора
                     if (fSoundProcessor.isBusy()) {
                         for (int t = BUF_TIME; fSoundProcessor.isBusy() && (t > 0); t--) {
@@ -296,10 +296,10 @@ final class cSpeaker {
                             }
                         }
                     }
-                    fSoundQueue.offer((int) half_cycle);
+                    fSoundQueue.offer((int) halfCycle);
                     // Запускаем звуковой процессор
                     synchronized (fMutex) {
-                        fMutex.notify();
+                        fMutex.notifyAll();
                     }
                 }
             }

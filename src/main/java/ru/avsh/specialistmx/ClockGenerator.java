@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Класс "Тактовый генератор".
  */
-final class cClockGenerator implements Runnable {
+final class ClockGenerator implements Runnable {
     // Основные константы тактового генератора
             static final String THREAD_NAME   = "ClockGenerator"; // Имя потока
             static final int    CLOCK_SPEED   =       2_000_000 ; // Тактовая частота
@@ -29,7 +29,7 @@ final class cClockGenerator implements Runnable {
     /**
      * Конструктор.
      */
-    cClockGenerator() {
+    ClockGenerator() {
         fMutex          = new Object();
         fCyclesCounter  = new AtomicLong();
         fClockedDevices = new ClockedDevice[MAX_DEVICES];
@@ -46,61 +46,65 @@ final class cClockGenerator implements Runnable {
     @Override
     public void run() {
         int  index;
-        long startTime = System.nanoTime(), endTime, nanos;
+        long nanos;
+        long endTime;
+        long startTime = System.nanoTime();
 
         // Присваиваем имя потоку
         Thread.currentThread().setName(THREAD_NAME);
 
-        // Основной цикл работы тактового генератора
-        // noinspection InfiniteLoopStatement
-        for (; ; ) {
-            // Если установлена пауза -
-            if (fPauseFlag) {
-                // завершаем команду CPU
-                execOneCmdCPU();
-                // переводим поток генератора в состояние ожидания
-                synchronized (fMutex) {
-                    try {
+        try {
+            // Основной цикл работы тактового генератора
+            // noinspection InfiniteLoopStatement
+            for (; ; ) {
+                // Если установлена пауза -
+                if (fPauseFlag) {
+                    // завершаем команду CPU
+                    execOneCmdCPU();
+                    // переводим поток генератора в состояние ожидания
+                    synchronized (fMutex) {
                         // Здесь выполняем присвоение fWaitFlag = fPauseFlag с одновременной проверкой
                         while (fWaitFlag = fPauseFlag) {
                             fMutex.wait();
                         }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+                    }
+                    // после завершения ожидания, замеряем начальное время
+                    startTime = System.nanoTime();
+                }
+
+                // Рассчитываем конечное время выполнения импульса генератора (подгонка из-за погрешности System.nanoTime())
+                endTime = startTime + TIME_OF_PULSE - 100_000L;
+                // Выполняем заданное количество тактов генератора без задержек
+                synchronized (this) {
+                    for (long end = fCyclesCounter.get() + fIterationCycles; !fPauseFlag && (fCyclesCounter.get() < end); ) {
+                        // Выполняем один такт у тактируемых устройств
+                        for (index = 0; index < fSize; index++) {
+                            fClockedDevices[index].cycle();
+                        }
+                        // Увеличиваем счетчик циклов (тактов) генератора
+                        fCyclesCounter.getAndIncrement();
                     }
                 }
-                // после завершения ожидания, замеряем начальное время
-                startTime = System.nanoTime();
-            }
 
-            // Рассчитываем конечное время выполнения импульса генератора (подгонка из-за погрешности System.nanoTime())
-            endTime = startTime + TIME_OF_PULSE - 100_000L;
-            // Выполняем заданное количество тактов генератора без задержек
-            synchronized (this) {
-                for (long end = fCyclesCounter.get() + fIterationCycles; !fPauseFlag && (fCyclesCounter.get() < end); ) {
-                    // Выполняем один такт у тактируемых устройств
-                    for (index = 0; index < fSize; index++) {
-                        fClockedDevices[index].cycle();
+                if (!fPauseFlag) {
+                    // Если было прерывание потока - выходим из цикла
+                    if (Thread.currentThread().isInterrupted()) {
+                        break;
                     }
-                    // Увеличиваем счетчик циклов (тактов) генератора
-                    fCyclesCounter.getAndIncrement();
-                }
-            }
-
-            if (!fPauseFlag) {
-                // Усыпляем поток на оставшееся время импульса
-                if ((nanos = endTime - System.nanoTime()) >= 1_000_000L) {
-                    try {
+                    // Усыпляем поток на оставшееся время импульса
+                    if ((nanos = endTime - System.nanoTime()) >= 1_000_000L) {
                         Thread.sleep(nanos / 1_000_000L);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+                    }
+                    // Делаем точную подгонку под оставшееся время импульса
+                    // noinspection StatementWithEmptyBody
+                    while (endTime > (startTime = System.nanoTime())) {
+                        //
                     }
                 }
-                // Делаем точную подгонку под оставшееся время импульса
-                // noinspection StatementWithEmptyBody
-                while (endTime > (startTime = System.nanoTime())) {
-                }
             }
+        } catch (InterruptedException e) {
+            // Restore the interrupted status
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -172,7 +176,8 @@ final class cClockGenerator implements Runnable {
                 // Останавливаем CPU и устройства памяти
                 if (dev && (fCPU != null)) {
                     // CPU
-                    if (!(fPrevCpuHoldMode = fCPU.isHoldAcknowledge())) {
+                    fPrevCpuHoldMode = fCPU.isHoldAcknowledge();
+                    if (!fPrevCpuHoldMode) {
                         fCPU.hold(true);
                     }
                     // Устройства
@@ -192,7 +197,7 @@ final class cClockGenerator implements Runnable {
                 // Пробуждаем тактовый генератор
                 fPauseFlag = false;
                 synchronized (fMutex) {
-                    fMutex.notify();
+                    fMutex.notifyAll();
                 }
 
                 // Пробуждаем CPU и устройства памяти

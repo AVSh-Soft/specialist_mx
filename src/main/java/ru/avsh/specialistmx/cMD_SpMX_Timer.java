@@ -17,7 +17,7 @@ final class cMD_SpMX_Timer implements MemoryDevice, ClockedDevice {
     private static final int RLM_MSB     = 2; // Чтение / Загрузка только старшего значащего байта (MSB)
     private static final int RLM_LSB_MSB = 3; // Чтение / загрузка сначала LSB, а затем MSB (16-битный режим)
 
-    private final cSpeaker fSpeaker ;
+    private final Speaker fSpeaker ;
     private final cCounter fCounter0;
     private final cCounter fCounter1;
     private final cCounter fCounter2;
@@ -488,7 +488,7 @@ final class cMD_SpMX_Timer implements MemoryDevice, ClockedDevice {
      * Конструктор.
      * @param speaker ссылка на Speaker
      */
-    cMD_SpMX_Timer(cSpeaker speaker) {
+    cMD_SpMX_Timer(Speaker speaker) {
         fSpeaker  = speaker;
         fCounter0 = new cCounter();
         fCounter1 = new cCounter();

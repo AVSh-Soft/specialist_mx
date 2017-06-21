@@ -18,7 +18,7 @@ final class cMD_SpMX_FDC implements MemoryDevice {
     private static final int    MEMORY_DEVICE_LENGTH = 4;
 
     // Константа для корректного взаимодействия с CPU
-    private static final long CPU_WAIT_TIME = Math.round(cClockGenerator.TIME_OF_PULSE / 1_000_000.0);
+    private static final long CPU_WAIT_TIME = Math.round(ClockGenerator.TIME_OF_PULSE / 1_000_000.0);
 
     // Константы для формирования индексного импульса
     private static final long REVOLUTION_TIME    = 400_000L; // Время одного оборота диска = 200мс (400_000 тактов) или 300об/мин
@@ -57,7 +57,7 @@ final class cMD_SpMX_FDC implements MemoryDevice {
     private final Object fMutex;
     private final cDriveFDC fFDD_A;
     private final cDriveFDC fFDD_B;
-    private final cClockGenerator fGen;
+    private final ClockGenerator fGen;
 
     private volatile cDriveFDC fCurFDD ;
     private volatile boolean   fCurSide;
@@ -532,7 +532,7 @@ final class cMD_SpMX_FDC implements MemoryDevice {
     /**
      * Конструктор.
      */
-    cMD_SpMX_FDC(@NotNull cClockGenerator gen, I8080 cpu) {
+    cMD_SpMX_FDC(@NotNull ClockGenerator gen, I8080 cpu) {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Устанавливаем ссылку на CPU
