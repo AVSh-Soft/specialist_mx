@@ -1,6 +1,6 @@
 package ru.avsh.specialistmx;
 
-import ru.avsh.lib.cExtFormattedTextField;
+import ru.avsh.lib.ExtFormattedTextField;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -21,7 +21,7 @@ import java.nio.file.Paths;
  * Класс "Диалог сохранения блока".
  * @author -=AVSh=-
  */
-final class cSaveBlockDialog extends JDialog {
+final class SaveBlockDialog extends JDialog {
     private static final String WORD_MASK = "HHHH";
 
     private File    fFile  ;
@@ -35,7 +35,7 @@ final class cSaveBlockDialog extends JDialog {
      * Instantiates a new Save block dialog.
      * @param owner the owner
      */
-    cSaveBlockDialog(Frame owner) {
+    SaveBlockDialog(Frame owner) {
         super(owner, true);
         initComponents();
     }
@@ -70,11 +70,11 @@ final class cSaveBlockDialog extends JDialog {
 
         JLabel addressLabel      = new JLabel("Адреса:");
         JLabel beginAddressLabel = new JLabel("Начало:");
-        cExtFormattedTextField beginAddressTextField = new cExtFormattedTextField(WORD_MASK, '0');
+        ExtFormattedTextField beginAddressTextField = new ExtFormattedTextField(WORD_MASK, '0');
         JLabel endAddressLabel   = new JLabel("Конец:" );
-        cExtFormattedTextField endAddressTextField   = new cExtFormattedTextField(WORD_MASK, '0');
+        ExtFormattedTextField endAddressTextField   = new ExtFormattedTextField(WORD_MASK, '0');
         JLabel startAddressLabel = new JLabel("Старт:" );
-        cExtFormattedTextField startAddressTextField = new cExtFormattedTextField(WORD_MASK, '0');
+        ExtFormattedTextField startAddressTextField = new ExtFormattedTextField(WORD_MASK, '0');
         JSeparator addressSeparator = new JSeparator();
 
         JButton okButton     = new JButton("OK"    );

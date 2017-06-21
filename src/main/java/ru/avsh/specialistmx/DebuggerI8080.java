@@ -1,6 +1,6 @@
 package ru.avsh.specialistmx;
 
-import ru.avsh.lib.cExtFormattedTextField;
+import ru.avsh.lib.ExtFormattedTextField;
 import ru.avsh.specialistmx.cI8080.DebugRegPairs;
 import org.jetbrains.annotations.NotNull;
 
@@ -280,23 +280,23 @@ final class DebuggerI8080 extends JDialog {
         JScrollPane  trapsScrollPane = new JScrollPane();
 
         // Байтовые поля для редактора ячеек таблицы fDisAsmTable
-        final cExtFormattedTextField byteFieldDAT = new cExtFormattedTextField(BYTE_MASK, '0');
+        final ExtFormattedTextField byteFieldDAT = new ExtFormattedTextField(BYTE_MASK, '0');
         final DefaultCellEditor byteCellEditorDAT = new      DefaultCellEditor(byteFieldDAT);
 
         // Двухбайтовые поля для редактора ячеек таблицы regCpuTable
-        final cExtFormattedTextField wordFieldRCT = new cExtFormattedTextField(WORD_MASK, '0');
+        final ExtFormattedTextField wordFieldRCT = new ExtFormattedTextField(WORD_MASK, '0');
         final DefaultCellEditor wordCellEditorRCT = new      DefaultCellEditor(wordFieldRCT);
 
         // Двухбайтовые поля для редактора ячеек таблицы stackTable
-        final cExtFormattedTextField wordFieldST  = new cExtFormattedTextField(WORD_MASK, '0');
+        final ExtFormattedTextField wordFieldST  = new ExtFormattedTextField(WORD_MASK, '0');
         final DefaultCellEditor wordCellEditorST  = new      DefaultCellEditor(wordFieldST);
 
         // Байтовые поля для редактора ячеек таблицы таблицы fMemDatTable
-        final cExtFormattedTextField byteFieldMDT = new cExtFormattedTextField(BYTE_MASK, '0');
+        final ExtFormattedTextField byteFieldMDT = new ExtFormattedTextField(BYTE_MASK, '0');
         final DefaultCellEditor byteCellEditorMDT = new      DefaultCellEditor(byteFieldMDT);
 
         // Строковое поле из 16 символов для редактора ячеек таблицы таблицы fMemDatTable
-        final cExtFormattedTextField strFieldMDT  = new cExtFormattedTextField(STR16_MASK, ' ');
+        final ExtFormattedTextField strFieldMDT  = new ExtFormattedTextField(STR16_MASK, ' ');
         final DefaultCellEditor strCellEditorMDT  = new      DefaultCellEditor(strFieldMDT);
 
         // Параметры таблицы fDisAsmTable с дизассемблированными данными
@@ -2757,8 +2757,8 @@ final class DebuggerI8080 extends JDialog {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Класс "Панель для диалога ввода адреса".
         class InputAddressPanel extends JPanel {
-            private final cExtFormattedTextField fCodeAddress;
-            private final cExtFormattedTextField fDataAddress;
+            private final ExtFormattedTextField fCodeAddress;
+            private final ExtFormattedTextField fDataAddress;
 
             // Конструктор
             private InputAddressPanel() {
@@ -2769,9 +2769,9 @@ final class DebuggerI8080 extends JDialog {
                 codeLabel.setFont(HEADER_FONT);
                 dataLabel.setFont(HEADER_FONT);
 
-                fCodeAddress = new cExtFormattedTextField(WORD_MASK, '0');
+                fCodeAddress = new ExtFormattedTextField(WORD_MASK, '0');
                 fCodeAddress.setValue(String.format("%04X", getFocusedRowModel(fDisAsmTable)));
-                fDataAddress = new cExtFormattedTextField(WORD_MASK, '0');
+                fDataAddress = new ExtFormattedTextField(WORD_MASK, '0');
                 fDataAddress.setValue(String.format("%04X", fMemDatTable.getAddress()));
 
                 add(codeLabel);

@@ -11,13 +11,13 @@ import java.text.ParseException;
  *
  * @author -=AVSh=-
  */
-public class cExtFormattedTextField extends JFormattedTextField {
+public class ExtFormattedTextField extends JFormattedTextField {
     /**
      * Конструктор.
      * @param mask Sets the mask dictating the legal characters.
      * @param placeholder Character used when formatting if the value does not completely fill the mask.
      */
-    public cExtFormattedTextField(String mask, char placeholder) {
+    public ExtFormattedTextField(String mask, char placeholder) {
         super();
 
         MaskFormatter mf  = new MaskFormatter();

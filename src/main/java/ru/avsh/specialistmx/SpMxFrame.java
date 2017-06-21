@@ -207,7 +207,7 @@ final class SpMxFrame extends JFrame {
 
         // -= Сохранение файла =-
         saveBtn.addActionListener(e -> {
-            cSaveBlockDialog saveBlockDialog = new cSaveBlockDialog(this);
+            SaveBlockDialog saveBlockDialog = new SaveBlockDialog(this);
 
             boolean result = true;
             if (saveBlockDialog.getResult()) {
