@@ -95,7 +95,7 @@ final class CpuI8080 implements IClockedDevice {
 
     @Override
     public synchronized String toString() {
-        return String.format("Значения регистров: SZ0A0P1C=%08d, A=%02X, B=%02X, C=%02X, D=%02X, E=%02X, H=%02X, L=%02X, SP=%04X, PC=%04X\n" +
+        return String.format("Значения регистров: SZ0A0P1C=%08d, A=%02X, B=%02X, C=%02X, D=%02X, E=%02X, H=%02X, L=%02X, SP=%04X, PC=%04X%n" +
                              "Память с адреса PC: %02X, %02X, %02X, %02X, %02X, ...",
                 Integer.parseInt(Integer.toBinaryString(fRegs[F])),
                 fRegs[A], fRegs[B], fRegs[C], fRegs[D], fRegs[E], fRegs[H], fRegs[L], fRegs[SP], fRegs[PC],
@@ -143,13 +143,12 @@ final class CpuI8080 implements IClockedDevice {
      * @param value значение
      */
     private void setRegPair(int codePair, int value) {
-        value &= 0xFFFF;
         if (codePair == P_PSW) {
-            fRegs[codePair]     = value & 0xFF;
-            fRegs[codePair + 1] = value >>   8;
+            fRegs[codePair]     =  value & 0xFF;
+            fRegs[codePair + 1] = (value >> 8) & 0xFF;
         } else {
-            fRegs[codePair]     = value >>   8;
-            fRegs[codePair + 1] = value & 0xFF;
+            fRegs[codePair]     = (value >> 8) & 0xFF;
+            fRegs[codePair + 1] =  value & 0xFF;
         }
     }
 
@@ -378,10 +377,9 @@ final class CpuI8080 implements IClockedDevice {
         int cycles = CYCLES[fOpCode];
         if (cycles < 256) {
             return cycles;
-        } else {
-            fTestResult = testFlags((fOpCode >> 3) & 0b111);
-            return fTestResult ? cycles >> 8 : cycles & 0xFF;
         }
+        fTestResult = testFlags((fOpCode >> 3) & 0b111);
+        return fTestResult ? cycles >> 8 : cycles & 0xFF;
     }
 
     /**
@@ -1279,10 +1277,7 @@ final class CpuI8080 implements IClockedDevice {
      */
     Trap debugGetTrap(int index) {
         int i = fTraps.indexOf(fTrapStepOver);
-        if ((i != -1) && (i <= index)) {
-            index++;
-        }
-        return fTraps.get(index);
+        return fTraps.get(((i != -1) && (i <= index)) ? (index + 1) : index);
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1331,7 +1326,7 @@ final class CpuI8080 implements IClockedDevice {
 /**
  * Класс "Ловушка".
  */
-class Trap {
+final class Trap {
     private int fPage;
     private int fAddress;
 

@@ -14,10 +14,10 @@ import java.util.Properties;
 import static ru.avsh.specialistmx.ConsStat.*;
 
 /**
- * Класс для формирования главного окна приложения (меню, кнопок, обработчиков событий).
+ * Класс для формирования главного окна приложения (меню, кнопоки обработчики событий).
  * @author -=AVSh=-
  */
-final class SpMxFrame extends JFrame {
+final class MainFrame extends JFrame {
     private static final String INI_OPTION_FRAME_WIDTH  = "MainFrameWidth" ;
     private static final String INI_OPTION_FRAME_HEIGHT = "MainFrameHeight";
 
@@ -28,7 +28,7 @@ final class SpMxFrame extends JFrame {
 
     private final transient SpMX fSpMX;
 
-    SpMxFrame(@NotNull SpMX spMX) {
+    MainFrame(@NotNull SpMX spMX) {
         fSpMX = spMX ;
 
         setIconImage(new ImageIcon(getClass().getResource(RESOURCES.concat(SPMX_ICON_FILE))).getImage());
@@ -141,21 +141,21 @@ final class SpMxFrame extends JFrame {
 
         // -= Открытие файла =-
         openBtn.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser(ConsStat.getCurPath());
-            chooser.setDialogTitle("Открыть файл");
+            JFileChooser chooser = new JFileChooser(getCurPath());
+            chooser.setDialogTitle(STR_OPEN_FILE);
             chooser.setFileFilter(new FileNameExtensionFilter("Файлы: *.rom, *.mon, *.cpu, *.rks, *.odi", "rom", "mon", "cpu", "rks", "odi"));
 
             if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
                 File   file     =    chooser.getSelectedFile();
                 String fileName = file.getName().toLowerCase();
 
-                ConsStat.setCurPath(file.getParent());
+                setCurPath(file.getParent());
 
                 boolean result = true;
                        if (fileName.endsWith("rom")) {
                     result = fSpMX.loadFileROM(file);
                     if (result) {
-                        fSpMX.putIni(ConsStat.INI_SECTION_CONFIG, ConsStat.INI_OPTION_ROM_FILE, fSpMX.getShortPath(file));
+                        fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, fSpMX.getShortPath(file));
                         setRomItem(romItem);
                     }
                 } else if (fileName.endsWith("mon")) {
@@ -182,17 +182,17 @@ final class SpMxFrame extends JFrame {
             File curRomFile = fSpMX.getCurRomFile();
             if ((curRomFile != null) && (JOptionPane.showConfirmDialog(this,
                     "Заменить текущий ROM-файл на встроенный?", "Что делать?", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION)) {
-                fSpMX.putIni (ConsStat.INI_SECTION_CONFIG, ConsStat.INI_OPTION_ROM_FILE, "");
+                fSpMX.putIni (INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, "");
                 fSpMX.restart(false, false);
             } else {
-                JFileChooser chooser = new JFileChooser((curRomFile != null) ? curRomFile.getParent() : ConsStat.getCurPath());
-                chooser.setDialogTitle("Открыть файл");
+                JFileChooser chooser = new JFileChooser((curRomFile != null) ? curRomFile.getParent() : getCurPath());
+                chooser.setDialogTitle(STR_OPEN_FILE);
                 chooser.setFileFilter (new FileNameExtensionFilter("Файлы: *.rom", "rom"));
                 if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
                     File file = chooser.getSelectedFile();
-                    ConsStat.setCurPath(file.getParent());
+                    setCurPath(file.getParent());
                     if (fSpMX.loadFileROM(file)) {
-                        fSpMX.putIni(ConsStat.INI_SECTION_CONFIG, ConsStat.INI_OPTION_ROM_FILE, fSpMX.getShortPath(file));
+                        fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, fSpMX.getShortPath(file));
                     }
                 }
             }
@@ -327,8 +327,8 @@ final class SpMxFrame extends JFrame {
                 // Закрываем открытые ресурсы устройств памяти
                 fSpMX.getMemDevMng().closeMemoryDevices();
                 // Запоминаем размеры фрейма в ini-файл
-                fSpMX.putIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
-                fSpMX.putIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
+                fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
+                fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
                 // Сохраняем ini-файл
                 fSpMX.storeIni();
                 // Освобождаем ресурсы главного фрейма (окна)
@@ -345,8 +345,8 @@ final class SpMxFrame extends JFrame {
 
         // Восстанавливаем размеры фрейма из ini-файла
         {
-            Integer width  = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
-            Integer height = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
+            Integer width  = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
+            Integer height = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
             if ((width != null) && (height != null)) {
                 setSize(width, height);
             }
@@ -368,13 +368,13 @@ final class SpMxFrame extends JFrame {
         boolean insert = true; // По умолчанию вставка диска
 
         if (file == null) {
-            JFileChooser chooser = new JFileChooser(ConsStat.getCurPath());
-            chooser.setDialogTitle("Открыть файл");
+            JFileChooser chooser = new JFileChooser(getCurPath());
+            chooser.setDialogTitle(STR_OPEN_FILE);
             chooser.setFileFilter (new FileNameExtensionFilter("Файлы: *.odi", "odi"));
             insert = chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION;
             if (insert) {
-                     file = chooser.getSelectedFile() ;
-                ConsStat.setCurPath(file.getParent());
+                file = chooser.getSelectedFile() ;
+                     setCurPath(file.getParent());
             }
         }
 

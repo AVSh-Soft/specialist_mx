@@ -36,6 +36,10 @@ final class ConsStat {
     // Иконка эмулятора "Специалист MX"
     static final String SPMX_ICON_FILE = "specialist_mx.png";
 
+    // Строковые константы
+    static final String STR_ERROR     = "Ошибка";
+    static final String STR_OPEN_FILE = "Открыть файл";
+
     // Количество страниц RAM-диска у ПК "Специалист MX" (от 1 до 8)
     // (здесь только количество страницы RAM-диска - без основной памяти и ROM-диска)
     static final int NUMBER_PAGES_RAMDISK = 8;

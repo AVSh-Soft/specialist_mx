@@ -1,13 +1,15 @@
 package ru.avsh.specialistmx;
 
-import ru.avsh.lib.FileFinder;
 import org.ini4j.Wini;
+import ru.avsh.lib.FileFinder;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.io.*;
 import java.util.List;
 import java.util.Properties;
+
+import static ru.avsh.specialistmx.ConsStat.*;
 
 /**
  * Класс "Компьютер 'Специалист MX'".
@@ -26,12 +28,12 @@ final class SpMX {
     /* Пока не используем!
     private final cMemoryDevicesManager fInOutDevMng; */
 
-    private Wini     fIni;
+    private Wini    fIni;
     private Speaker fSpc;
-    private boolean  fDebugRun;
-    private JFrame   fMainFrame;
-    private String   fCurMonName;
-    private File     fCurRomFile;
+    private boolean fDebugRun;
+    private JFrame  fMainFrame;
+    private String  fCurMonName;
+    private File    fCurRomFile;
 
     /**
      * Конструктор.
@@ -39,7 +41,7 @@ final class SpMX {
     SpMX() {
         // Создаем объект для работы с ini-файлом настроек
         fIni = new Wini();
-        fIni.setFile(new File(ConsStat.INI_FILE));
+        fIni.setFile(new File(INI_FILE));
         try {
             if (fIni.getFile().exists()) {
                 fIni.load (); // читаем настроки
@@ -67,7 +69,7 @@ final class SpMX {
         }
         // Создаем устройства памяти
         fScr = new cMD_SpMX_Screen (    );
-        fRAM = new cMD_SpMX_RAM    (ConsStat.NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
+        fRAM = new cMD_SpMX_RAM    (NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
         fKey = new cMD_SpMX_KeyPort(fSpc);
         fFDC = new cMD_SpMX_FDC    (fGen, fCPU);
         cMD_SimpleRAM      excRAM  = new cMD_SimpleRAM     (0x20 );
@@ -141,16 +143,16 @@ final class SpMX {
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     // Методы для связи между объектами
     /**
-     * Запоминает ссылку на главное окно приложения.
-     * @param frame ссылка на главное окно
+     * Запоминает ссылку на главный фрейм приложения.
+     * @param frame ссылка на главный фрейм
      */
     void setMainFrame(JFrame frame) {
         fMainFrame = frame;
     }
 
     /**
-     * Возвращает ссылку на главное окно приложения.
-     * @return ссылка на главное окно
+     * Возвращает ссылку на главный фрейм приложения.
+     * @return ссылка на главный фрейм
      */
     JFrame getMainFrame() {
         return fMainFrame;
@@ -347,7 +349,7 @@ final class SpMX {
         try {
             fIni.store();
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(fMainFrame, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(fMainFrame, e.toString(), STR_ERROR, JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -358,7 +360,7 @@ final class SpMX {
      */
     String getShortPath(File file) {
         String p0 = file.getPath();
-        String p1 = ConsStat.APP_PATH.relativize(file.toPath()).toString();
+        String p1 = APP_PATH.relativize(file.toPath()).toString();
         return (p0.length() < p1.length()) ? p0 : p1;
     }
 
@@ -368,12 +370,12 @@ final class SpMX {
      */
     private String readProductName() {
         String ver  = "x.x.x.x";
-        try (InputStreamReader isr = new InputStreamReader(getClass().getResourceAsStream(ConsStat.RESOURCES.concat(ConsStat.SPMX_PROP_FILE)),"UTF-8")) {
+        try (InputStreamReader isr = new InputStreamReader(getClass().getResourceAsStream(RESOURCES.concat(SPMX_PROP_FILE)),"UTF-8")) {
             Properties property    = new Properties();
             property.load(isr);
-            return String.format(" - \"%s\" v%s", property.getProperty("appName", ConsStat.SPMX_NAME), property.getProperty("versionNumber", ver));
+            return String.format(" - \"%s\" v%s", property.getProperty("appName", SPMX_NAME), property.getProperty("versionNumber", ver));
         } catch (IOException e) {
-            return String.format(" - \"%s\" v%s", ConsStat.SPMX_NAME, ver);
+            return String.format(" - \"%s\" v%s", SPMX_NAME, ver);
         }
     }
 
@@ -418,7 +420,9 @@ final class SpMX {
     private int getChecksum(byte[] buf, int start, int length) {
         length += start - 1; // вычисляем конец блока в буфере
         if (length < buf.length) {
-            int lo = 0, hi = 0, cur;
+            int cur;
+            int lo = 0;
+            int hi = 0;
             do {
                 cur = buf[start++] & 0xFF;
                 lo += cur;
@@ -441,7 +445,7 @@ final class SpMX {
      */
     private void loadROM() throws IOException {
         // Если ROM-файл прописан в ini-файле и он имеется на диске, то загружаем внешний ROM-файл
-        String romPath   = getIni(ConsStat.INI_SECTION_CONFIG, ConsStat.INI_OPTION_ROM_FILE, String.class);
+        String romPath   = getIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, String.class);
         if ((  romPath  != null) && !romPath.equals("")) {
             File romFile =  new File(romPath);
             if ( romFile.exists() && romFile.isFile()) {
@@ -457,7 +461,7 @@ final class SpMX {
         }
         // Иначе загружаем встроенный ROM-файл
         fCurRomFile = null;
-        try (BufferedInputStream bis = new BufferedInputStream(getClass().getResourceAsStream(ConsStat.RESOURCES.concat(ConsStat.SPMX_ROM_FILE)))) {
+        try (BufferedInputStream bis = new BufferedInputStream(getClass().getResourceAsStream(RESOURCES.concat(SPMX_ROM_FILE)))) {
             int length = bis.available();
             if (length < 0x10000) {
                 byte[] buf = new byte[length];
@@ -511,9 +515,9 @@ final class SpMX {
                         int  curChecksum  = getChecksum(buf, 0, length);
                         if ((curChecksum != checksum) &&
                                 (JOptionPane.showConfirmDialog(fMainFrame,
-                                        String.format("В файле: %s\n" +
-                                                      "Рассчитанная контрольная сумма  данных: [%04X]\n"    +
-                                                      "не равна проверочной контрольной сумме: [%04X]\n\n" +
+                                        String.format("В файле: %s%n" +
+                                                      "Рассчитанная контрольная сумма  данных: [%04X]%n"    +
+                                                      "не равна проверочной контрольной сумме: [%04X]%n%n" +
                                                       "Загружать файл?", fileName, curChecksum, checksum),
                                         "Загружать?", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION)) {
                             throw new IOException("Не прошла проверка контрольной суммы в файле: ".concat(fileName));
@@ -572,12 +576,12 @@ final class SpMX {
             // Загружаем BIOS "Специалиста_MX"
             loadROM();
             // Запоминаем имя ROM-файла
-            fCurMonName = ConsStat.SPMX_ROM_FILE.toLowerCase();
+            fCurMonName = SPMX_ROM_FILE.toLowerCase();
             // Сбрасываем CPU с адреса 0x0000 (сброс устройств памяти устанавливает страницу памяти 0, что здесь не подходит)
             reset(0x0000, false);
             return true;
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(fMainFrame, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(fMainFrame, e.toString(), STR_ERROR, JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
@@ -611,7 +615,7 @@ final class SpMX {
             reset(0x0000, false);
             return true;
         } catch (NumberFormatException | IOException e) {
-            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка загрузки ROM-файла: \"%s\"\n%s", fileName, e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка загрузки ROM-файла: \"%s\"%n%s", fileName, e.toString()), STR_ERROR, JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
@@ -651,7 +655,7 @@ final class SpMX {
                 reset(address, true);
                 return true;
             } catch (NumberFormatException | IOException e) {
-                JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка загрузки MON-файла: \"%s\"\n%s", fileName, e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка загрузки MON-файла: \"%s\"%n%s", fileName, e.toString()), STR_ERROR, JOptionPane.ERROR_MESSAGE);
                 return false;
             }
         }
@@ -665,9 +669,9 @@ final class SpMX {
      */
     boolean loadFileCPU(File file) {
         try {
-            int load_adr  = 0;
-            int start_adr = 0;
-            int selected  = 0;
+            int  loadAdr = 0;
+            int startAdr = 0;
+            int selected = 0;
             // Читаем CPU-файл
             try (BufferedReader cpuFile = new BufferedReader(new FileReader(file))) {
                 int index = 0;
@@ -675,16 +679,16 @@ final class SpMX {
                     line = line.trim().toLowerCase();
                     switch (index) {
                         case 0: // Читаем начальный адрес
-                            load_adr  = Integer.parseInt(line, 16);
+                             loadAdr = Integer.parseInt(line, 16);
                             break;
                         case 1: // Читаем стартовый адрес
-                            start_adr = Integer.parseInt(line, 16);
+                            startAdr = Integer.parseInt(line, 16);
                             // Выводим диалог загрузки
                             Object[] options = {"Загрузить и запустить", "Только загрузить"};
                             selected = JOptionPane.showOptionDialog(fMainFrame,
-                                    String.format("Файл: \"%s\"\n" +
-                                                  "Адрес  начала: [%04X]\n" +
-                                                  "Адрес запуска: [%04X]\n" , file.getName(), load_adr, start_adr),
+                                    String.format("Файл: \"%s\"%n" +
+                                                  "Адрес  начала: [%04X]%n" +
+                                                  "Адрес запуска: [%04X]%n" , file.getName(), loadAdr, startAdr),
                                     "Что делать?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
                             // Если диалог закрыт крестом - отменяем загрузку
                             if (selected == JOptionPane.CLOSED_OPTION) {
@@ -694,7 +698,7 @@ final class SpMX {
                         case 2: // Проверяем соответствие монитора
                             if ((selected == JOptionPane.YES_OPTION) && (line.length() > 0) && !fCurMonName.equals(line)) {
                                 boolean result;
-                                if (ConsStat.SPMX_ROM_FILE.toLowerCase().endsWith(line)) {
+                                if (SPMX_ROM_FILE.toLowerCase().endsWith(line)) {
                                     // Запускаем стандартный BIOS
                                     result = restart(false, false);
                                 } else {
@@ -704,7 +708,7 @@ final class SpMX {
                                     if (!listFiles.isEmpty()) {
                                         result = loadFileMON(listFiles.get(0));
                                     } else {
-                                        listFiles = fileFinder.findFiles(ConsStat.PATH_MON_FILES, line);
+                                        listFiles = fileFinder.findFiles(PATH_MON_FILES, line);
                                         if (!listFiles.isEmpty()) {
                                             result = loadFileMON(listFiles.get(0));
                                         } else {
@@ -729,6 +733,8 @@ final class SpMX {
                                 }
                             }
                             break;
+                        default:
+                            break;
                     }
                 }
                 // Проверяем корректность CPU-файла
@@ -746,7 +752,7 @@ final class SpMX {
                 // Определяем I80-файл
                 file = new File(file.getPath().substring(0, file.getPath().length() - 3).concat("i80"));
                 // Загружаем I80-файл в основную станицу памяти
-                loadFile(file, load_adr, 0, 0, -1);
+                loadFile(file, loadAdr, 0, 0, -1);
             } catch (IOException e){
                 // В случае ошибки продолжим выполнять предыдущий код
                 setPage(curPage);
@@ -763,7 +769,7 @@ final class SpMX {
                     fSpc.reset();
                 }
                 // Запускаем CPU с заданного адреса
-                run(start_adr);
+                run(startAdr);
             } else {
                 // Если выбрана только загрузка, то продолжим выполнять предыдущий код
                 setPage(curPage);
@@ -771,7 +777,7 @@ final class SpMX {
             }
             return true;
         } catch (NumberFormatException | IOException e) {
-            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка загрузки файла: \"%s\"\n%s", file.getName(), e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка загрузки файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
@@ -790,7 +796,7 @@ final class SpMX {
                 (beginAddress < 0) || (beginAddress > 0xFFFF) ||
                 (endAddress   < 0) || (endAddress   > 0xFFFF) ||
                 (startAddress < 0) || (startAddress > 0xFFFF)   ) {
-            JOptionPane.showMessageDialog(fMainFrame, "Некоторые параметры переданы неверно - сохранение невозможно!", "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(fMainFrame, "Некоторые параметры переданы неверно - сохранение невозможно!", STR_ERROR, JOptionPane.ERROR_MESSAGE);
             return false;
         }
         try {
@@ -820,7 +826,7 @@ final class SpMX {
             }
             return true;
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка сохранения файла: \"%s\"\n%s", file.getName(), e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
@@ -833,7 +839,10 @@ final class SpMX {
     boolean loadFileRKS(File file) {
         String fileName = "\"".concat(file.getName()).concat("\"");
         try {
-            int beg_adr, end_adr, length, checksum;
+            int begAdr;
+            int endAdr;
+            int length;
+            int checksum;
             // Выделяем буфер под служебные поля RKS-файла
             byte[] buf = new byte[6];
             // Открываем файл на чтение
@@ -843,12 +852,12 @@ final class SpMX {
                     throw new IOException("Не удалось прочитать заголовок RKS-файла: ".concat(fileName));
                 }
                 // Получаем адреса начала и конца из заголовка файла, вычисляем длину данных
-                beg_adr = (buf[0] & 0xFF) | ((buf[1] & 0xFF) << 8);
-                end_adr = (buf[2] & 0xFF) | ((buf[3] & 0xFF) << 8);
-                if (beg_adr > end_adr) {
-                    throw new IOException(String.format("Адрес начала: [%04X] > адреса конца: [%04X] в заголовке файла: %s", beg_adr, end_adr, fileName));
+                begAdr = (buf[0] & 0xFF) | ((buf[1] & 0xFF) << 8);
+                endAdr = (buf[2] & 0xFF) | ((buf[3] & 0xFF) << 8);
+                if (begAdr > endAdr) {
+                    throw new IOException(String.format("Адрес начала: [%04X] > адреса конца: [%04X] в заголовке файла: %s", begAdr, endAdr, fileName));
                 }
-                length  = end_adr - beg_adr + 1;
+                length = endAdr - begAdr + 1;
                 // Пропускаем блок с данными
                 if (fis.skip(length) != length) {
                     throw new IOException(String.format("Не удалось выполнить смещение на %d байт(а/ов) для чтения контрольной суммы в файле: %s", length, fileName));
@@ -863,8 +872,8 @@ final class SpMX {
             // Выводим диалог загрузки
             Object[] options = {"Загрузить и запустить", "Только загрузить"};
             int selected = JOptionPane.showOptionDialog(fMainFrame,
-                    String.format("Файл: %s\n" +
-                                  "Адреса загрузки: [%04X..%04X]\n", fileName, beg_adr, end_adr),
+                    String.format("Файл: %s%n" +
+                                  "Адреса загрузки: [%04X..%04X]%n", fileName, begAdr, endAdr),
                     "Что делать?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
             // Если диалог закрыт крестом - отменяем загрузку
             if (selected == JOptionPane.CLOSED_OPTION) {
@@ -878,7 +887,7 @@ final class SpMX {
             setPage(0);
             try {
                 // Загружаем RKS-файл в основную страницу памяти
-                loadFile(file, beg_adr, 4, length, checksum);
+                loadFile(file, begAdr, 4, length, checksum);
             } catch (IOException e){
                 // В случае ошибки продолжим выполнять предыдущий код
                 setPage(curPage);
@@ -895,7 +904,7 @@ final class SpMX {
                     fSpc.reset();
                 }
                 // Запускаем CPU с заданного адреса
-                run(beg_adr);
+                run(begAdr);
             } else {
                 // Если выбрана только загрузка, то продолжим выполнять предыдущий код
                 setPage(curPage);
@@ -903,7 +912,7 @@ final class SpMX {
             }
             return true;
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка загрузки файла: %s\n%s", fileName, e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка загрузки файла: %s%n%s", fileName, e.toString()), STR_ERROR, JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
@@ -920,7 +929,7 @@ final class SpMX {
         if (    (file   ==   null) ||
                 (beginAddress < 0) || (beginAddress > 0xFFFF) ||
                 (endAddress   < 0) || (endAddress   > 0xFFFF)   ) {
-            JOptionPane.showMessageDialog(fMainFrame, "Некоторые параметры переданы неверно - сохранение невозможно!", "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(fMainFrame, "Некоторые параметры переданы неверно - сохранение невозможно!", STR_ERROR, JOptionPane.ERROR_MESSAGE);
             return false;
         }
         try {
@@ -949,7 +958,7 @@ final class SpMX {
             }
             return true;
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка сохранения файла: \"%s\"\n%s", file.getName(), e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(fMainFrame, String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
