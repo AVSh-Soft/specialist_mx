@@ -9,10 +9,10 @@ import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Класс "Процессор i8080 (К580ВМ80А)".
+ * Класс "Процессор Intel C8080A (К580ВМ80А)".
  * @author -=AVSh=-
  */
-final class I8080 implements ClockedDevice {
+final class CpuI8080 implements IClockedDevice {
     // Количество тактов для каждой команды CPU
     private static final int[] CYCLES = {
                  4, 10,      7,  5,      5,  5,  7,  4,      4, 10,      7,  5,      5,  5,  7,  4,
@@ -64,9 +64,9 @@ final class I8080 implements ClockedDevice {
     private static final int HOLD_ACKNOWLEDGE = 2;
 
     private final int[] fRegs;
-    private final SpMX fSpMX;
-    private final Trap fCompareTrap;
-    private final List<Trap> fTraps;
+    private final SpMX  fSpMX;
+    private final Trap  fCompareTrap;
+    private final List<Trap>  fTraps;
     private final cMemoryDevicesManager fMDM ;
     private final cMemoryDevicesManager fIoDM;
 
@@ -81,7 +81,7 @@ final class I8080 implements ClockedDevice {
     /**
      * Конструктор.
      */
-    I8080(@NotNull SpMX spMX, @NotNull cMemoryDevicesManager mDM, cMemoryDevicesManager ioDM) {
+    CpuI8080(@NotNull SpMX spMX, @NotNull cMemoryDevicesManager mDM, cMemoryDevicesManager ioDM) {
         fSpMX = spMX;
         fMDM  =  mDM;
         fIoDM = ioDM;
@@ -94,7 +94,7 @@ final class I8080 implements ClockedDevice {
     }
 
     @Override
-    synchronized public String toString() {
+    public synchronized String toString() {
         return String.format("Значения регистров: SZ0A0P1C=%08d, A=%02X, B=%02X, C=%02X, D=%02X, E=%02X, H=%02X, L=%02X, SP=%04X, PC=%04X\n" +
                              "Память с адреса PC: %02X, %02X, %02X, %02X, %02X, ...",
                 Integer.parseInt(Integer.toBinaryString(fRegs[F])),
@@ -374,15 +374,22 @@ final class I8080 implements ClockedDevice {
      * @return количество циклов команды
      */
     private int cmdStart() {
-        int    cycles = CYCLES[fOpCode = nextBytePC()];
-        return cycles < 256 ? cycles : (fTestResult = testFlags((fOpCode >> 3) & 0b111)) ? cycles >> 8 : cycles & 0xFF;
+        fOpCode = nextBytePC();
+        int cycles = CYCLES[fOpCode];
+        if (cycles < 256) {
+            return cycles;
+        } else {
+            fTestResult = testFlags((fOpCode >> 3) & 0b111);
+            return fTestResult ? cycles >> 8 : cycles & 0xFF;
+        }
     }
 
     /**
      * Завершает выполнение команды CPU.
      */
     private void cmdFinish() {
-        int  r, v;
+        int r;
+        int v;
         boolean f;
 
         switch (fOpCode) {
@@ -1292,6 +1299,10 @@ final class I8080 implements ClockedDevice {
                     return true;
                 case HOLD_ACKNOWLEDGE:
                     return true;
+                default:
+                    fHoldPhase = 0;
+                    fCycles = cmdStart();
+                    return false;
             }
         } else {
             if (--fCycles == 1) {
@@ -1306,10 +1317,10 @@ final class I8080 implements ClockedDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        I8080 I8080 = (I8080) o;
-        return Objects.equals(fSpMX, I8080.fSpMX) &&
-               Objects.equals( fMDM, I8080.fMDM ) &&
-               Objects.equals(fIoDM, I8080.fIoDM);
+        CpuI8080 cpuI8080 = (CpuI8080) o;
+        return Objects.equals(fSpMX, cpuI8080.fSpMX) &&
+               Objects.equals( fMDM, cpuI8080.fMDM ) &&
+               Objects.equals(fIoDM, cpuI8080.fIoDM);
     }
 
     @Override

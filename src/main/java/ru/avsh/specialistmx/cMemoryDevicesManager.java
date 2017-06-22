@@ -9,7 +9,7 @@ final class cMemoryDevicesManager {
     private final static int MAX_DEVICES = 50;
 
     private final         int[][]     fAddresses = new        int[2][MAX_DEVICES];
-    private final MemoryDevice[] fMemoryDevices = new MemoryDevice[MAX_DEVICES];
+    private final IMemoryDevice[] fMemoryDevices = new IMemoryDevice[MAX_DEVICES];
 
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
 
@@ -19,7 +19,7 @@ final class cMemoryDevicesManager {
      * @param end_address конечный адрес размещения устройства
      * @param memoryDevice устройство памяти
      */
-    private void add(int start_address, int end_address, MemoryDevice memoryDevice) {
+    private void add(int start_address, int end_address, IMemoryDevice memoryDevice) {
         if (memoryDevice != null) {
             int index = 0;
             for (; index < fSize; index++) {
@@ -53,7 +53,7 @@ final class cMemoryDevicesManager {
      * @param start_address начальный адрес размещения устройства
      * @param memoryDevice устройство памяти
      */
-    synchronized void addMemoryDevice(int start_address, MemoryDevice memoryDevice) {
+    synchronized void addMemoryDevice(int start_address, IMemoryDevice memoryDevice) {
         if ((start_address >= 0) && (start_address <= 0xFFFF) && (memoryDevice != null)) {
             int  end_address  = start_address + memoryDevice.getMemoryDeviceLength() - 1;
             if ((end_address >= start_address) && (end_address <= 0xFFFF)) {

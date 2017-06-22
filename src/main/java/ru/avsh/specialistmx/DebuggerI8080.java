@@ -1,7 +1,7 @@
 package ru.avsh.specialistmx;
 
 import ru.avsh.lib.ExtFormattedTextField;
-import ru.avsh.specialistmx.I8080.DebugRegPairs;
+import ru.avsh.specialistmx.CpuI8080.DebugRegPairs;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -862,7 +862,7 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Слой для взаимодействия отладчика с CPU и памятью".
      */
     private class Layer extends Observable {
-        private final I8080 fCPU;
+        private final CpuI8080 fCPU;
 
         private boolean fDisableEvents;
         private int     fCodePage;
@@ -871,7 +871,7 @@ final class DebuggerI8080 extends JDialog {
         /**
          * Конструктор.
          */
-        Layer(I8080 cpu) {
+        Layer(CpuI8080 cpu) {
             fCPU = cpu;
             // Заполняем пустой массив предыдущих значений регистровых пар
             if ((getPrevValRegPair(DebugRegPairs.AF) & 0xFF) == 0) {

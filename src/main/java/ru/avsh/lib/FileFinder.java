@@ -12,11 +12,11 @@ import java.util.regex.Pattern;
  * @author Стаценко Владимир
  * http://www.vova-prog.narod.ru
  */
-public class cFileFinder {
+public class FileFinder {
     //константы для определения объектов, которые нужно найти
-    private final int FILES       = 0;
-    private final int DIRECTORIES = 1;
-    private final int ALL         = 2;
+    private static final int FILES       = 0;
+    private static final int DIRECTORIES = 1;
+    private static final int ALL         = 2;
     //классы для работы с регулярными выражениями
     private Pattern p = null;
     private Matcher m = null;

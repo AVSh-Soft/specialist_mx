@@ -10,12 +10,12 @@ import java.awt.*;
  *
  * @author O'Reilly and -=AVSh=-
  */
-public class cWideCaret extends DefaultCaret {
+public class WideCaret extends DefaultCaret {
     /**
      * Конструктор.
      * @param rate the rate in milliseconds, 0 to stop blinking
      */
-    public cWideCaret(int rate) {
+    public WideCaret(int rate) {
         setBlinkRate(rate);
     }
 

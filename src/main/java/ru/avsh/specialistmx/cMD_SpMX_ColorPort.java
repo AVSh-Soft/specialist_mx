@@ -8,7 +8,7 @@ import java.util.Objects;
  * Устройство памяти "Порт для установки цвета фона/изображения на экране Specialist_MX".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_ColorPort implements MemoryDevice {
+final class cMD_SpMX_ColorPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 1;
 
     private int fCurrentColor;

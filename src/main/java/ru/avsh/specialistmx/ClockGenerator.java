@@ -14,11 +14,11 @@ final class ClockGenerator implements Runnable {
 
     private final Object           fMutex;
     private final AtomicLong       fCyclesCounter ; // Это может быть излишним и достаточно volatile
-    private final ClockedDevice[] fClockedDevices;
+    private final IClockedDevice[] fClockedDevices;
 
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
 
-    private volatile I8080 fCPU;
+    private volatile CpuI8080 fCPU;
     private volatile int     fIndexCPU;
     private volatile boolean fWaitFlag;
     private volatile boolean fPauseFlag;
@@ -32,7 +32,7 @@ final class ClockGenerator implements Runnable {
     ClockGenerator() {
         fMutex          = new Object();
         fCyclesCounter  = new AtomicLong();
-        fClockedDevices = new ClockedDevice[MAX_DEVICES];
+        fClockedDevices = new IClockedDevice[MAX_DEVICES];
         fIndexCPU       =   -1;
         fPauseFlag      = true;
         setClockSpeed(CLOCK_SPEED);
@@ -113,7 +113,7 @@ final class ClockGenerator implements Runnable {
      * Метод должен вызываться до старта тактового генератора.
      * @param clockedDevice тактируемое устройство
      */
-    synchronized void addClockedDevice(ClockedDevice clockedDevice) {
+    synchronized void addClockedDevice(IClockedDevice clockedDevice) {
         if (clockedDevice != null) {
             int index = 0;
             for (; index < fSize; index++) {
@@ -123,8 +123,8 @@ final class ClockGenerator implements Runnable {
             }
             if ((fSize == index) && (fSize < MAX_DEVICES)) {
                 // Запоминаем ссылку на CPU и индекс CPU в массиве устройств
-                if (clockedDevice instanceof I8080) {
-                         fCPU = (I8080) clockedDevice;
+                if (clockedDevice instanceof CpuI8080) {
+                         fCPU = (CpuI8080) clockedDevice;
                     fIndexCPU = fSize;
                 }
                 fClockedDevices[fSize++] = clockedDevice; // fClockedDevices и fSize изменяются только тут

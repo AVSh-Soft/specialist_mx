@@ -7,7 +7,7 @@ import java.util.Objects;
  * Устройство памяти "Оперативная память Specialist_MX".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_RAM implements MemoryDevice {
+final class cMD_SpMX_RAM implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 0xFFC0;
     private static final int ROM_DISK_LENGTH      = 0xC000;
     private static final int MIN_NUMBER_PAGES     =      2; // Минимальное  число страниц памяти: 0 - основная, 1   - RAM-диск (не считая ROM-диск);

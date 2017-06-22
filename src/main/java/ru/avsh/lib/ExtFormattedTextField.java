@@ -31,6 +31,6 @@ public class ExtFormattedTextField extends JFormattedTextField {
 
         setHorizontalAlignment(SwingConstants.CENTER);
         setFont (new Font(Font.MONOSPACED, Font.PLAIN, 11));
-        setCaret(new cWideCaret(getCaret().getBlinkRate()));
+        setCaret(new WideCaret(getCaret().getBlinkRate()));
     }
 }

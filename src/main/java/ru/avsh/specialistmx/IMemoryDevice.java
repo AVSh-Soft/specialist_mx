@@ -4,7 +4,7 @@ package ru.avsh.specialistmx;
  * Интерфейс "Устройство памяти".
  * @author -=AVSh=-
  */
-interface MemoryDevice {
+interface IMemoryDevice {
     /**
      * Возвращает длину устройства памяти в байтах.
      * @return длина устройства памяти

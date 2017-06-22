@@ -1,6 +1,6 @@
 package ru.avsh.specialistmx;
 
-import ru.avsh.lib.cFileFinder;
+import ru.avsh.lib.FileFinder;
 import org.ini4j.Wini;
 
 import javax.sound.sampled.LineUnavailableException;
@@ -16,7 +16,7 @@ import java.util.Properties;
 final class SpMX {
     private final String fProductName;
 
-    private final I8080 fCPU;
+    private final CpuI8080 fCPU;
     private final cMD_SpMX_RAM fRAM;
     private final cMD_SpMX_FDC fFDC;
     private final ClockGenerator fGen;
@@ -58,7 +58,7 @@ final class SpMX {
         // Создаем диспетчер устройств памяти
         fMemDevMng = new cMemoryDevicesManager();
         // Создаем CPU
-        fCPU = new I8080(this, fMemDevMng, null); // fInOutDevMng - пока не используем!
+        fCPU = new CpuI8080(this, fMemDevMng, null); // fInOutDevMng - пока не используем!
         // Создаем Speaker
         try {
             fSpc = new Speaker(fGen);
@@ -176,7 +176,7 @@ final class SpMX {
      * Возвращает ссылку на CPU.
      * @return ссылка на CPU
      */
-    I8080 getCPU() {
+    CpuI8080 getCPU() {
         return fCPU;
     }
 
@@ -384,7 +384,7 @@ final class SpMX {
     private void run(int address) {
         pause(true, true);
         fCPU.run(address);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе I8080)
+        // Проверям ловушки (стартовые ловушки не отслеживаются в классе CpuI8080)
         if (fCPU.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {
@@ -400,7 +400,7 @@ final class SpMX {
     private void reset(int address, boolean resetMemoryDevices) {
         pause(true, true);
         fCPU.reset(address, resetMemoryDevices);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе I8080)
+        // Проверям ловушки (стартовые ловушки не отслеживаются в классе CpuI8080)
         if (fCPU.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {
@@ -699,7 +699,7 @@ final class SpMX {
                                     result = restart(false, false);
                                 } else {
                                     // Ищем, загружаем и запускаем необходимый монитор
-                                    cFileFinder fileFinder = new cFileFinder();
+                                    FileFinder fileFinder = new FileFinder();
                                     List<File> listFiles = fileFinder.findFiles(file.getParent(), line);
                                     if (!listFiles.isEmpty()) {
                                         result = loadFileMON(listFiles.get(0));

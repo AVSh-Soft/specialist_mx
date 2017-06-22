@@ -10,7 +10,7 @@ import java.util.Objects;
  * Класс "Экран Специалиста_MX".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_Screen extends JPanel implements MemoryDevice {
+final class cMD_SpMX_Screen extends JPanel implements IMemoryDevice {
     private static final long serialVersionUID = 1L;
     
             static final int   SCREEN_WIDTH  = 384;
