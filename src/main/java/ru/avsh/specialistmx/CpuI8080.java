@@ -1146,29 +1146,28 @@ final class CpuI8080 implements IClockedDevice {
      * @param value значение
      */
     synchronized void debugSetValRegPair(DebugRegPairs regPair, int value) {
-        value &= 0xFFFF;
         switch (regPair) {
             case AF:
-                fRegs[A]  = value >>   8;
-                fRegs[F]  = value & 0b1101_0111 | 0b10;
+                fRegs[A]  = (value >> 8) & 0xFF;
+                fRegs[F]  =  value & 0b1101_0111 | 0b10;
                 break;
             case BC:
-                fRegs[B]  = value >>   8;
-                fRegs[C]  = value & 0xFF;
+                fRegs[B]  = (value >> 8) & 0xFF;
+                fRegs[C]  =  value & 0xFF;
                 break;
             case DE:
-                fRegs[D]  = value >>   8;
-                fRegs[E]  = value & 0xFF;
+                fRegs[D]  = (value >> 8) & 0xFF;
+                fRegs[E]  =  value & 0xFF;
                 break;
             case HL:
-                fRegs[H]  = value >>   8;
-                fRegs[L]  = value & 0xFF;
+                fRegs[H]  = (value >> 8) & 0xFF;
+                fRegs[L]  =  value & 0xFF;
                 break;
             case SP:
-                fRegs[SP] = value;
+                fRegs[SP] = value & 0xFFFF;
                 break;
             case PC:
-                fRegs[PC] = value;
+                fRegs[PC] = value & 0xFFFF;
                 break;
         }
     }
