@@ -55,7 +55,6 @@ final class ClockGenerator implements Runnable {
 
         try {
             // Основной цикл работы тактового генератора
-            // noinspection InfiniteLoopStatement
             for (; ; ) {
                 // Если установлена пауза -
                 if (fPauseFlag) {

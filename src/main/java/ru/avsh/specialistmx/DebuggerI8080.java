@@ -207,8 +207,9 @@ final class DebuggerI8080 extends JDialog {
     // Статическая переменная для сохранения строки поиска (строка из байт)
     private static String fPrevStringBytes = "";
 
-    private final transient SpMX fSpMX ;
     private final transient Layer fLayer;
+    private final transient SpecialistMX fSpMX;
+
     private final DisAsmTable fDisAsmTable;
     private final MemDatTable fMemDatTable;
 
@@ -250,7 +251,7 @@ final class DebuggerI8080 extends JDialog {
      * Конструктор.
      * @param spMX ссылка на главный класс эмулятора.
      */
-    DebuggerI8080(@NotNull SpMX spMX) {
+    DebuggerI8080(@NotNull SpecialistMX spMX) {
         super(spMX.getMainFrame(), true);
 
         // Запоминаем ссылку на главный класс эмулятора

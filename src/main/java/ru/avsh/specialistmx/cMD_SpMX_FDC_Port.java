@@ -11,9 +11,9 @@ import java.util.Objects;
 final class cMD_SpMX_FDC_Port implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
-    private final cMD_SpMX_FDC fMainFDC;
+    private final MemDevFloppyDiskController fMainFDC;
 
-    cMD_SpMX_FDC_Port(@NotNull cMD_SpMX_FDC mainFDC) {
+    cMD_SpMX_FDC_Port(@NotNull MemDevFloppyDiskController mainFDC) {
         fMainFDC = mainFDC;
     }
 

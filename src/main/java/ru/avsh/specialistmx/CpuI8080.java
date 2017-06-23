@@ -64,7 +64,7 @@ final class CpuI8080 implements IClockedDevice {
     private static final int HOLD_ACKNOWLEDGE = 2;
 
     private final int[] fRegs;
-    private final SpMX  fSpMX;
+    private final SpecialistMX fSpMX;
     private final Trap  fCompareTrap;
     private final List<Trap>  fTraps;
     private final cMemoryDevicesManager fMDM ;
@@ -81,7 +81,7 @@ final class CpuI8080 implements IClockedDevice {
     /**
      * Конструктор.
      */
-    CpuI8080(@NotNull SpMX spMX, @NotNull cMemoryDevicesManager mDM, cMemoryDevicesManager ioDM) {
+    CpuI8080(@NotNull SpecialistMX spMX, @NotNull cMemoryDevicesManager mDM, cMemoryDevicesManager ioDM) {
         fSpMX = spMX;
         fMDM  =  mDM;
         fIoDM = ioDM;

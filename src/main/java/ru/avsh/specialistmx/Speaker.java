@@ -142,7 +142,6 @@ final class Speaker {
             long    samplesCounter = fSDL.getLongFramePosition();
 
             try {
-                // noinspection InfiniteLoopStatement
                 for (; ; ) {
                     // Если очередь пуста -
                     if (fSoundQueue.isEmpty()) {

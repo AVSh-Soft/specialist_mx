@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Устройство памяти "Контроллер НГМД КР1818ВГ93 (FD1793-02)".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_FDC implements IMemoryDevice {
+final class MemDevFloppyDiskController implements IMemoryDevice {
     private static final String THREAD_NAME          = "FloppyDiskController"; // Имя потока
     private static final int    MEMORY_DEVICE_LENGTH = 4;
 
@@ -31,14 +31,14 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
     private static final int ODI_SECTOR_LENGTH = 1024;
 
     // Флаги регистра статуса fRegStatus
-    private static final int FLAG_NOT_READY                           = 0b1000_0000;
-    private static final int FLAG_WRITE_PROTECT                       = 0b0100_0000;
-    private static final int FLAG_HEAD_LOAD__RECORD_TYPE__WRITE_FAULT = 0b0010_0000;
-    private static final int FLAG_SEEK_ERROR__RECORD_NOT_FOUND        = 0b0001_0000;
-    private static final int FLAG_CRC_ERROR                           = 0b0000_1000;
-    private static final int FLAG_TRACK_00__LOST_DATA                 = 0b0000_0100;
-    private static final int FLAG_INDEX__DATA_REQUEST                 = 0b0000_0010;
-    private static final int FLAG_BUSY                                = 0b0000_0001;
+    private static final int F_NOT_READY                               = 0b1000_0000;
+    private static final int F_WRITE_PROTECT                           = 0b0100_0000;
+    private static final int F_HEAD_LOAD_OR_RECORD_TYPE_OR_WRITE_FAULT = 0b0010_0000;
+    private static final int F_SEEK_ERROR_OR_RECORD_NOT_FOUND          = 0b0001_0000;
+    private static final int F_CRC_ERROR                               = 0b0000_1000;
+    private static final int F_TRACK_00_OR_LOST_DATA                   = 0b0000_0100;
+    private static final int F_INDEX_OR_DATA_REQUEST                   = 0b0000_0010;
+    private static final int F_BUSY                                    = 0b0000_0001;
 
     // Регистры контроллера НГМД КР1818ВГ93 (FD1793-02)
     private final AtomicInteger fRegStatus ;
@@ -55,18 +55,18 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
     // Переменные
     private final CpuI8080 fCPU;
     private final Object fMutex;
-    private final cDriveFDC fFDD_A;
-    private final cDriveFDC fFDD_B;
-    private final ClockGenerator fGen;
+    private final ClockGenerator  fGen;
+    private final FloppyDiskDrive fDriveA;
+    private final FloppyDiskDrive fDriveB;
 
-    private volatile cDriveFDC fCurFDD ;
-    private volatile boolean   fCurSide;
+    private volatile boolean         fCurSide ;
+    private volatile FloppyDiskDrive fCurDrive;
 
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Внутренний класс "Накопитель на гибком магнитном диске".
      */
-    private class cDriveFDC {
+    private class FloppyDiskDrive {
         private volatile RandomAccessFile fDisk;
         private volatile boolean          fReadOnly;
         private final    AtomicInteger    fCurTrack = new AtomicInteger();
@@ -90,9 +90,9 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
         /**
          * Вставляет диск в дисковод (открывает файл с образом диска).
          * @param file файл с образом диска
-         * @throws Exception исключение, возникающее при вставке диска (SecurityException, IllegalArgumentException, FileNotFoundException)
+         * @throws IOException исключение, возникающее при вставке диска
          */
-        void insertDisk(File file) throws Exception {
+        void insertDisk(File file) throws IOException {
             ejectDisk();
             // Проверка соответствия ODI формату на 800Кб
             if (file.length() == ODI_TRACKS * ODI_SECTORS * ODI_SIDES * ODI_SECTOR_LENGTH) {
@@ -163,7 +163,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
     /**
      * Внутренний класс "Ядро контроллера НГМД".
      */
-    private class cCoreFDC implements Runnable {
+    private class CoreFDC implements Runnable {
         private boolean fDirection;
         private final byte[] fBuf = new byte[ODI_SECTORS * ODI_SECTOR_LENGTH];
 
@@ -203,7 +203,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
             // Ожидаем реакцию CPU
             synchronized (fMutex) {
                 try {
-                    for (; !fInterrupt.get() && getStatusFlag(FLAG_INDEX__DATA_REQUEST) && (millis > 0); millis--) {
+                    for (; !fInterrupt.get() && getStatusFlag(F_INDEX_OR_DATA_REQUEST) && (millis > 0); millis--) {
                         // Возобновляем работу CPU
                         continueCPU();
                         // Ожидаем 1мс (если установлен режим "Пауза", то ожидаем, пока "Пауза" не будет снята)
@@ -223,15 +223,15 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
          */
         private void emuCmdType1(int steps) {
             // Очищаем флаги "Ошибка в контрольной сумме" и "Массив не найден"
-            setStatusFlag(FLAG_CRC_ERROR | FLAG_SEEK_ERROR__RECORD_NOT_FOUND, false);
+            setStatusFlag(F_CRC_ERROR | F_SEEK_ERROR_OR_RECORD_NOT_FOUND, false);
             // Устанавливаем флаг "Загрузка головки"
-            setStatusFlag(FLAG_HEAD_LOAD__RECORD_TYPE__WRITE_FAULT, (fRegCommand.get() & 0b1000) != 0);
+            setStatusFlag(F_HEAD_LOAD_OR_RECORD_TYPE_OR_WRITE_FAULT, (fRegCommand.get() & 0b1000) != 0);
             // Если заданное количество шагов не равно 0, начинаем позиционирование головки
             if (steps != 0) {
                 int curTrack = fRegTrack.get();
 
                 // Определяем скорость позиционирования головки
-                long millis = 0L;
+                long millis;
                 switch (fRegCommand.get() & 0b11) {
                     case 0:
                         millis =  6L;
@@ -245,6 +245,9 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                     case 3:
                         millis = 30L;
                         break;
+                    default:
+                        millis =  6L;
+                        break;
                 }
                 // Определяем направление позиционирования
                 fDirection = steps >= 0;
@@ -252,17 +255,17 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                 steps = Math.abs(steps);
                 for (; !fInterrupt.get() && (steps > 0); steps--) {
                     // Если дисковод подает сигнал TR00, то прекращаем позиционирование головки
-                    if (!fDirection && (fCurFDD.getCurTrack() == 0)) {
+                    if (!fDirection && (fCurDrive.getCurTrack() == 0)) {
                         // Обнуляем регистр дорожки
                         fRegTrack.getAndSet(0);
                         break;
                     } else {
                         // Позиционируем головку
                         if (fDirection) {
-                            fCurFDD.incCurTrack();
+                            fCurDrive.incCurTrack();
                             curTrack = (curTrack + 1) & 0xFF;
                         } else {
-                            fCurFDD.decCurTrack();
+                            fCurDrive.decCurTrack();
                             if (curTrack > 0) {
                                 curTrack = (curTrack - 1) & 0xFF;
                             }
@@ -279,7 +282,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                 if ((fRegCommand.get() & 0b100) != 0) {
                     sleep(30L);
                     // Устанавливаем флаги "Ошибка в контрольной сумме" и "Массив не найден"
-                    setStatusFlag(FLAG_CRC_ERROR | FLAG_SEEK_ERROR__RECORD_NOT_FOUND, !fCurFDD.isReady() || (fRegTrack.get() >= ODI_TRACKS));
+                    setStatusFlag(F_CRC_ERROR | F_SEEK_ERROR_OR_RECORD_NOT_FOUND, !fCurDrive.isReady() || (fRegTrack.get() >= ODI_TRACKS));
                 }
             }
         }
@@ -290,7 +293,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
          */
         private boolean checkTrackSectorSide() {
                       // Проверка дорожки
-            return    ( fRegTrack.get() != fCurFDD.getCurTrack())
+            return    ( fRegTrack.get() != fCurDrive.getCurTrack())
                       // Проверка сектора
                    || (fRegSector.get() == 0)
                    || (fRegSector.get() > ODI_SECTORS)
@@ -304,7 +307,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
          * @return позиция.
          */
         private long getPos() {
-            return ODI_SECTOR_LENGTH * (ODI_SECTORS * ((ODI_SIDES * fRegTrack.get()) + (fCurSide ? 1 : 0)) + (fRegSector.get() - 1));
+            return (long) ODI_SECTOR_LENGTH * (ODI_SECTORS * ((ODI_SIDES * fRegTrack.get()) + (fCurSide ? 1 : 0)) + (fRegSector.get() - 1));
         }
 
         /**
@@ -313,9 +316,9 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
         private void emuCmdType2() {
             int length;
             // Очищаем флаги "Запрос данных", "Потеря данных", "Ошибка в контрольной сумме", "Массив не найден", "Тип адресной метки/Ошибка записи" и "Защита записи"
-            setStatusFlag(FLAG_INDEX__DATA_REQUEST | FLAG_TRACK_00__LOST_DATA | FLAG_CRC_ERROR | FLAG_SEEK_ERROR__RECORD_NOT_FOUND | FLAG_HEAD_LOAD__RECORD_TYPE__WRITE_FAULT | FLAG_WRITE_PROTECT, false);
+            setStatusFlag(F_INDEX_OR_DATA_REQUEST | F_TRACK_00_OR_LOST_DATA | F_CRC_ERROR | F_SEEK_ERROR_OR_RECORD_NOT_FOUND | F_HEAD_LOAD_OR_RECORD_TYPE_OR_WRITE_FAULT | F_WRITE_PROTECT, false);
             // Если дисковод не готов - выходим
-            if (!fCurFDD.isReady()) {
+            if (!fCurDrive.isReady()) {
                 return;
             }
             // Эмулируем задержку загрузки головки
@@ -325,14 +328,14 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
             // Блок "Запись сектор(а/ов)"
             if ((fRegCommand.get() & 0b1110_0000) == 0b1010_0000) {
                 // Если диск (файл-образ) только на чтение - устанавливаем флаг "Защита записи" и выходим
-                if (fCurFDD.isReadOnly()) {
-                    setStatusFlag(FLAG_WRITE_PROTECT, true);
+                if (fCurDrive.isReadOnly()) {
+                    setStatusFlag(F_WRITE_PROTECT, true);
                     return;
                 }
                 // Проверяем дорожку, сектор и сторону диска
                 if (checkTrackSectorSide()) {
                     // В случае ошибки устанавливаем флаг "Массив не найден"
-                    setStatusFlag(FLAG_SEEK_ERROR__RECORD_NOT_FOUND, true);
+                    setStatusFlag(F_SEEK_ERROR_OR_RECORD_NOT_FOUND, true);
                     return;
                 }
                 // Вычисляем длину данных
@@ -342,13 +345,13 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                 // Читаем данные из регистра данных в буфер
                 for (int i = 0; i < length; i++) {
                     // Устанавливаем флаг "Запрос данных"
-                    setStatusFlag(FLAG_INDEX__DATA_REQUEST, true);
+                    setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
                     // Ожидаем, когда CPU заполнит регистр данных (время ожидания с учетом особенностей реализации CPU в классе CpuI8080)
                     waitData(CPU_WAIT_TIME);
                     // Если CPU не заполнил регистр данных вовремя
-                    if (getStatusFlag(FLAG_INDEX__DATA_REQUEST)) {
+                    if (getStatusFlag(F_INDEX_OR_DATA_REQUEST)) {
                         // Устанавливаем флаг "Потеря данных"
-                        setStatusFlag(FLAG_TRACK_00__LOST_DATA, true);
+                        setStatusFlag(F_TRACK_00_OR_LOST_DATA, true);
                         // Вычисляем длину удачно переданных в буфер данных
                         length = (i / ODI_SECTOR_LENGTH) * ODI_SECTOR_LENGTH;
                         // Записываем удачные данные
@@ -376,11 +379,11 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                 }
                 // Записываем данные из буфера на диск
                 try {
-                    fCurFDD.getDisk().seek (pos);
-                    fCurFDD.getDisk().write(fBuf, 0, length);
+                    fCurDrive.getDisk().seek (pos);
+                    fCurDrive.getDisk().write(fBuf, 0, length);
                 } catch (IOException e) {
                     // В случае ошибки записи устанавливаем флаги "Ошибка в контрольной сумме" и "Ошибка записи"
-                    setStatusFlag(FLAG_CRC_ERROR | FLAG_HEAD_LOAD__RECORD_TYPE__WRITE_FAULT, true);
+                    setStatusFlag(F_CRC_ERROR | F_HEAD_LOAD_OR_RECORD_TYPE_OR_WRITE_FAULT, true);
                 }
             }
             // Блок "Чтение сектор(а/ов)"
@@ -388,33 +391,33 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                 // Проверяем дорожку, сектор и сторону диска
                 if (checkTrackSectorSide()) {
                     // В случае ошибки устанавливаем флаг "Массив не найден"
-                    setStatusFlag(FLAG_SEEK_ERROR__RECORD_NOT_FOUND, true);
+                    setStatusFlag(F_SEEK_ERROR_OR_RECORD_NOT_FOUND, true);
                     return;
                 }
                 // Устанавливаем флаг "Тип адресной метки"
-                setStatusFlag(FLAG_HEAD_LOAD__RECORD_TYPE__WRITE_FAULT, (fRegCommand.get() & 0b1) != 0);
+                setStatusFlag(F_HEAD_LOAD_OR_RECORD_TYPE_OR_WRITE_FAULT, (fRegCommand.get() & 0b1) != 0);
                 // Вычисляем длину данных
                 length = ODI_SECTOR_LENGTH * ((fRegCommand.get() & 0b1_0000) != 0 ? ODI_SECTORS - fRegSector.get() + 1 : 1);
                 // Читаем данные с диска в буфер
                 try {
-                    fCurFDD.getDisk().seek(getPos());
-                    fCurFDD.getDisk().read(fBuf, 0, length);
+                    fCurDrive.getDisk().seek(getPos());
+                    fCurDrive.getDisk().read(fBuf, 0, length);
                 } catch (IOException e) {
                     // В случае ошибки чтения устанавливаем флаг "Ошибка в контрольной сумме"
-                    setStatusFlag(FLAG_CRC_ERROR, true);
+                    setStatusFlag(F_CRC_ERROR, true);
                     return;
                 }
                 // Выдаем данные из буфера в регистр данных
                 for (int i = 0; !fInterrupt.get() && (i < length); i++) {
                     fRegData.getAndSet(fBuf[i] & 0xFF);
                     // Устанавливаем флаг "Запрос данных"
-                    setStatusFlag(FLAG_INDEX__DATA_REQUEST, true);
+                    setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
                     // Ожидаем, когда CPU прочитает данные из регистра данных (время ожидания с учетом особенностей реализации CPU в классе CpuI8080)
                     waitData(CPU_WAIT_TIME);
                     // Если CPU не прочитал вовремя данные из регистра данных
-                    if (getStatusFlag(FLAG_INDEX__DATA_REQUEST)) {
+                    if (getStatusFlag(F_INDEX_OR_DATA_REQUEST)) {
                         // Устанавливаем флаг "Потеря данных" и выходим
-                        setStatusFlag(FLAG_TRACK_00__LOST_DATA, true);
+                        setStatusFlag(F_TRACK_00_OR_LOST_DATA, true);
                         return;
                     }
                 }
@@ -426,9 +429,9 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
          */
         private void emuCmdType3() {
             // Очищаем флаги "Запрос данных", "Потеря данных", "Ошибка в контрольной сумме", "Массив не найден", "Тип адресной метки/Ошибка записи" и "Защита записи"
-            setStatusFlag(FLAG_INDEX__DATA_REQUEST | FLAG_TRACK_00__LOST_DATA | FLAG_CRC_ERROR | FLAG_SEEK_ERROR__RECORD_NOT_FOUND | FLAG_HEAD_LOAD__RECORD_TYPE__WRITE_FAULT | FLAG_WRITE_PROTECT, false);
+            setStatusFlag(F_INDEX_OR_DATA_REQUEST | F_TRACK_00_OR_LOST_DATA | F_CRC_ERROR | F_SEEK_ERROR_OR_RECORD_NOT_FOUND | F_HEAD_LOAD_OR_RECORD_TYPE_OR_WRITE_FAULT | F_WRITE_PROTECT, false);
             // Если дисковод не готов - выходим
-            if (!fCurFDD.isReady()) {
+            if (!fCurDrive.isReady()) {
                 return;
             }
             // Эмулируем задержку загрузки головки
@@ -440,24 +443,24 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                 // Проверяем дорожку, сектор и сторону диска
                 if (checkTrackSectorSide()) {
                     // В случае ошибки устанавливаем флаг "Массив не найден"
-                    setStatusFlag(FLAG_SEEK_ERROR__RECORD_NOT_FOUND, true);
+                    setStatusFlag(F_SEEK_ERROR_OR_RECORD_NOT_FOUND, true);
                     return;
                 }
                 // Устанавливаем флаги ошибок - эмулируем сбой при выполнении команды
-                setStatusFlag(FLAG_INDEX__DATA_REQUEST | FLAG_TRACK_00__LOST_DATA | FLAG_CRC_ERROR, true);
+                setStatusFlag(F_INDEX_OR_DATA_REQUEST | F_TRACK_00_OR_LOST_DATA | F_CRC_ERROR, true);
             } // Блок "Чтение дорожки"
             else if ((fRegCommand.get() & 0b1111_0000) == 0b1110_0000) {
                 // Устанавливаем флаги ошибок - эмулируем сбой при выполнении команды
-                setStatusFlag(FLAG_INDEX__DATA_REQUEST | FLAG_TRACK_00__LOST_DATA, true);
+                setStatusFlag(F_INDEX_OR_DATA_REQUEST | F_TRACK_00_OR_LOST_DATA, true);
             } // Блок "Запись дорожки"
             else if ((fRegCommand.get() & 0b1111_0000) == 0b1111_0000) {
                 // Если диск (файл-образ) только на чтение - устанавливаем флаг "Защита записи" и выходим
-                if (fCurFDD.isReadOnly()) {
-                    setStatusFlag(FLAG_WRITE_PROTECT, true);
+                if (fCurDrive.isReadOnly()) {
+                    setStatusFlag(F_WRITE_PROTECT, true);
                     return;
                 }
                 // Устанавливаем флаги ошибок - эмулируем сбой при выполнении команды
-                setStatusFlag(FLAG_INDEX__DATA_REQUEST | FLAG_TRACK_00__LOST_DATA | FLAG_HEAD_LOAD__RECORD_TYPE__WRITE_FAULT, true);
+                setStatusFlag(F_INDEX_OR_DATA_REQUEST | F_TRACK_00_OR_LOST_DATA | F_HEAD_LOAD_OR_RECORD_TYPE_OR_WRITE_FAULT, true);
             }
         }
 
@@ -465,65 +468,70 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
         public void run() {
             // Присваиваем имя потоку
             Thread.currentThread().setName(THREAD_NAME);
-
-            // noinspection InfiniteLoopStatement
-            for (; ; ) {
-                // Ожидаем новую команду
-                synchronized (fMutex) {
-                    // Сбрасываем флаг "Прерывание"
-                    fInterrupt.getAndSet(false);
-                    // Сбрасываем флаг "Занято"
-                    setStatusFlag(FLAG_BUSY, false);
-                    // Возобнавляем работу CPU для исключения зависания
-                    continueCPU();
+            try {
+                for (; ; ) {
                     // Ожидаем новую команду
-                    try {
-                        while (!getStatusFlag(FLAG_BUSY)) {
+                    synchronized (fMutex) {
+                        // Сбрасываем флаг "Прерывание"
+                        fInterrupt.getAndSet(false);
+                        // Сбрасываем флаг "Занято"
+                        setStatusFlag(F_BUSY, false);
+                        // Возобнавляем работу CPU для исключения зависания
+                        continueCPU();
+                        // Ожидаем новую команду
+                        while (!getStatusFlag(F_BUSY)) {
                             fMutex.wait();
                         }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
                     }
+                    // Обрабатываем полученную команду
+                    switch (fRegCommand.get() >> 4) {
+                        case  0: // "Восстановление"
+                            fRegData.getAndSet(0);
+                            emuCmdType1(-255);
+                            break;
+                        case  1: // "Поиск"
+                            emuCmdType1(fRegData.get() - fRegTrack.get());
+                            break;
+                        case  2: // "Шаг в предыдущем направлении"
+                        case  3:
+                            emuCmdType1(fDirection ? 1 : -1);
+                            break;
+                        case  4: // "Шаг вперед"
+                        case  5:
+                            emuCmdType1(1);
+                            break;
+                        case  6: // "Шаг назад"
+                        case  7:
+                            emuCmdType1(-1);
+                            break;
+                        case  8: // "Чтение сектора"
+                        case  9:
+                        case 10: // "Запись сектора"
+                        case 11:
+                            emuCmdType2();
+                            break;
+                        case 12: // "Чтение адреса"
+                            emuCmdType3();
+                            break;
+                        case 13: // "Принудительное прерывание" (выполнение сюда не доходит, т.к. поток не пробуждается по этой команде)
+                            fInterrupt.getAndSet(true);
+                            break;
+                        case 14: // "Чтение дорожки"
+                        case 15: // "Запись дорожки"
+                            emuCmdType3();
+                            break;
+                        default:
+                            break;
+                    }
+                    // Если было прерывание потока - выходим из цикла
+                    if (Thread.currentThread().isInterrupted()) {
+                        break;
+                    }
+                    sleep(1L);
                 }
-                // Обрабатываем полученную команду
-                switch (fRegCommand.get() >> 4) {
-                    case  0: // "Восстановление"
-                        fRegData.getAndSet(0);
-                        emuCmdType1(-255);
-                        break;
-                    case  1: // "Поиск"
-                        emuCmdType1(fRegData.get() - fRegTrack.get());
-                        break;
-                    case  2: // "Шаг в предыдущем направлении"
-                    case  3:
-                        emuCmdType1(fDirection ? 1 : -1);
-                        break;
-                    case  4: // "Шаг вперед"
-                    case  5:
-                        emuCmdType1(1);
-                        break;
-                    case  6: // "Шаг назад"
-                    case  7:
-                        emuCmdType1(-1);
-                        break;
-                    case  8: // "Чтение сектора"
-                    case  9:
-                    case 10: // "Запись сектора"
-                    case 11:
-                        emuCmdType2();
-                        break;
-                    case 12: // "Чтение адреса"
-                        emuCmdType3();
-                        break;
-                    case 13: // "Принудительное прерывание" (выполнение сюда не доходит, т.к. поток не пробуждается по этой команде)
-                        fInterrupt.getAndSet(true);
-                        break;
-                    case 14: // "Чтение дорожки"
-                    case 15: // "Запись дорожки"
-                        emuCmdType3();
-                        break;
-                }
-                sleep(1L);
+            } catch (InterruptedException e) {
+                // Restore the interrupted status
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -532,7 +540,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
     /**
      * Конструктор.
      */
-    cMD_SpMX_FDC(@NotNull ClockGenerator gen, CpuI8080 cpu) {
+    MemDevFloppyDiskController(@NotNull ClockGenerator gen, CpuI8080 cpu) {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Устанавливаем ссылку на CPU
@@ -548,14 +556,14 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
         fInterrupt      = new AtomicBoolean();
         fWasDataRequest = new AtomicBoolean();
 
-        fMutex = new Object   ();
-        fFDD_A = new cDriveFDC();
-        fFDD_B = new cDriveFDC();
+        fMutex  = new Object();
+        fDriveA = new FloppyDiskDrive();
+        fDriveB = new FloppyDiskDrive();
 
-        fCurFDD = fFDD_A;
+        fCurDrive = fDriveA;
 
         // Запускаем ядро контроллера
-        new Thread(new cCoreFDC()).start();
+        new Thread(new CoreFDC()).start();
     }
 
     @Override
@@ -568,21 +576,21 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
         if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
             switch (address) {
                 case 0: // -> Статус
-                    setStatusFlag(FLAG_NOT_READY, !fCurFDD.isReady());
-                    // Если были команды "TYPE I" или команда "TYPE IV" "Принудительное прерывание", поданная без устаноленного флага FLAG_BUSY
+                    setStatusFlag(F_NOT_READY, !fCurDrive.isReady());
+                    // Если были команды "TYPE I" или команда "TYPE IV" "Принудительное прерывание", поданная без устаноленного флага F_BUSY
                     if (((fRegCommand.get() & 0b1000_0000) == 0) || ((fRegCommand.get() & 0b1111_0000) == 0b1101_0000)) {
                         // Формируем индексный импульс
-                        if (!fCurFDD.isReady()) {
-                            setStatusFlag(FLAG_INDEX__DATA_REQUEST, true);
-                        } else if (fCurSide || (((fRegCommand.get() & 0b1000) != 0) && getStatusFlag(FLAG_BUSY))) {
+                        if (!fCurDrive.isReady()) {
+                            setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
+                        } else if (fCurSide || (((fRegCommand.get() & 0b1000) != 0) && getStatusFlag(F_BUSY))) {
                             if (fGen.getCyclesCounter() % REVOLUTION_TIME > TIME_WITHOUT_INDEX) {
-                                setStatusFlag(FLAG_INDEX__DATA_REQUEST, true );
+                                setStatusFlag(F_INDEX_OR_DATA_REQUEST, true );
                             } else {
-                                setStatusFlag(FLAG_INDEX__DATA_REQUEST, false);
+                                setStatusFlag(F_INDEX_OR_DATA_REQUEST, false);
                             }
                         }
-                        setStatusFlag(FLAG_TRACK_00__LOST_DATA, fCurFDD.getCurTrack() == 0);
-                        setStatusFlag(FLAG_WRITE_PROTECT, fCurFDD.isReadOnly());
+                        setStatusFlag(F_TRACK_00_OR_LOST_DATA, fCurDrive.getCurTrack() == 0);
+                        setStatusFlag(F_WRITE_PROTECT, fCurDrive.isReadOnly());
                     }
                     return fRegStatus.get();
                 case 1: // -> Дорожка
@@ -592,17 +600,19 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                 case 3: // -> Данные
                     int data = fRegData.get();
                     // Если выполняется команда "Чтение сектора"
-                    if (((fRegCommand.get() & 0b1110_0000) == 0b1000_0000) && getStatusFlag(FLAG_BUSY | FLAG_INDEX__DATA_REQUEST)) {
+                    if (((fRegCommand.get() & 0b1110_0000) == 0b1000_0000) && getStatusFlag(F_BUSY | F_INDEX_OR_DATA_REQUEST)) {
                         // Сбрасываем флаг "Запрос данных"
-                        setStatusFlag(FLAG_INDEX__DATA_REQUEST, false);
+                        setStatusFlag(F_INDEX_OR_DATA_REQUEST, false);
                         // Заставляем конроллер НГМД выдать новую порцию данных
                         synchronized (fMutex) {
                             if (!fPause) {
-                                fMutex.notify();
+                                fMutex.notifyAll();
                             }
                         }
                     }
                     return data;
+                default:
+                    return -1;
             }
         }
         return -1;
@@ -620,6 +630,8 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                     return fRegSector.get();
                 case 3: // -> Данные
                     return   fRegData.get();
+                default:
+                    return -1;
             }
         }
         return -1;
@@ -631,7 +643,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
             switch (address) {
                 case 0: // <- Команда
                     // Если контроллер занят, то обрабатываем только команду "Принудительное прерывание" (прерывание с битами I1 и I0 игнорируем)
-                    if (getStatusFlag(FLAG_BUSY)) {
+                    if (getStatusFlag(F_BUSY)) {
                         if ((value & 0b1111_0011) == 0b1101_0000) {
                             interrupt(false);
                         }
@@ -641,12 +653,12 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                         // Команда "Принудительное прерывание" не переводит контроллер в состояние занят
                         if ((value & 0b1111_0000) != 0b1101_0000) {
                             // Устанавливаем флаг "Занято" сразу после подачи команды
-                            setStatusFlag(FLAG_BUSY, true);
+                            setStatusFlag(F_BUSY, true);
                             // На всякий случай сбрасываем флаг "Запрос данных/Индексный импульс"
-                            setStatusFlag(FLAG_INDEX__DATA_REQUEST, false);
+                            setStatusFlag(F_INDEX_OR_DATA_REQUEST, false);
                             // Пробуждаем ядро конроллера НГМД
                             synchronized (fMutex) {
-                                fMutex.notify();
+                                fMutex.notifyAll();
                             }
                         }
                     }
@@ -660,16 +672,18 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
                 case 3: // <- Данные
                     fRegData.getAndSet(value);
                     // Если выполняется команда "Запись сектора"
-                    if (((fRegCommand.get() & 0b1110_0000) == 0b1010_0000) && getStatusFlag(FLAG_BUSY | FLAG_INDEX__DATA_REQUEST)) {
+                    if (((fRegCommand.get() & 0b1110_0000) == 0b1010_0000) && getStatusFlag(F_BUSY | F_INDEX_OR_DATA_REQUEST)) {
                         // Сбрасываем флаг "Запрос данных"
-                        setStatusFlag(FLAG_INDEX__DATA_REQUEST, false);
+                        setStatusFlag(F_INDEX_OR_DATA_REQUEST, false);
                         // Заставляем конроллер НГМД принять данные
                         synchronized (fMutex) {
                             if (!fPause) {
-                                fMutex.notify();
+                                fMutex.notifyAll();
                             }
                         }
                     }
+                    break;
+                default:
                     break;
             }
         }
@@ -689,11 +703,11 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
 
     @Override
     public void pause(boolean mode) {
-        if (getStatusFlag(FLAG_BUSY) && (fPause != mode)) {
+        if (getStatusFlag(F_BUSY) && (fPause != mode)) {
             fPause = mode;
             if (!mode) {
                 synchronized (fMutex) {
-                    fMutex.notify();
+                    fMutex.notifyAll();
                 }
             }
         }
@@ -709,7 +723,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SpMX_FDC that = (cMD_SpMX_FDC) o;
+        MemDevFloppyDiskController that = (MemDevFloppyDiskController) o;
         return Objects.equals(fCPU, that.fCPU) &&
                Objects.equals(fGen, that.fGen);
     }
@@ -734,7 +748,8 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
      * @param value значение флага
      */
     private void setStatusFlag(int flag, boolean value) {
-        int prev, next;
+        int prev;
+        int next;
         do {
             prev = fRegStatus.get();
             next = value ? prev | flag : prev & ~flag;
@@ -746,18 +761,18 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
      * @param wait true = ожидать завершения прерывания в течении 1 секунды
      */
     private void interrupt(boolean wait) {
-        if (getStatusFlag(FLAG_BUSY)) {
+        if (getStatusFlag(F_BUSY)) {
             // Сбрасываем флаг режима "Пауза", т.к. режим "Пауза" не совместим с выполнением прерывания команды контроллера НГМД
             fPause = false;
             // Устанавливаем флаг "Прерывание" для выполнения прерывания команды контроллера НГМД
             fInterrupt.getAndSet(true);
             // Отменяем ожидание контроллера, если оно было
             synchronized (fMutex) {
-                fMutex.notify();
+                fMutex.notifyAll();
             }
             // Ожидаем прерывания максимум 1сек
             if (wait) {
-                for (int millis = 1000; getStatusFlag(FLAG_BUSY) && (millis > 0); millis--) {
+                for (int millis = 1000; getStatusFlag(F_BUSY) && (millis > 0); millis--) {
                     try {
                         Thread.sleep(1L);
                     } catch (InterruptedException e) {
@@ -773,7 +788,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
      * @return false = "A" / true = "B"
      */
     private boolean isCurFDD() {
-        return fCurFDD == fFDD_B;
+        return fCurDrive == fDriveB;
     }
 
     /**
@@ -785,9 +800,9 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
             interrupt(true);
         }
         if (fdd) {
-            fFDD_B.ejectDisk();
+            fDriveB.ejectDisk();
         } else {
-            fFDD_A.ejectDisk();
+            fDriveA.ejectDisk();
         }
     }
 
@@ -795,16 +810,16 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
      * Вставляет диск в заданный дисковод.
      * @param fdd false = "A" / true = "B"
      * @param file файл с образом диска
-     * @throws Exception исключение, возникающее при вставке диска (SecurityException, IllegalArgumentException, FileNotFoundException)
+     * @throws IOException исключение, возникающее при вставке диска
      */
-    void insertDisk(boolean fdd, File file) throws Exception {
+    void insertDisk(boolean fdd, File file) throws IOException {
         if (fdd == isCurFDD()) {
             interrupt(true);
         }
         if (fdd) {
-            fFDD_B.insertDisk(file);
+            fDriveB.insertDisk(file);
         } else {
-            fFDD_A.insertDisk(file);
+            fDriveA.insertDisk(file);
         }
     }
 
@@ -816,9 +831,9 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
         if (fdd != isCurFDD()) {
             interrupt(true);
             if (fdd) {
-                fCurFDD = fFDD_B;
+                fCurDrive = fDriveB;
             } else {
-                fCurFDD = fFDD_A;
+                fCurDrive = fDriveA;
             }
         }
     }
@@ -836,7 +851,7 @@ final class cMD_SpMX_FDC implements IMemoryDevice {
      */
     void waitDataRequest() {
         // CPU переводим в состояние "Пауза" только для команд контроллера НГМД "Чтение сектора" / "Запись сектора"
-        if (((fRegCommand.get() & 0b1100_0000) == 0b1000_0000) && getStatusFlag(FLAG_BUSY) && !getStatusFlag(FLAG_INDEX__DATA_REQUEST)) {
+        if (((fRegCommand.get() & 0b1100_0000) == 0b1000_0000) && getStatusFlag(F_BUSY) && !getStatusFlag(F_INDEX_OR_DATA_REQUEST)) {
             fCPU.hold(true);
             fWasDataRequest.getAndSet(true);
         }
