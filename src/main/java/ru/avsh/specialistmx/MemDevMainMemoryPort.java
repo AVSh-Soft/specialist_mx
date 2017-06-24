@@ -5,15 +5,19 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Objects;
 
 /**
- * Устройство памяти "Порт для управления страницами памяти Specialist_MX".
+ * Устройство памяти "Порт для управления страницами памяти 'Специалист MX'".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_RAM_Port implements IMemoryDevice {
+final class MemDevMainMemoryPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 3;
 
-    private final cMD_SpMX_RAM fRAM;
+    private final MemDevMainMemory fRAM;
 
-    cMD_SpMX_RAM_Port(@NotNull cMD_SpMX_RAM ram) {
+    /**
+     * Конструктор.
+     * @param ram ссылка на объект класса MemDevMainMemory - "Оперативная память 'Специалист MX'"
+     */
+    MemDevMainMemoryPort(@NotNull MemDevMainMemory ram) {
         fRAM = ram;
     }
 
@@ -33,8 +37,10 @@ final class cMD_SpMX_RAM_Port implements IMemoryDevice {
                     value = (value & 0b111) + 1;
                     break;
                 case 2:  // 9 - ROM-диск
-                    value = cMD_SpMX_RAM.ROM_DISK;
+                    value = MemDevMainMemory.ROM_DISK;
                     break;
+                default:
+                    return;
             }
             // Переключает страницы памяти
             fRAM.setPage(value);
@@ -45,7 +51,7 @@ final class cMD_SpMX_RAM_Port implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SpMX_RAM_Port that = (cMD_SpMX_RAM_Port) o;
+        MemDevMainMemoryPort that = (MemDevMainMemoryPort) o;
         return Objects.equals(this.fRAM, that.fRAM);
     }
 

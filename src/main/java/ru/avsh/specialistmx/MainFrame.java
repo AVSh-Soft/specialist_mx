@@ -29,6 +29,10 @@ final class MainFrame extends JFrame {
 
     private final transient SpecialistMX fSpMX;
 
+    /**
+     * Конструктор.
+     * @param spMX ссылка на объект класса SpecialistMX - "Компьютер 'Специалист MX'"
+     */
     MainFrame(@NotNull SpecialistMX spMX) {
         fSpMX = spMX ;
 
@@ -208,20 +212,20 @@ final class MainFrame extends JFrame {
 
         // -= Сохранение файла =-
         saveBtn.addActionListener(e -> {
-            SaveBlockDialog saveBlockDialog = new SaveBlockDialog(this);
+            BlockSaveDialog blockSaveDialog = new BlockSaveDialog(this);
 
             boolean result = true;
-            if (saveBlockDialog.getResult()) {
-                File   file     = saveBlockDialog.getFile   ();
+            if (blockSaveDialog.getResult()) {
+                File   file     = blockSaveDialog.getFile   ();
                 String fileName = file.getName().toLowerCase();
                 if        (fileName.endsWith("cpu")) {
-                    result = fSpMX.saveFileCPU(file, saveBlockDialog.getBeginAddress(), saveBlockDialog.getEndAddress(), saveBlockDialog.getStartAddress());
+                    result = fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress());
                 } else if (fileName.endsWith("rks")) {
-                    result = fSpMX.saveFileRKS(file, saveBlockDialog.getBeginAddress(), saveBlockDialog.getEndAddress());
+                    result = fSpMX.saveFileRKS(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress());
                 }
             }
-            saveBlockDialog.getContentPane().removeAll();
-            saveBlockDialog.dispose();
+            blockSaveDialog.getContentPane().removeAll();
+            blockSaveDialog.dispose();
 
             if (!result) {
                 setTitle(" (Ошибка сохранения!)");

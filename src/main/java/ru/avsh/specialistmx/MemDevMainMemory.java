@@ -4,10 +4,10 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * Устройство памяти "Оперативная память Specialist_MX".
+ * Устройство памяти "Оперативная память 'Специалист MX'".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_RAM implements IMemoryDevice {
+final class MemDevMainMemory implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 0xFFC0;
     private static final int ROM_DISK_LENGTH      = 0xC000;
     private static final int MIN_NUMBER_PAGES     =      2; // Минимальное  число страниц памяти: 0 - основная, 1   - RAM-диск (не считая ROM-диск);
@@ -20,14 +20,14 @@ final class cMD_SpMX_RAM implements IMemoryDevice {
     private final int fNumberPages;
     private volatile int fCurrentPage;
     private volatile int fCurrentOffset;
-    private final MemDevScreen fScreen;
+    private final MemDevScreen fScreen ;
 
     /**
      * Конструктор.
      * @param numberPages количество страниц памяти (не считая ROM-диск)
-     * @param screen ссылка на экран
+     * @param screen ссылка на объект класса MemDevScreen - "Экран 'Специалиста MX'"
      */
-    cMD_SpMX_RAM(int numberPages, MemDevScreen screen) {
+    MemDevMainMemory(int numberPages, MemDevScreen screen) {
          numberPages = Math.min(Math.max(numberPages, MIN_NUMBER_PAGES), MAX_NUMBER_PAGES);
         fNumberPages = numberPages;
              fScreen = screen;
@@ -70,10 +70,10 @@ final class cMD_SpMX_RAM implements IMemoryDevice {
     }
 
     @Override
-    synchronized public String toString() {
-        return String.format("Информация о памяти:\n" +
-                             "Размер  (RAM + RAM-диск + ROM-диск): %.4fКб;\n" +
-                             "Страниц (RAM + RAM-диск + ROM-диск): %d;\n"     +
+    public synchronized String toString() {
+        return String.format("Информация о памяти:%n" +
+                             "Размер  (RAM + RAM-диск + ROM-диск): %.4fКб;%n" +
+                             "Страниц (RAM + RAM-диск + ROM-диск): %d;%n"     +
                              "Активная страница памяти: %d",
                 fRAM.length / 1024F, fNumberPages + 1, fCurrentPage);
     }
@@ -82,7 +82,7 @@ final class cMD_SpMX_RAM implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SpMX_RAM that = (cMD_SpMX_RAM) o;
+        MemDevMainMemory that = (MemDevMainMemory) o;
         return Objects.equals(this.fNumberPages, that.fNumberPages) &&
                Objects.equals(this.fScreen     , that.fScreen     );
     }

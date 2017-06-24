@@ -47,6 +47,9 @@ final class ConsStat {
     // Текущий путь к файлам эмулятора "Специалист MX"
     private static String fCurPath = APP_DIR;
 
+    /**
+     * Конструктор.
+     */
     private ConsStat() {
     }
 

@@ -7,7 +7,7 @@ import java.awt.image.WritableRaster;
 import java.util.Objects;
 
 /**
- * Класс "Экран Специалиста_MX".
+ * Класс "Экран 'Специалиста MX'".
  * @author -=AVSh=-
  */
 final class MemDevScreen extends JPanel implements IMemoryDevice {
@@ -41,7 +41,6 @@ final class MemDevScreen extends JPanel implements IMemoryDevice {
 
     static final int DEFAULT_COLOR = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
 
-
     private final int fLength;
     private final transient BufferedImage  fBufImg;
     private final transient WritableRaster fRaster;
@@ -51,6 +50,9 @@ final class MemDevScreen extends JPanel implements IMemoryDevice {
     private transient volatile Object fColData  ;
     private transient volatile Object fColDataBg;
 
+    /**
+     * Конструктор.
+     */
     MemDevScreen() {
         fLength = (SCREEN_HEIGHT * SCREEN_WIDTH) / 8; // Размер экранной области в байтах (каждый пиксел = 1 бит)
         

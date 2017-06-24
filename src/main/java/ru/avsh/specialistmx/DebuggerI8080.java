@@ -1,8 +1,8 @@
 package ru.avsh.specialistmx;
 
+import org.jetbrains.annotations.NotNull;
 import ru.avsh.lib.ExtFormattedTextField;
 import ru.avsh.specialistmx.ProcessorI8080.DebugRegPairs;
-import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -23,8 +23,10 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.function.Function;
 
-import static ru.avsh.specialistmx.ConsStat.NUMBER_PAGES_RAMDISK;
+import static javax.swing.JOptionPane.*;
 import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharAt;
+import static ru.avsh.specialistmx.ConsStat.NUMBER_PAGES_RAMDISK;
+import static ru.avsh.specialistmx.ConsStat.STR_ERROR;
 
 /**
  * Класс "Отладчик для процессора i8080 (К580ВМ80А)".
@@ -37,11 +39,13 @@ final class DebuggerI8080 extends JDialog {
     private static final String INI_OPTION_FRAME_HEIGHT = "DebugFrameHeight";
 
     // Массив мнемоник процессора i8080 (К580ВМ80А)
+    private static final String   M_NOP  = "?nop"  ;
+    private static final String   M_CALL = "?call ";
     private static final String[] MNEMONICS = new String[] {
-            "NOP"      , "LXI  B,"  , "STAX B"   , "INX  B"   , "INR  B"   , "DCR  B"   , "MVI  B,"  , "RLC"      , "?nop"     , "DAD  B"   , "LDAX B"   , "DCX  B"   , "INR  C"   , "DCR  C"   , "MVI  C,"  , "RRC"      ,
-            "?nop"     , "LXI  D,"  , "STAX D"   , "INX  D"   , "INR  D"   , "DCR  D"   , "MVI  D,"  , "RAL"      , "?nop"     , "DAD  D"   , "LDAX D"   , "DCX  D"   , "INR  E"   , "DCR  E"   , "MVI  E,"  , "RAR"      ,
-            "?nop"     , "LXI  H,"  , "SHLD "    , "INX  H"   , "INR  H"   , "DCR  H"   , "MVI  H,"  , "DAA"      , "?nop"     , "DAD  H"   , "LHLD "    , "DCX  H"   , "INR  L"   , "DCR  L"   , "MVI  L,"  , "CMA"      ,
-            "?nop"     , "LXI  SP," , "STA  "    , "INX  SP"  , "INR  M"   , "DCR  M"   , "MVI  M,"  , "STC"      , "?nop"     , "DAD  SP"  , "LDA  "    , "DCX  SP"  , "INR  A"   , "DCR  A"   , "MVI  A,"  , "CMC"      ,
+            "NOP"      , "LXI  B,"  , "STAX B"   , "INX  B"   , "INR  B"   , "DCR  B"   , "MVI  B,"  , "RLC"      , M_NOP      , "DAD  B"   , "LDAX B"   , "DCX  B"   , "INR  C"   , "DCR  C"   , "MVI  C,"  , "RRC"      ,
+            M_NOP      , "LXI  D,"  , "STAX D"   , "INX  D"   , "INR  D"   , "DCR  D"   , "MVI  D,"  , "RAL"      , M_NOP      , "DAD  D"   , "LDAX D"   , "DCX  D"   , "INR  E"   , "DCR  E"   , "MVI  E,"  , "RAR"      ,
+            M_NOP      , "LXI  H,"  , "SHLD "    , "INX  H"   , "INR  H"   , "DCR  H"   , "MVI  H,"  , "DAA"      , M_NOP      , "DAD  H"   , "LHLD "    , "DCX  H"   , "INR  L"   , "DCR  L"   , "MVI  L,"  , "CMA"      ,
+            M_NOP      , "LXI  SP," , "STA  "    , "INX  SP"  , "INR  M"   , "DCR  M"   , "MVI  M,"  , "STC"      , M_NOP      , "DAD  SP"  , "LDA  "    , "DCX  SP"  , "INR  A"   , "DCR  A"   , "MVI  A,"  , "CMC"      ,
             "MOV  B, B", "MOV  B, C", "MOV  B, D", "MOV  B, E", "MOV  B, H", "MOV  B, L", "MOV  B, M", "MOV  B, A", "MOV  C, B", "MOV  C, C", "MOV  C, D", "MOV  C, E", "MOV  C, H", "MOV  C, L", "MOV  C, M", "MOV  C, A",
             "MOV  D, B", "MOV  D, C", "MOV  D, D", "MOV  D, E", "MOV  D, H", "MOV  D, L", "MOV  D, M", "MOV  D, A", "MOV  E, B", "MOV  E, C", "MOV  E, D", "MOV  E, E", "MOV  E, H", "MOV  E, L", "MOV  E, M", "MOV  E, A",
             "MOV  H, B", "MOV  H, C", "MOV  H, D", "MOV  H, E", "MOV  H, H", "MOV  H, L", "MOV  H, M", "MOV  H, A", "MOV  L, B", "MOV  L, C", "MOV  L, D", "MOV  L, E", "MOV  L, H", "MOV  L, L", "MOV  L, M", "MOV  L, A",
@@ -51,9 +55,9 @@ final class DebuggerI8080 extends JDialog {
             "ANA  B"   , "ANA  C"   , "ANA  D"   , "ANA  E"   , "ANA  H"   , "ANA  L"   , "ANA  M"   , "ANA  A"   , "XRA  B"   , "XRA  C"   , "XRA  D"   , "XRA  E"   , "XRA  H"   , "XRA  L"   , "XRA  M"   , "XRA  A"   ,
             "ORA  B"   , "ORA  C"   , "ORA  D"   , "ORA  E"   , "ORA  H"   , "ORA  L"   , "ORA  M"   , "ORA  A"   , "CMP  B"   , "CMP  C"   , "CMP  D"   , "CMP  E"   , "CMP  H"   , "CMP  L"   , "CMP  M"   , "CMP  A"   ,
             "RNZ"      , "POP  B"   , "JNZ  "    , "JMP  "    , "CNZ  "    , "PUSH B"   , "ADI  "    , "RST  0"   , "RZ"       , "RET"      , "JZ   "    , "?jmp "    , "CZ   "    , "CALL "    , "ACI  "    , "RST  1"   ,
-            "RNC"      , "POP  D"   , "JNC  "    , "OUT  "    , "CNC  "    , "PUSH D"   , "SUI  "    , "RST  2"   , "RC"       , "?ret"     , "JC   "    , "IN   "    , "CC   "    , "?call "   , "SBI  "    , "RST  3"   ,
-            "RPO"      , "POP  H"   , "JPO  "    , "XTHL"     , "CPO  "    , "PUSH H"   , "ANI  "    , "RST  4"   , "RPE"      , "PCHL"     , "JPE  "    , "XCHG"     , "CPE  "    , "?call "   , "XRI  "    , "RST  5"   ,
-            "RP"       , "POP  PSW" , "JP   "    , "DI"       , "CP   "    , "PUSH PSW" , "ORI  "    , "RST  6"   , "RM"       , "SPHL"     , "JM   "    , "EI"       , "CM   "    , "?call "   , "CPI  "    , "RST  7"
+            "RNC"      , "POP  D"   , "JNC  "    , "OUT  "    , "CNC  "    , "PUSH D"   , "SUI  "    , "RST  2"   , "RC"       , "?ret"     , "JC   "    , "IN   "    , "CC   "    , M_CALL     , "SBI  "    , "RST  3"   ,
+            "RPO"      , "POP  H"   , "JPO  "    , "XTHL"     , "CPO  "    , "PUSH H"   , "ANI  "    , "RST  4"   , "RPE"      , "PCHL"     , "JPE  "    , "XCHG"     , "CPE  "    , M_CALL     , "XRI  "    , "RST  5"   ,
+            "RP"       , "POP  PSW" , "JP   "    , "DI"       , "CP   "    , "PUSH PSW" , "ORI  "    , "RST  6"   , "RM"       , "SPHL"     , "JM   "    , "EI"       , "CM   "    , M_CALL     , "CPI  "    , "RST  7"
     };
 
     // Массив длин команд процессора i8080 (К580ВМ80А)
@@ -120,11 +124,11 @@ final class DebuggerI8080 extends JDialog {
         // Для сохранения деталей события
         private Object fDetail;
         // Возвращает детали события
-        public Object getDetail(){
+        Object getDetail(){
             return this.fDetail;
         }
         // Сохраняет детали события
-        public void setDetail(Object detail){
+        void setDetail(Object detail){
             this.fDetail = detail;
         }
     }
@@ -197,6 +201,7 @@ final class DebuggerI8080 extends JDialog {
     private static final Font   DEFAULT_FONT          = new Font(Font.MONOSPACED, Font.PLAIN, 11);
     private static final String BYTE_MASK             = "HH";
     private static final String WORD_MASK             = "HHHH";
+    private static final String STR_ADDRESS           = "Адрес";
     private static final String STR16_MASK            = "****************";
     private static final String EDITING_OR_NAVIGATING = "EditingOrNavigating";
 
@@ -385,6 +390,8 @@ final class DebuggerI8080 extends JDialog {
 
         // Основные кнопки управления отладчиком
         Action performStep = new AbstractAction("F6 Step") {
+            private static final long serialVersionUID = 6179694362946312263L;
+
             @Override
             public void actionPerformed(ActionEvent e) {
                 step();
@@ -392,6 +399,8 @@ final class DebuggerI8080 extends JDialog {
         };
 
         Action performStepOver = new AbstractAction("F7 Step Over") {
+            private static final long serialVersionUID = -8028618186701256410L;
+
             @Override
             public void actionPerformed(ActionEvent e) {
                 stepOver();
@@ -650,6 +659,8 @@ final class DebuggerI8080 extends JDialog {
         // Изменяем реакцию на клавишу Enter в таблице fDisAsmTable
         fDisAsmTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
         fDisAsmTable.getActionMap().put(EDITING_OR_NAVIGATING, new AbstractAction() {
+            private static final long serialVersionUID = -6938596434272573049L;
+
             @Override
             public void actionPerformed(ActionEvent e) {
                 final TableModel model   =  fDisAsmTable.getModel();
@@ -676,6 +687,8 @@ final class DebuggerI8080 extends JDialog {
 
         {
             final AbstractAction aa = new AbstractAction() {
+                private static final long serialVersionUID = 2593281858748981540L;
+
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     final JTable table = (JTable) e.getSource();
@@ -706,6 +719,8 @@ final class DebuggerI8080 extends JDialog {
         // Изменяем реакцию на клавишу Enter в таблице trapsTable
         trapsTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
         trapsTable.getActionMap().put(EDITING_OR_NAVIGATING, new AbstractAction() {
+            private static final long serialVersionUID = 4734432549045273397L;
+
             @Override
             public void actionPerformed(ActionEvent e) {
                 int  rowM  = getFocusedRowModel((JTable) e.getSource());
@@ -780,7 +795,7 @@ final class DebuggerI8080 extends JDialog {
         codeMemPagesComboBox.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 int index = ((JComboBox) e.getSource()).getSelectedIndex();
-                fLayer.setCodePage((index == fLayer.getNumPages() - 1) ? cMD_SpMX_RAM.ROM_DISK : index); // Учитываются особенности класса cMD_SpMX_RAM
+                fLayer.setCodePage((index == fLayer.getNumPages() - 1) ? MemDevMainMemory.ROM_DISK : index); // Учитываются особенности класса MemDevMainMemory
             }
         });
 
@@ -788,7 +803,7 @@ final class DebuggerI8080 extends JDialog {
         dataMemPagesComboBox.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 int index = ((JComboBox) e.getSource()).getSelectedIndex();
-                fLayer.setDataPage((index == fLayer.getNumPages() - 1) ? cMD_SpMX_RAM.ROM_DISK : index); // Учитываются особенности класса cMD_SpMX_RAM
+                fLayer.setDataPage((index == fLayer.getNumPages() - 1) ? MemDevMainMemory.ROM_DISK : index); // Учитываются особенности класса MemDevMainMemory
             }
         });
 
@@ -1257,6 +1272,8 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Модель данных для дизассемблера".
      */
     private class DisAsmTableModel extends AbstractTableModel {
+        private static final long serialVersionUID = 4535761990838509705L;
+
         private final int[][] fStartBuffer;
         private final int[][] fMovedBuffer;
 
@@ -1322,6 +1339,7 @@ final class DebuggerI8080 extends JDialog {
                         // Пытаемся выполнить выравнивание кода (в надежде, что повезет :-)
                         //noinspection StatementWithEmptyBody
                         for (int end_adr = movedStart + FOR_ALIGNMENT, page = fLayer.getCodePage(), len; movedStart + (len = CMD_LEN[fLayer.debugReadByte(page, end_adr)]) < end_adr; movedStart += len) {
+                            //
                         }
                     }
                     fillBuffer(fMovedBuffer, movedStart);
@@ -1418,7 +1436,7 @@ final class DebuggerI8080 extends JDialog {
                 case DA_COL_TRP:
                     return "Л.";
                 case DA_COL_ADR:
-                    return "Адрес";
+                    return STR_ADDRESS;
                 case DA_COL_BT0:
                     return "0";
                 case DA_COL_BT1:
@@ -1505,7 +1523,7 @@ final class DebuggerI8080 extends JDialog {
                     try {
                         fLayer.writeByte(page,rowIndex + columnIndex - DA_COL_BT0, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                        showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 case DA_COL_CMD:
@@ -1521,11 +1539,15 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Таблица с дизассемблированными данными (дизассемблер)".
      */
     private class DisAsmTable extends JTable implements Observer {
+        private static final long serialVersionUID = 6082699292929964402L;
+
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик булевых полей дизассемблера".
          */
         private class DisAsmBooleanRenderer extends JCheckBox implements TableCellRenderer {
+            private static final long serialVersionUID = -9114406285821023267L;
+
             /**
              * Конструктор.
              */
@@ -1582,6 +1604,8 @@ final class DebuggerI8080 extends JDialog {
          * Класс "Рисовальщик строковых полей дизассемблера".
          */
         private class DisAsmStringRenderer extends DefaultTableCellRenderer {
+            private static final long serialVersionUID = 1263217420662494640L;
+
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
@@ -1722,6 +1746,8 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Метка для отображения содержимого регистра флагов".
      */
     private class FlagsRegLabel extends JLabel implements Observer {
+        private static final long serialVersionUID = 2564883968431592392L;
+
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик для FlagsRegLabel".
@@ -1788,6 +1814,8 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Модель данных для отображения и редактирования регистровых пар CPU".
      */
     private class RegCpuTableModel extends AbstractTableModel {
+        private static final long serialVersionUID = -7748443612425003819L;
+
         /**
          * Конструктор.
          */
@@ -1872,7 +1900,7 @@ final class DebuggerI8080 extends JDialog {
                             fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPairs.PC), DA_COL_ADR);
                         }
                     } catch (NumberFormatException e) {
-                        JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                        showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 default:
@@ -1886,11 +1914,15 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Таблица для отображения и редактирования регистровых пар CPU".
      */
     private class RegCpuTable extends JTable implements Observer {
+        private static final long serialVersionUID = 1256251256303710285L;
+
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик строковых полей таблицы регистровых пар".
          */
         private class RegCpuStringRenderer extends DefaultTableCellRenderer {
+            private static final long serialVersionUID = -3945328100541928359L;
+
             private int fPaintColumn  ;
             private int fCompareResult;
             //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1907,13 +1939,13 @@ final class DebuggerI8080 extends JDialog {
 
                         if ((fCompareResult == 0) || (fCompareResult == 1)) {
                             int endIndex = (fPaintColumn == CR_COL_REG) ? 1 : 2;
-                            String str = s.substring(0, endIndex);
+                              String str = s.substring(0, endIndex);
 
                             g.setColor(color);
                             drawStringUnderlineCharAt(g, str, index, textX, textY);
                             textX += g.getFontMetrics().stringWidth(str);
 
-                            s = s.substring(endIndex);
+                                s = s.substring(endIndex);
                             color = (fCompareResult == 0) ? Color.red : l.getForeground();
                         }
                         g.setColor(color);
@@ -2000,6 +2032,8 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Модель данных таблицы с данными стека".
      */
     private class StackTableModel extends AbstractTableModel {
+        private static final long serialVersionUID = -8251032431926800440L;
+
         /**
          * Конструктор.
          */
@@ -2060,7 +2094,7 @@ final class DebuggerI8080 extends JDialog {
                     fLayer.writeByte(page, address, value & 0xFF);
                     fLayer.writeByte(page, address + 1, value >> 8);
                 } catch (NumberFormatException e) {
-                    JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                    showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
                 } finally {
                     if (fLayer.isEventsDisabled()) {
                         fLayer.enableEvents();
@@ -2077,11 +2111,15 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Таблица с данными стека".
      */
     private class StackTable extends JTable implements Observer {
+        private static final long serialVersionUID = -5587123808216823239L;
+
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик строковых полей таблицы с данными стека".
          */
         private class StackStringRenderer extends DefaultTableCellRenderer {
+            private static final long serialVersionUID = 2680876900372610398L;
+
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 super.setHorizontalAlignment(CENTER);
@@ -2143,6 +2181,8 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Модель данных таблицы с данными ловушек".
      */
     private class TrapsTableModel extends AbstractTableModel {
+        private static final long serialVersionUID = -8308426780522745124L;
+
         /**
          * Конструктор.
          */
@@ -2175,7 +2215,7 @@ final class DebuggerI8080 extends JDialog {
                 case TP_COL_PAG:
                     return "Страница";
                 case TP_COL_ADR:
-                    return "Адрес";
+                    return STR_ADDRESS;
                 default:
                     return super.getColumnName(column);
             }
@@ -2199,11 +2239,15 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Таблица с данными ловушек".
      */
     private class TrapsTable extends JTable implements Observer {
+        private static final long serialVersionUID = -2863867273218289186L;
+
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик строковых полей таблицы с данными ловушек".
          */
         private class TrapsStringRenderer extends DefaultTableCellRenderer {
+            private static final long serialVersionUID = -7287183392747810798L;
+
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
@@ -2274,6 +2318,8 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Метка для отображения информации о странице памяти CPU".
      */
     private class CpuMemPageLabel extends JLabel implements Observer {
+        private static final long serialVersionUID = -3063697623043729485L;
+
         /**
          * Конструктор.
          */
@@ -2311,6 +2357,8 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Раскрывающийся список страниц памяти для просмотра кода".
      */
     private class CodeMemPagesComboBox extends JComboBox<String> implements Observer {
+        private static final long serialVersionUID = -3181859535069551623L;
+
         /**
          * Конструктор.
          */
@@ -2324,7 +2372,7 @@ final class DebuggerI8080 extends JDialog {
                 addItem("← ".concat(fLayer.getNamePage(i)));
             }
             // Выделяем элемент, соответствующий странице памяти Data RAM
-            setSelectedIndex((fLayer.getCodePage() >= cMD_SpMX_RAM.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage());
+            setSelectedIndex((fLayer.getCodePage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage());
             // Подключаемся к fLayer для прослушивания
             fLayer.addObserver(this);
         }
@@ -2333,7 +2381,7 @@ final class DebuggerI8080 extends JDialog {
         public void update(Observable o, Object arg) {
             if (   fLayer.eventCheck(arg, TypesEvents.PAGE, TypesMemoryPages.CODE)
                 || fLayer.eventCheck(arg, TypesEvents.STEP, null)) {
-                int index = (fLayer.getCodePage() >= cMD_SpMX_RAM.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage();
+                int index = (fLayer.getCodePage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
                 }
@@ -2345,6 +2393,8 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Раскрывающийся список страниц памяти для просмотра данных".
      */
     private class DataMemPagesComboBox extends JComboBox<String> implements Observer {
+        private static final long serialVersionUID = 5333943988947208325L;
+
         /**
          * Конструктор.
          */
@@ -2358,7 +2408,7 @@ final class DebuggerI8080 extends JDialog {
                 addItem("↓ ".concat(fLayer.getNamePage(i)));
             }
             // Выделяем элемент, соответствующий странице памяти Data RAM
-            setSelectedIndex((fLayer.getDataPage() >= cMD_SpMX_RAM.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage());
+            setSelectedIndex((fLayer.getDataPage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage());
             // Подключаемся к fLayer для прослушивания
             fLayer.addObserver(this);
         }
@@ -2366,7 +2416,7 @@ final class DebuggerI8080 extends JDialog {
         @Override
         public void update(Observable o, Object arg) {
             if (fLayer.eventCheck(arg, TypesEvents.PAGE, TypesMemoryPages.DATA)) {
-                int index = (fLayer.getDataPage() >= cMD_SpMX_RAM.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage();
+                int index = (fLayer.getDataPage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
                 }
@@ -2378,6 +2428,8 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Модель данных для данных оперативной памяти".
      */
     private class MemDatTableModel extends AbstractTableModel {
+        private static final long serialVersionUID = -4521079628054252705L;
+
         /**
          * Конструктор.
          */
@@ -2408,7 +2460,7 @@ final class DebuggerI8080 extends JDialog {
         public String getColumnName(int column) {
             switch (column) {
                 case MD_COL_ADR:
-                    return "Адрес";
+                    return STR_ADDRESS;
                 case MD_COL_B00:
                 case MD_COL_B01:
                 case MD_COL_B02:
@@ -2521,7 +2573,7 @@ final class DebuggerI8080 extends JDialog {
                     try {
                         fLayer.writeByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                        showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 case MD_COL_STR: {
@@ -2556,11 +2608,15 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Таблица с данными из оперативной памяти".
      */
     private class MemDatTable extends JTable implements Observer {
+        private static final long serialVersionUID = 9010843821123994652L;
+
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик строковых полей таблицы с данными памяти".
          */
         private class MemDatStringRenderer extends DefaultTableCellRenderer {
+            private static final long serialVersionUID = 6167947637905743660L;
+
             private int fPaintRow     ;
             private int fPaintColumn  ;
             private int fFocusedRow   ;
@@ -2760,6 +2816,8 @@ final class DebuggerI8080 extends JDialog {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Класс "Панель для диалога ввода адреса".
         class InputAddressPanel extends JPanel {
+            private static final long serialVersionUID = 3879988331395756986L;
+
             private final ExtFormattedTextField fCodeAddress;
             private final ExtFormattedTextField fDataAddress;
 
@@ -2818,16 +2876,15 @@ final class DebuggerI8080 extends JDialog {
                 try {
                     result = Integer.parseInt((String) (type ? fDataAddress.getValue() : fCodeAddress.getValue()), 16);
                 } catch (NumberFormatException e) {
-                    JOptionPane.showMessageDialog(DebuggerI8080.this, e.toString(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                    showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
                 }
                 return result;
             }
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         InputAddressPanel inputAddressPanel = new InputAddressPanel();
-        int result =  JOptionPane.showConfirmDialog(DebuggerI8080.this, inputAddressPanel,
-                "Go to ...", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (result == JOptionPane.OK_OPTION) {
+        int result =  showConfirmDialog(DebuggerI8080.this, inputAddressPanel, "Go to ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
+        if (result == OK_OPTION) {
             int codeAddress = inputAddressPanel.getAddress(false);
             int dataAddress = inputAddressPanel.getAddress(true );
 
@@ -2847,6 +2904,8 @@ final class DebuggerI8080 extends JDialog {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Класс "Панель для диалога ввода данных".
         class InputDataPanel extends JPanel {
+            private static final long serialVersionUID = 1767873090074086408L;
+
             private static final String REGEXP_STRING_BYTES = "^([\\dA-F]{1,2}( +|$))+";
 
             private final JTextField fBytes;
@@ -2878,6 +2937,8 @@ final class DebuggerI8080 extends JDialog {
                 JLabel bytesLabel = new JLabel("Байты :");
                 JLabel charsLabel = new JLabel("Строка:");
                 fBytes = new JTextField(new PlainDocument() {
+                    private static final long serialVersionUID = 3384345776522390223L;
+
                     @Override
                     public void insertString(int offs, String str, AttributeSet a) throws BadLocationException {
                         str = str.toUpperCase();
@@ -2984,9 +3045,8 @@ final class DebuggerI8080 extends JDialog {
                     public void focusLost(FocusEvent e) {
                         String strBytes = fBytes.getText().trim();
                         if (!( strBytes.equals("") || strBytes.matches(REGEXP_STRING_BYTES))) {
-                            JOptionPane.showMessageDialog(DebuggerI8080.this,
-                                    String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes),
-                                    "Ошибка", JOptionPane.ERROR_MESSAGE);
+                            showMessageDialog(DebuggerI8080.this,
+                                    String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes), STR_ERROR, ERROR_MESSAGE);
                         }
                     }
                 });
@@ -3039,11 +3099,10 @@ final class DebuggerI8080 extends JDialog {
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         InputDataPanel inputDataPanel = new InputDataPanel();
-        int result = JOptionPane.showConfirmDialog(DebuggerI8080.this, inputDataPanel,
-                String.format("Поиск в странице: [%s]", fLayer.getNamePage(fLayer.getDataPage())),
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+        int result = showConfirmDialog(DebuggerI8080.this, inputDataPanel,
+                String.format("Поиск в странице: [%s]", fLayer.getNamePage(fLayer.getDataPage())), OK_CANCEL_OPTION, QUESTION_MESSAGE);
 
-        if (result == JOptionPane.OK_OPTION) {
+        if (result == OK_OPTION) {
             int  start   = (fMemDatTable.getAddress() + 1) & 0xFFFF;
             int  address = inputDataPanel.find(start);
             if ((address == -2) && (start > 0)) {
@@ -3052,9 +3111,8 @@ final class DebuggerI8080 extends JDialog {
                    if (address >=  0) {
                 fMemDatTable.gotoAddress(address);
             } else if (address == -2) {
-                JOptionPane.showMessageDialog(DebuggerI8080.this,
-                        String.format("Заданные для поиска данные:%n[%s]%nНе найдены!", fPrevStringBytes),
-                        "Информация", JOptionPane.INFORMATION_MESSAGE);
+                showMessageDialog(DebuggerI8080.this,
+                        String.format("Заданные для поиска данные:%n[%s]%nНе найдены!", fPrevStringBytes), "Информация", INFORMATION_MESSAGE);
             }
         }
     }

@@ -4,16 +4,20 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * Устройство памяти "Оперативная память".
+ * Устройство памяти "Простая память".
  * @author -=AVSh=-
  */
-final class cMD_SimpleRAM implements IMemoryDevice {
+final class MemDevSimpleMemory implements IMemoryDevice {
     private final int fLength;
     private final byte[] fRAM;
 
-    cMD_SimpleRAM(int length) {
+    /**
+     * Конструктор.
+     * @param length длина
+     */
+    MemDevSimpleMemory(int length) {
         fLength = length;
-        fRAM = new byte[length];
+           fRAM = new byte[length];
     }
 
     @Override
@@ -44,7 +48,7 @@ final class cMD_SimpleRAM implements IMemoryDevice {
     }
 
     @Override
-    synchronized public String toString() {
+    public synchronized String toString() {
         return String.format("%s {Type = R/W; Length = %s}",
                 getClass().getSimpleName(), Integer.toHexString(getMemoryDeviceLength()));
     }
@@ -53,7 +57,7 @@ final class cMD_SimpleRAM implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SimpleRAM that = (cMD_SimpleRAM) o;
+        MemDevSimpleMemory that = (MemDevSimpleMemory) o;
         return Objects.equals(this.fLength, that.fLength);
     }
 

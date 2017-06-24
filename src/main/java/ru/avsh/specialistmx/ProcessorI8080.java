@@ -80,6 +80,9 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Конструктор.
+     * @param spMX ссылка на объект класса SpecialistMX - "Компьютер 'Специалист MX'"
+     * @param mDM ссылка на объект класса MemoryDevicesManager - "Быстрый диспетчер устройств памяти" (устройства памяти)
+     * @param ioDM ссылка на объект класса MemoryDevicesManager - "Быстрый диспетчер устройств памяти" (устройства ввода/вывода)
      */
     ProcessorI8080(@NotNull SpecialistMX spMX, @NotNull MemoryDevicesManager mDM, MemoryDevicesManager ioDM) {
         fSpMX = spMX;

@@ -4,7 +4,7 @@
   <groupId>ru.avsh.specialistmx</groupId>
   <artifactId>specialist_mx</artifactId>
   <name>Specialist MX</name>
-  <version>1.7.0</version>
+  <version>1.7.1</version>
   <description>The emulator of the computer "${project.name}"</description>
   <scm>
     <connection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git</connection>
@@ -82,7 +82,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-dependency-plugin</artifactId>
-        <version>3.0.0</version>
+        <version>3.0.1</version>
         <executions>
           <execution>
             <id>copy-dependencies</id>
@@ -123,7 +123,7 @@
       <plugin>
         <groupId>com.akathist.maven.plugins.launch4j</groupId>
         <artifactId>launch4j-maven-plugin</artifactId>
-        <version>1.7.16</version>
+        <version>1.7.18</version>
         <executions>
           <execution>
             <id>l4j-clui</id>

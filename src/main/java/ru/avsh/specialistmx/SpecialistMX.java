@@ -19,13 +19,13 @@ import static ru.avsh.specialistmx.ConsStat.*;
 final class SpecialistMX {
     private final String fProductName;
 
-    private final ProcessorI8080 fCPU;
-    private final cMD_SpMX_RAM fRAM;
-    private final MemDevFloppyDiskController fFDC;
-    private final ClockGenerator fGen;
     private final MemDevScreen fScr;
-    private final cMD_SpMX_KeyPort fKey;
+    private final ProcessorI8080 fCPU;
+    private final ClockGenerator fGen;
+    private final MemDevMainMemory fRAM;
+    private final MemDevKeyboardPort fKey;
     private final MemoryDevicesManager fMemDevMng;
+    private final MemDevFloppyDiskController fFDC;
     /* Пока не используем!
     private final MemoryDevicesManager fInOutDevMng; */
 
@@ -69,16 +69,17 @@ final class SpecialistMX {
             fSpc = null;
         }
         // Создаем устройства памяти
-        fScr = new MemDevScreen(    );
-        fRAM = new cMD_SpMX_RAM    (NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
-        fKey = new cMD_SpMX_KeyPort(fSpc);
+        fScr = new MemDevScreen();
+        fRAM = new MemDevMainMemory(NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
+        fKey = new MemDevKeyboardPort(fSpc);
         fFDC = new MemDevFloppyDiskController(fGen, fCPU);
-        cMD_SimpleRAM      excRAM  = new cMD_SimpleRAM     (0x20 );
-        MemDevTimer timer   = new MemDevTimer(fSpc );
-        cMD_SpMX_PrgPort   prgPort = new cMD_SpMX_PrgPort  (timer);
-        cMD_SpMX_FDC_Port  fdcPort = new cMD_SpMX_FDC_Port (fFDC );
-        cMD_SpMX_ColorPort colPort = new cMD_SpMX_ColorPort(fScr );
-        cMD_SpMX_RAM_Port  ramPort = new cMD_SpMX_RAM_Port (fRAM );
+
+        MemDevTimer                    timer   = new MemDevTimer                   (fSpc );
+        MemDevSimpleMemory             excRAM  = new MemDevSimpleMemory            (0x20 );
+        MemDevProgrammerPort           prgPort = new MemDevProgrammerPort          (timer);
+        MemDevMainMemoryPort           ramPort = new MemDevMainMemoryPort          (fRAM );
+        MemDevScreenColorPort          colPort = new MemDevScreenColorPort         (fScr );
+        MemDevFloppyDiskControllerPort fdcPort = new MemDevFloppyDiskControllerPort(fFDC );
 
         // Добавляем тактируемые устройства в тактововый генератор
         fGen.addClockedDevice(fCPU );
@@ -187,7 +188,7 @@ final class SpecialistMX {
      * Возвращает ссылку на память.
      * @return ссылка на память
      */
-    cMD_SpMX_RAM getRAM() {
+    MemDevMainMemory getRAM() {
         return fRAM;
     }
 
@@ -573,7 +574,7 @@ final class SpecialistMX {
                 fCPU.debugClearTraps();
             }
             // Включаем ROM-диск
-            setPage(cMD_SpMX_RAM.ROM_DISK);
+            setPage(MemDevMainMemory.ROM_DISK);
             // Загружаем BIOS "Специалиста_MX"
             loadROM();
             // Запоминаем имя ROM-файла
@@ -601,7 +602,7 @@ final class SpecialistMX {
             // Сбрасываем устройства памяти (без полной очистки)
             fMemDevMng.resetMemoryDevices(false);
             // Включаем ROM-диск
-            setPage(cMD_SpMX_RAM.ROM_DISK);
+            setPage(MemDevMainMemory.ROM_DISK);
             try {
                 // Загружаем ROM-файл в страницу ROM-диска
                 loadFile(file, 0x0000, 0, 0, -1);
@@ -722,7 +723,7 @@ final class SpecialistMX {
             try (BufferedReader cpuFile = new BufferedReader(new FileReader(file))) {
                 int index = 0;
                 for (String line; (index <= 2) && ((line = cpuFile.readLine()) != null); index++) {
-                    line = line.trim().toLowerCase();
+                    line  = line.trim().toLowerCase();
                     switch (index) {
                         case 0: // Читаем начальный адрес
                              loadAdr = Integer.parseInt(line, 16);

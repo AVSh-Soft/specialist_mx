@@ -5,18 +5,22 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Objects;
 
 /**
- * Устройство памяти "Порт для установки цвета фона/изображения на экране Specialist_MX".
+ * Устройство памяти "Порт для установки цвета фона/изображения на экране 'Специалиста MX'".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_ColorPort implements IMemoryDevice {
+final class MemDevScreenColorPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 1;
 
     private int fCurrentColor;
     private final MemDevScreen fScreen;
 
-    cMD_SpMX_ColorPort(@NotNull MemDevScreen screen) {
-        fScreen     = screen;
-        fCurrentColor = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
+    /**
+     * Конструктор.
+     * @param screen ссылка на объект класса MemDevScreen - "Экран 'Специалиста MX'"
+     */
+    MemDevScreenColorPort(@NotNull MemDevScreen screen) {
+        fScreen       = screen;
+        fCurrentColor = MemDevScreen.DEFAULT_COLOR;
     }
 
     @Override
@@ -42,14 +46,14 @@ final class cMD_SpMX_ColorPort implements IMemoryDevice {
 
     @Override
     public void reset(boolean clear) {
-        fCurrentColor = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
+        fCurrentColor = MemDevScreen.DEFAULT_COLOR;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SpMX_ColorPort that = (cMD_SpMX_ColorPort) o;
+        MemDevScreenColorPort that = (MemDevScreenColorPort) o;
         return Objects.equals(this.fScreen, that.fScreen);
     }
 

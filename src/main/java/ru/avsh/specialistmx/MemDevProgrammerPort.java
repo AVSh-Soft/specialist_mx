@@ -5,16 +5,23 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Objects;
 
 /**
- * Устройство памяти "Порт программатора Specialist_MX на базе КР580ВВ55А (i8255A)".
+ * Устройство памяти "Порт программатора 'Специалист MX' на базе КР580ВВ55А (i8255A)".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_PrgPort implements IMemoryDevice {
+final class MemDevProgrammerPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
-    private int fPA, fPB, fPC, fPR;
+    private int fPA;
+    private int fPB;
+    private int fPC;
+    private int fPR;
     private final MemDevTimer fTimer;
 
-    cMD_SpMX_PrgPort(@NotNull MemDevTimer timer) {
+    /**
+     * Конструктор.
+     * @param timer ссылка на объект MemDevTimer - "Программируемый таймер КР580ВИ53 (i8253)"
+     */
+    MemDevProgrammerPort(@NotNull MemDevTimer timer) {
         fTimer = timer;
         fPR    = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
     }
@@ -26,7 +33,7 @@ final class cMD_SpMX_PrgPort implements IMemoryDevice {
 
     @Override
     public int readByte(int address) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address  >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
             int result = 0;
             switch (address) {
                 case 0:
@@ -50,6 +57,8 @@ final class cMD_SpMX_PrgPort implements IMemoryDevice {
                     }
                     break;
                 case 3:
+                    break;
+                default:
                     break;
             }
             return result;
@@ -92,6 +101,8 @@ final class cMD_SpMX_PrgPort implements IMemoryDevice {
                         fPA = fPB = fPC = 0;
                     }
                     break;
+                default:
+                    break;
             }
         }
     }
@@ -106,7 +117,7 @@ final class cMD_SpMX_PrgPort implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SpMX_PrgPort that = (cMD_SpMX_PrgPort) o;
+        MemDevProgrammerPort that = (MemDevProgrammerPort) o;
         return Objects.equals(fTimer, that.fTimer);
     }
 

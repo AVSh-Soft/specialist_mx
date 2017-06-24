@@ -499,7 +499,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Конструктор.
-     * @param speaker ссылка на Speaker
+     * @param speaker ссылка на объект класса Speaker - "Speaker (динамик)"
      */
     MemDevTimer(Speaker speaker) {
         fSpeaker  = speaker;

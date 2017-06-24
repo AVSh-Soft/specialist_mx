@@ -539,6 +539,8 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Конструктор.
+     * @param gen ссылка на объект класса ClockGenerator - "Тактовый генератор"
+     * @param cpu ссылка на объект класса ProcessorI8080 - "Процессор Intel C8080A (К580ВМ80А)"
      */
     MemDevFloppyDiskController(@NotNull ClockGenerator gen, ProcessorI8080 cpu) {
         // Устанавливаем ссылку на тактовый генератор

@@ -23,7 +23,7 @@ import static ru.avsh.specialistmx.ConsStat.STR_ERROR;
  * Класс "Диалог сохранения блока".
  * @author -=AVSh=-
  */
-final class SaveBlockDialog extends JDialog {
+final class BlockSaveDialog extends JDialog {
     private static final long serialVersionUID = -8762963068896802973L;
 
     private static final String WORD_MASK = "HHHH";
@@ -39,7 +39,7 @@ final class SaveBlockDialog extends JDialog {
      * Instantiates a new Save block dialog.
      * @param owner the owner
      */
-    SaveBlockDialog(Frame owner) {
+    BlockSaveDialog(Frame owner) {
         super(owner, true);
         initComponents();
     }

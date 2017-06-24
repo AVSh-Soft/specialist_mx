@@ -9,7 +9,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Устройство памяти "Порт клавиатуры Specialist_MX на базе КР580ВВ55А (i8255A)".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_KeyPort implements IMemoryDevice {
+final class MemDevKeyboardPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     /*
@@ -94,12 +94,22 @@ final class cMD_SpMX_KeyPort implements IMemoryDevice {
     /* F */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000
     };
 
-    private int fPA, fPB, fPC, fPR;
+    private int fPA;
+    private int fPB;
+    private int fPC;
+    private int fPR;
+
     private final Speaker fSpeaker;
     private final List<Integer> fKeyBuffer;
-    private volatile boolean fShiftKey, fKeyboardMode;
 
-    cMD_SpMX_KeyPort(Speaker speaker) {
+    private volatile boolean fShiftKey;
+    private volatile boolean fKeyboardMode;
+
+    /**
+     * Конструктор.
+     * @param speaker ссылка на объект класса Speaker - "Speaker (динамик)"
+     */
+    MemDevKeyboardPort(Speaker speaker) {
         fPR = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
         fSpeaker = speaker;
         fKeyBuffer = new CopyOnWriteArrayList<>();
@@ -163,6 +173,8 @@ final class cMD_SpMX_KeyPort implements IMemoryDevice {
                                     result &= 0b1111_1101;
                                 }
                                 break;
+                            default:
+                                break;
                         }
                     }
                     break;
@@ -190,6 +202,8 @@ final class cMD_SpMX_KeyPort implements IMemoryDevice {
                     }
                     break;
                 case 3:
+                    break;
+                default:
                     break;
             }
             return result;
@@ -238,6 +252,8 @@ final class cMD_SpMX_KeyPort implements IMemoryDevice {
                         fPA = fPB = fPC = 0;
                     }
                     break;
+                default:
+                    break;
             }
         }
     }
@@ -266,7 +282,7 @@ final class cMD_SpMX_KeyPort implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SpMX_KeyPort that = (cMD_SpMX_KeyPort) o;
+        MemDevKeyboardPort that = (MemDevKeyboardPort) o;
         return Objects.equals(this.fSpeaker, that.fSpeaker);
     }
 

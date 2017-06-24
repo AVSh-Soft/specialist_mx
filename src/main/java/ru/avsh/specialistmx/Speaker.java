@@ -246,7 +246,7 @@ final class Speaker {
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Конструктор.
-     * @param  gen для связи Speaker с тактовым геренратором ClockGenerator
+     * @param  gen ссылка на объект класса ClockGenerator - "Тактовый генератор"
      * @throws LineUnavailableException if a matching source data line
      *         is not available due to resource restrictions
      */

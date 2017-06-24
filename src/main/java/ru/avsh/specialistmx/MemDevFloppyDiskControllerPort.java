@@ -8,13 +8,17 @@ import java.util.Objects;
  * Устройство памяти "Дополнительные порты контроллера НГМД"
  * @author -=AVSh=-
  */
-final class cMD_SpMX_FDC_Port implements IMemoryDevice {
+final class MemDevFloppyDiskControllerPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
-    private final MemDevFloppyDiskController fMainFDC;
+    private final MemDevFloppyDiskController fFDC;
 
-    cMD_SpMX_FDC_Port(@NotNull MemDevFloppyDiskController mainFDC) {
-        fMainFDC = mainFDC;
+    /**
+     * Конструктор.
+     * @param fdc ссылка на объект класса MemDevFloppyDiskController - "Контроллер НГМД КР1818ВГ93 (FD1793-02)"
+     */
+    MemDevFloppyDiskControllerPort(@NotNull MemDevFloppyDiskController fdc) {
+        fFDC = fdc;
     }
 
     @Override
@@ -27,15 +31,17 @@ final class cMD_SpMX_FDC_Port implements IMemoryDevice {
         if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
             switch (address) {
                 case 0: // Порт синхронизации CPU с контроллером НГМД
-                    fMainFDC.waitDataRequest();
+                    fFDC.waitDataRequest();
                     break;
                 case 1: // Порт переключения плотности дискет (игнорируем)
                     break;
                 case 2: // Порт переключения стороны диска
-                    fMainFDC.setSide((value & 1) != 0);
+                    fFDC.setSide((value & 1) != 0);
                     break;
                 case 3: // Порт переключения дисководов
-                    fMainFDC.switchFDD((value & 1) != 0);
+                    fFDC.switchFDD((value & 1) != 0);
+                    break;
+                default:
                     break;
             }
         }
@@ -45,12 +51,12 @@ final class cMD_SpMX_FDC_Port implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SpMX_FDC_Port that = (cMD_SpMX_FDC_Port) o;
-        return Objects.equals(fMainFDC, that.fMainFDC);
+        MemDevFloppyDiskControllerPort that = (MemDevFloppyDiskControllerPort) o;
+        return Objects.equals(fFDC, that.fFDC);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fMainFDC);
+        return Objects.hash(fFDC);
     }
 }
