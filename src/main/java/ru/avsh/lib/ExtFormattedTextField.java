@@ -12,6 +12,8 @@ import java.text.ParseException;
  * @author -=AVSh=-
  */
 public class ExtFormattedTextField extends JFormattedTextField {
+    private static final long serialVersionUID = 8878373188408325948L;
+
     /**
      * Конструктор.
      * @param mask Sets the mask dictating the legal characters.

@@ -11,6 +11,8 @@ import java.awt.*;
  * @author O'Reilly and -=AVSh=-
  */
 public class WideCaret extends DefaultCaret {
+    private static final long serialVersionUID = -8622932384077305706L;
+
     /**
      * Конструктор.
      * @param rate the rate in milliseconds, 0 to stop blinking
