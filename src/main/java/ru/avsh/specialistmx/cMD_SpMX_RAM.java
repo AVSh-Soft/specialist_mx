@@ -20,14 +20,14 @@ final class cMD_SpMX_RAM implements IMemoryDevice {
     private final int fNumberPages;
     private volatile int fCurrentPage;
     private volatile int fCurrentOffset;
-    private final cMD_SpMX_Screen fScreen;
+    private final MemDevScreen fScreen;
 
     /**
      * Конструктор.
      * @param numberPages количество страниц памяти (не считая ROM-диск)
      * @param screen ссылка на экран
      */
-    cMD_SpMX_RAM(int numberPages, cMD_SpMX_Screen screen) {
+    cMD_SpMX_RAM(int numberPages, MemDevScreen screen) {
          numberPages = Math.min(Math.max(numberPages, MIN_NUMBER_PAGES), MAX_NUMBER_PAGES);
         fNumberPages = numberPages;
              fScreen = screen;

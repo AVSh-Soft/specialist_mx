@@ -1,7 +1,7 @@
 package ru.avsh.specialistmx;
 
 import ru.avsh.lib.ExtFormattedTextField;
-import ru.avsh.specialistmx.CpuI8080.DebugRegPairs;
+import ru.avsh.specialistmx.ProcessorI8080.DebugRegPairs;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -31,6 +31,8 @@ import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharA
  * @author -=AVSh=-
  */
 final class DebuggerI8080 extends JDialog {
+    private static final long serialVersionUID = -4782408965788448666L;
+
     private static final String INI_OPTION_FRAME_WIDTH  = "DebugFrameWidth" ;
     private static final String INI_OPTION_FRAME_HEIGHT = "DebugFrameHeight";
 
@@ -863,7 +865,7 @@ final class DebuggerI8080 extends JDialog {
      * Класс "Слой для взаимодействия отладчика с CPU и памятью".
      */
     private class Layer extends Observable {
-        private final CpuI8080 fCPU;
+        private final ProcessorI8080 fCPU;
 
         private boolean fDisableEvents;
         private int     fCodePage;
@@ -872,7 +874,7 @@ final class DebuggerI8080 extends JDialog {
         /**
          * Конструктор.
          */
-        Layer(CpuI8080 cpu) {
+        Layer(ProcessorI8080 cpu) {
             fCPU = cpu;
             // Заполняем пустой массив предыдущих значений регистровых пар
             if ((getPrevValRegPair(DebugRegPairs.AF) & 0xFF) == 0) {

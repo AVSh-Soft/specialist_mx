@@ -53,7 +53,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
     private final AtomicBoolean fWasDataRequest;
 
     // Переменные
-    private final CpuI8080 fCPU;
+    private final ProcessorI8080 fCPU;
     private final Object fMutex;
     private final ClockGenerator  fGen;
     private final FloppyDiskDrive fDriveA;
@@ -346,14 +346,14 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
                 for (int i = 0; i < length; i++) {
                     // Устанавливаем флаг "Запрос данных"
                     setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
-                    // Ожидаем, когда CPU заполнит регистр данных (время ожидания с учетом особенностей реализации CPU в классе CpuI8080)
+                    // Ожидаем, когда CPU заполнит регистр данных (время ожидания с учетом особенностей реализации CPU в классе ProcessorI8080)
                     waitData(CPU_WAIT_TIME);
-                    // Если CPU не заполнил регистр данных вовремя
-                    if (getStatusFlag(F_INDEX_OR_DATA_REQUEST)) {
-                        // Устанавливаем флаг "Потеря данных"
-                        setStatusFlag(F_TRACK_00_OR_LOST_DATA, true);
+                    // Если было принудительное прерывание
+                    if (fInterrupt.get()) {
+                        // Записываем последний байт из регистра данных в буфер
+                        fBuf[i] = (byte) fRegData.get();
                         // Вычисляем длину удачно переданных в буфер данных
-                        length = (i / ODI_SECTOR_LENGTH) * ODI_SECTOR_LENGTH;
+                        length = ((i + 1) / ODI_SECTOR_LENGTH) * ODI_SECTOR_LENGTH;
                         // Записываем удачные данные
                         if (length > 0) {
                             break;
@@ -361,12 +361,12 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
                         // Иначе выходим
                         return;
                     }
-                    // Если было принудительное прерывание
-                    if (fInterrupt.get()) {
-                        // Записываем последний байт из регистра данных в буфер
-                        fBuf[i] = (byte) fRegData.get();
+                    // Если CPU не заполнил регистр данных вовремя
+                    if (getStatusFlag(F_INDEX_OR_DATA_REQUEST)) {
+                        // Устанавливаем флаг "Потеря данных"
+                        setStatusFlag(F_TRACK_00_OR_LOST_DATA, true);
                         // Вычисляем длину удачно переданных в буфер данных
-                        length = ((i + 1) / ODI_SECTOR_LENGTH) * ODI_SECTOR_LENGTH;
+                        length = (i / ODI_SECTOR_LENGTH) * ODI_SECTOR_LENGTH;
                         // Записываем удачные данные
                         if (length > 0) {
                             break;
@@ -412,7 +412,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
                     fRegData.getAndSet(fBuf[i] & 0xFF);
                     // Устанавливаем флаг "Запрос данных"
                     setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
-                    // Ожидаем, когда CPU прочитает данные из регистра данных (время ожидания с учетом особенностей реализации CPU в классе CpuI8080)
+                    // Ожидаем, когда CPU прочитает данные из регистра данных (время ожидания с учетом особенностей реализации CPU в классе ProcessorI8080)
                     waitData(CPU_WAIT_TIME);
                     // Если CPU не прочитал вовремя данные из регистра данных
                     if (getStatusFlag(F_INDEX_OR_DATA_REQUEST)) {
@@ -540,7 +540,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
     /**
      * Конструктор.
      */
-    MemDevFloppyDiskController(@NotNull ClockGenerator gen, CpuI8080 cpu) {
+    MemDevFloppyDiskController(@NotNull ClockGenerator gen, ProcessorI8080 cpu) {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Устанавливаем ссылку на CPU

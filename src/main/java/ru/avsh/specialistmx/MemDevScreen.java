@@ -10,9 +10,9 @@ import java.util.Objects;
  * Класс "Экран Специалиста_MX".
  * @author -=AVSh=-
  */
-final class cMD_SpMX_Screen extends JPanel implements IMemoryDevice {
-    private static final long serialVersionUID = 1L;
-    
+final class MemDevScreen extends JPanel implements IMemoryDevice {
+    private static final long serialVersionUID = 1612671161249875581L;
+
             static final int   SCREEN_WIDTH  = 384;
             static final int   SCREEN_HEIGHT = 256;
     private static final float ASPECT_RATIO  = (float) SCREEN_WIDTH / (float) SCREEN_HEIGHT;
@@ -41,16 +41,17 @@ final class cMD_SpMX_Screen extends JPanel implements IMemoryDevice {
 
     static final int DEFAULT_COLOR = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
 
-    private final int            fLength;
-    private final BufferedImage  fBufImg;
-    private final WritableRaster fRaster;
 
-    private volatile Object  fColData  ;
-    private volatile Object  fColDataBg;
-    private volatile boolean fEnable   ;
-    private volatile boolean fChanges  ;
+    private final int fLength;
+    private final transient BufferedImage  fBufImg;
+    private final transient WritableRaster fRaster;
 
-    cMD_SpMX_Screen() {
+    private volatile boolean fEnable ;
+    private volatile boolean fChanges;
+    private transient volatile Object fColData  ;
+    private transient volatile Object fColDataBg;
+
+    MemDevScreen() {
         fLength = (SCREEN_HEIGHT * SCREEN_WIDTH) / 8; // Размер экранной области в байтах (каждый пиксел = 1 бит)
         
         fBufImg = new BufferedImage(SCREEN_WIDTH, SCREEN_HEIGHT, BufferedImage.TYPE_INT_ARGB);
@@ -124,7 +125,7 @@ final class cMD_SpMX_Screen extends JPanel implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SpMX_Screen that = (cMD_SpMX_Screen) o;
+        MemDevScreen that = (MemDevScreen) o;
         return Objects.equals(this.fLength, that.fLength);
     }
 

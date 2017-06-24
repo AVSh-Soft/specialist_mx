@@ -12,9 +12,9 @@ final class cMD_SpMX_ColorPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 1;
 
     private int fCurrentColor;
-    private final cMD_SpMX_Screen fScreen;
+    private final MemDevScreen fScreen;
 
-    cMD_SpMX_ColorPort(@NotNull cMD_SpMX_Screen screen) {
+    cMD_SpMX_ColorPort(@NotNull MemDevScreen screen) {
         fScreen     = screen;
         fCurrentColor = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
     }

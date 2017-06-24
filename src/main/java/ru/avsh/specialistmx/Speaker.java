@@ -17,14 +17,14 @@ final class Speaker {
     // Константы для разбивки на сэмплы
     private static final float SAMPLE_RATE            = 44100F;
     private static final float CYCLES_PER_SAMPLE      = ClockGenerator.CLOCK_SPEED / SAMPLE_RATE;
-    private static final float HALF_CYCLES_PER_SAMPLE =           CYCLES_PER_SAMPLE /  2;
+    private static final float HALF_CYCLES_PER_SAMPLE =          CYCLES_PER_SAMPLE /  2;
     // Константы для отбора полупериодов
     private static final int   BEG_HALF_CYCLE         = ClockGenerator.CLOCK_SPEED / 40; // Стартовая максимальная длина полупериода (частота от 20Гц)
     private static final int   MAX_HALF_CYCLE         = ClockGenerator.CLOCK_SPEED /  4; // Максимальная длина полупериода для воспроизведения пауз без искажений (от 2Гц)
     // Константы для задания времени наполнения буфера
     private static final int   BUF_TIME               = 100; // В миллисекундах
-    private static final int   BUF_SAMPLES_TIME       =      Math.round(SAMPLE_RATE * BUF_TIME / 1000); // В семплах
-    private static final int   BUF_CYCLES_TIME        = ClockGenerator.CLOCK_SPEED * BUF_TIME / 1000 ; // В тактах
+    private static final int   BUF_SAMPLES_TIME       =     Math.round(SAMPLE_RATE * BUF_TIME / 1000); // В семплах
+    private static final long  BUF_CYCLES_TIME        = ClockGenerator.CLOCK_SPEED * BUF_TIME / 1000 ; // В тактах
     // Прочие константы
     private static final float SAMPLES_PER_MS         = SAMPLE_RATE / 1000;
     private static final int   SAMPLES_PER_2MS        = Math.round(2 * SAMPLES_PER_MS) ;
@@ -47,32 +47,34 @@ final class Speaker {
      * Внутренний класс "Звуковая очередь".
      */
     private class SoundQueue extends ConcurrentLinkedQueue<Integer> {
+        private static final long serialVersionUID = 5717602369118717669L;
+
         // Счетчик времени всех полупериодов в очереди
         private final AtomicInteger fTime = new AtomicInteger();
 
         @Override
-        public boolean offer(Integer integer) {
-            boolean result = super.offer(integer);
-            if (result) {
-                fTime.getAndAdd(integer);
+        public boolean offer(Integer e) {
+            boolean result = super.offer(e);
+            if     (result) {
+                fTime.getAndAdd(e);
             }
             return result;
         }
 
         @Override
         public Integer poll() {
-            Integer integer = super.poll();
-            if (integer != null) {
-                fTime.getAndAdd(-integer);
+            Integer item  = super.poll();
+            if     (item != null) {
+                fTime.getAndAdd(-item);
             }
-            return integer;
+            return item;
         }
 
         /**
          * Возвращает время всех полупериодов в очереди.
          * @return время всех полупериодов в очереди
          */
-        int getTime() {
+        long getTime() {
             return fTime.get();
         }
     }

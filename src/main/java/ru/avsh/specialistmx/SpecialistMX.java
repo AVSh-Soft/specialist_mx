@@ -19,15 +19,15 @@ import static ru.avsh.specialistmx.ConsStat.*;
 final class SpecialistMX {
     private final String fProductName;
 
-    private final CpuI8080 fCPU;
+    private final ProcessorI8080 fCPU;
     private final cMD_SpMX_RAM fRAM;
     private final MemDevFloppyDiskController fFDC;
     private final ClockGenerator fGen;
-    private final cMD_SpMX_Screen fScr;
+    private final MemDevScreen fScr;
     private final cMD_SpMX_KeyPort fKey;
-    private final cMemoryDevicesManager fMemDevMng;
+    private final MemoryDevicesManager fMemDevMng;
     /* Пока не используем!
-    private final cMemoryDevicesManager fInOutDevMng; */
+    private final MemoryDevicesManager fInOutDevMng; */
 
     private Wini    fIni;
     private Speaker fSpc;
@@ -59,9 +59,9 @@ final class SpecialistMX {
         // Создаем тактовый генератор
         fGen = new ClockGenerator();
         // Создаем диспетчер устройств памяти
-        fMemDevMng = new cMemoryDevicesManager();
+        fMemDevMng = new MemoryDevicesManager();
         // Создаем CPU
-        fCPU = new CpuI8080(this, fMemDevMng, null); // fInOutDevMng - пока не используем!
+        fCPU = new ProcessorI8080(this, fMemDevMng, null); // fInOutDevMng - пока не используем!
         // Создаем Speaker
         try {
             fSpc = new Speaker(fGen);
@@ -69,12 +69,12 @@ final class SpecialistMX {
             fSpc = null;
         }
         // Создаем устройства памяти
-        fScr = new cMD_SpMX_Screen (    );
+        fScr = new MemDevScreen(    );
         fRAM = new cMD_SpMX_RAM    (NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
         fKey = new cMD_SpMX_KeyPort(fSpc);
         fFDC = new MemDevFloppyDiskController(fGen, fCPU);
         cMD_SimpleRAM      excRAM  = new cMD_SimpleRAM     (0x20 );
-        cMD_SpMX_Timer     timer   = new cMD_SpMX_Timer    (fSpc );
+        MemDevTimer timer   = new MemDevTimer(fSpc );
         cMD_SpMX_PrgPort   prgPort = new cMD_SpMX_PrgPort  (timer);
         cMD_SpMX_FDC_Port  fdcPort = new cMD_SpMX_FDC_Port (fFDC );
         cMD_SpMX_ColorPort colPort = new cMD_SpMX_ColorPort(fScr );
@@ -171,7 +171,7 @@ final class SpecialistMX {
      * Возвращает ссылку на диспетчер устройств памяти.
      * @return ссылка на диспетчер устройств памяти
      */
-    cMemoryDevicesManager getMemDevMng() {
+    MemoryDevicesManager getMemDevMng() {
         return fMemDevMng;
     }
 
@@ -179,7 +179,7 @@ final class SpecialistMX {
      * Возвращает ссылку на CPU.
      * @return ссылка на CPU
      */
-    CpuI8080 getCPU() {
+    ProcessorI8080 getCPU() {
         return fCPU;
     }
 
@@ -195,7 +195,7 @@ final class SpecialistMX {
      * Возвращает ссылку на экран.
      * @return ссылка на экран
      */
-    cMD_SpMX_Screen getScreen() {
+    MemDevScreen getScreen() {
         return fScr;
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -387,7 +387,7 @@ final class SpecialistMX {
     private void run(int address) {
         pause(true, true);
         fCPU.run(address);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе CpuI8080)
+        // Проверям ловушки (стартовые ловушки не отслеживаются в классе ProcessorI8080)
         if (fCPU.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {
@@ -403,7 +403,7 @@ final class SpecialistMX {
     private void reset(int address, boolean resetMemoryDevices) {
         pause(true, true);
         fCPU.reset(address, resetMemoryDevices);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе CpuI8080)
+        // Проверям ловушки (стартовые ловушки не отслеживаются в классе ProcessorI8080)
         if (fCPU.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {
@@ -692,7 +692,7 @@ final class SpecialistMX {
         }
         if (runFlag) {
             // Если выбрана загрузка с запуском, то устанавливаем цвет по умолчанию
-            fScr.setColor(cMD_SpMX_Screen.DEFAULT_COLOR);
+            fScr.setColor(MemDevScreen.DEFAULT_COLOR);
             // Устанавливаем режим порта клавиатуры по умолчанию
             fKey.setDefaultMode();
             // Сбрасываем Speaker

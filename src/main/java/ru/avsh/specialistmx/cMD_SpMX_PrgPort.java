@@ -12,9 +12,9 @@ final class cMD_SpMX_PrgPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     private int fPA, fPB, fPC, fPR;
-    private final cMD_SpMX_Timer fTimer;
+    private final MemDevTimer fTimer;
 
-    cMD_SpMX_PrgPort(@NotNull cMD_SpMX_Timer timer) {
+    cMD_SpMX_PrgPort(@NotNull MemDevTimer timer) {
         fTimer = timer;
         fPR    = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
     }

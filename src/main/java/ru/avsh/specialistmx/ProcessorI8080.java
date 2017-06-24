@@ -12,7 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Класс "Процессор Intel C8080A (К580ВМ80А)".
  * @author -=AVSh=-
  */
-final class CpuI8080 implements IClockedDevice {
+final class ProcessorI8080 implements IClockedDevice {
     // Количество тактов для каждой команды CPU
     private static final int[] CYCLES = {
                  4, 10,      7,  5,      5,  5,  7,  4,      4, 10,      7,  5,      5,  5,  7,  4,
@@ -67,8 +67,8 @@ final class CpuI8080 implements IClockedDevice {
     private final SpecialistMX fSpMX;
     private final Trap  fCompareTrap;
     private final List<Trap>  fTraps;
-    private final cMemoryDevicesManager fMDM ;
-    private final cMemoryDevicesManager fIoDM;
+    private final MemoryDevicesManager fMDM ;
+    private final MemoryDevicesManager fIoDM;
 
     private int fOpCode;
     private boolean fTestResult;
@@ -81,7 +81,7 @@ final class CpuI8080 implements IClockedDevice {
     /**
      * Конструктор.
      */
-    CpuI8080(@NotNull SpecialistMX spMX, @NotNull cMemoryDevicesManager mDM, cMemoryDevicesManager ioDM) {
+    ProcessorI8080(@NotNull SpecialistMX spMX, @NotNull MemoryDevicesManager mDM, MemoryDevicesManager ioDM) {
         fSpMX = spMX;
         fMDM  =  mDM;
         fIoDM = ioDM;
@@ -1311,10 +1311,10 @@ final class CpuI8080 implements IClockedDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        CpuI8080 cpuI8080 = (CpuI8080) o;
-        return Objects.equals(fSpMX, cpuI8080.fSpMX) &&
-               Objects.equals( fMDM, cpuI8080.fMDM ) &&
-               Objects.equals(fIoDM, cpuI8080.fIoDM);
+        ProcessorI8080 processorI8080 = (ProcessorI8080) o;
+        return Objects.equals(fSpMX, processorI8080.fSpMX) &&
+               Objects.equals( fMDM, processorI8080.fMDM ) &&
+               Objects.equals(fIoDM, processorI8080.fIoDM);
     }
 
     @Override

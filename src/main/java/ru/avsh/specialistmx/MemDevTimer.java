@@ -8,7 +8,7 @@ import java.util.Objects;
  * (на входы GATE всех таймеров подается логическая 1, Counter #1 соединен каскадно с Counter #2).
  * @author -=AVSh=-
  */
-final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
+final class MemDevTimer implements IMemoryDevice, IClockedDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     // Режимы чтения/загрузки счетчика таймера
@@ -18,9 +18,9 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
     private static final int RLM_LSB_MSB = 3; // Чтение / загрузка сначала LSB, а затем MSB (16-битный режим)
 
     private final Speaker fSpeaker ;
-    private final cCounter fCounter0;
-    private final cCounter fCounter1;
-    private final cCounter fCounter2;
+    private final Counter fCounter0;
+    private final Counter fCounter1;
+    private final Counter fCounter2;
 
     private boolean fPause;
 
@@ -28,7 +28,7 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
     /**
      * Внутренний класс "Счетчик" (реализует один счетчик таймера КР580ВИ53).
      */
-    private class cCounter {
+    private class Counter {
         private boolean fBCD   ; // Режим счета (True = двоично-десятичный счет, False = двоичный счет)
         private int     fMode  ; // Режим работы счетчика
         private int     fAccess; // Режим чтения/загрузки счетчика
@@ -52,7 +52,7 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
         /**
          * Конструктор.
          */
-        cCounter() {
+        Counter() {
             reset();
         }
 
@@ -155,6 +155,8 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                             fLatch        = value;
                             fLatchedCount = 2;
                             break;
+                        default:
+                            break;
                     }
                 }
             } else {
@@ -207,6 +209,8 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                         }
                         fReadMSB = !fReadMSB;
                         break;
+                    default:
+                        break;
                 }
             }
             return data;
@@ -243,6 +247,8 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                         } else {
                             data = (value >> (fReadMSB ? 8 : 0)) & 0xFF;
                         }
+                        break;
+                    default:
                         break;
                 }
             }
@@ -303,8 +309,9 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                     }
                     fLoadMSB = !fLoadMSB;
                     break;
+                default:
+                    break;
             }
-
         }
 
         /**
@@ -354,6 +361,8 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                                 } else {
                                     fValue = fMaxInitValue;
                                 }
+                                break;
+                            default:
                                 break;
                         }
                     }
@@ -449,6 +458,8 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                                     setOut(true);
                                 }
                                 break;
+                            default:
+                                break;
                         }
                     }
                     break;
@@ -478,6 +489,8 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                     break;
                 case 5: // -= Для Gate = "H" счет в этом режиме не выполняется =-
                     break;
+                default:
+                    break;
             }
 
         }
@@ -488,11 +501,11 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
      * Конструктор.
      * @param speaker ссылка на Speaker
      */
-    cMD_SpMX_Timer(Speaker speaker) {
+    MemDevTimer(Speaker speaker) {
         fSpeaker  = speaker;
-        fCounter0 = new cCounter();
-        fCounter1 = new cCounter();
-        fCounter2 = new cCounter();
+        fCounter0 = new Counter();
+        fCounter1 = new Counter();
+        fCounter2 = new Counter();
     }
 
     /**
@@ -513,10 +526,8 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                 fCounter2.step();
             }
             // Выводим звук
-            if (((fCounter0.isChange() ^ fCounter0.isOut()) | (fCounter2.isChange() ^ fCounter2.isOut())) ^ (fCounter0.isOut() | fCounter2.isOut())) {
-                if (fSpeaker != null) {
-                    fSpeaker.play8253(!(fCounter0.isOut() | fCounter2.isOut()));
-                }
+            if ((fSpeaker != null) && (((fCounter0.isChange() ^ fCounter0.isOut()) || (fCounter2.isChange() ^ fCounter2.isOut())) ^ (fCounter0.isOut() || fCounter2.isOut()))) {
+                 fSpeaker.play8253(!(fCounter0.isOut() || fCounter2.isOut()));
             }
         }
         return true;
@@ -537,6 +548,8 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                     return fCounter1.read();
                 case 2: // -> Counter #1
                     return fCounter2.read();
+                default:
+                    return -1;
             }
         }
         return -1;
@@ -552,6 +565,8 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                     return fCounter1.debugRead();
                 case 2: // -> Counter #1
                     return fCounter2.debugRead();
+                default:
+                    return -1;
             }
         }
         return -1;
@@ -581,7 +596,11 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
                         case 2: // <- Counter #2
                             fCounter2.setup(value);
                             break;
+                        default:
+                            break;
                     }
+                    break;
+                default:
                     break;
             }
         }
@@ -606,7 +625,7 @@ final class cMD_SpMX_Timer implements IMemoryDevice, IClockedDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        cMD_SpMX_Timer that = (cMD_SpMX_Timer) o;
+        MemDevTimer that = (MemDevTimer) o;
         return Objects.equals(this.fSpeaker, that.fSpeaker);
     }
 

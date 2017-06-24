@@ -4,9 +4,9 @@ package ru.avsh.specialistmx;
  * Класс "Быстрый диспетчер устройств памяти".
  * @author -=AVSh=-
  */
-final class cMemoryDevicesManager {
+final class MemoryDevicesManager {
     // Максимальное количество устройств памяти
-    private final static int MAX_DEVICES = 50;
+    private static final  int MAX_DEVICES = 50;
 
     private final         int[][]     fAddresses = new        int[2][MAX_DEVICES];
     private final IMemoryDevice[] fMemoryDevices = new IMemoryDevice[MAX_DEVICES];
@@ -14,22 +14,22 @@ final class cMemoryDevicesManager {
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
 
     /**
-     * Добавляет устройство памяти в массивы с сортировкой по start_address.
-     * @param start_address начальный адрес размещения устройства
-     * @param end_address конечный адрес размещения устройства
+     * Добавляет устройство памяти в массивы с сортировкой по startAddress.
+     * @param startAddress начальный адрес размещения устройства
+     * @param endAddress конечный адрес размещения устройства
      * @param memoryDevice устройство памяти
      */
-    private void add(int start_address, int end_address, IMemoryDevice memoryDevice) {
+    private void add(int startAddress, int endAddress, IMemoryDevice memoryDevice) {
         if (memoryDevice != null) {
             int index = 0;
             for (; index < fSize; index++) {
-                if (fMemoryDevices[index].equals(memoryDevice) && (fAddresses[0][index] == start_address)) {
+                if (fMemoryDevices[index].equals(memoryDevice) && (fAddresses[0][index] == startAddress)) {
                     break;
                 }
             }
             if ((fSize == index) && (fSize < MAX_DEVICES)) {
                 for (index = 0; index < fSize; index++)    {
-                    if (fAddresses[0][index] > start_address) {
+                    if (fAddresses[0][index] > startAddress) {
                         for (int i = fSize; i > index; i--)   {
                              fAddresses[0][i] =  fAddresses[0][i - 1];
                              fAddresses[1][i] =  fAddresses[1][i - 1];
@@ -38,9 +38,9 @@ final class cMemoryDevicesManager {
                         break;
                     }
                 }
-                 fAddresses[0][index] = start_address;
-                 fAddresses[1][index] =   end_address;
-                fMemoryDevices[index] =  memoryDevice;
+                 fAddresses[0][index] = startAddress;
+                 fAddresses[1][index] =   endAddress;
+                fMemoryDevices[index] = memoryDevice;
                 fSize++;
             }
         }
@@ -50,15 +50,15 @@ final class cMemoryDevicesManager {
      * Добавляет устройство памяти (устройства с нулевой длинной памяти и выходящие за границы
      * диапазона адресов 64K не добавляются).
      * Метод должен вызываться до старта главного потока выполнения.
-     * @param start_address начальный адрес размещения устройства
+     * @param startAddress начальный адрес размещения устройства
      * @param memoryDevice устройство памяти
      */
-    synchronized void addMemoryDevice(int start_address, IMemoryDevice memoryDevice) {
-        if ((start_address >= 0) && (start_address <= 0xFFFF) && (memoryDevice != null)) {
-            int  end_address  = start_address + memoryDevice.getMemoryDeviceLength() - 1;
-            if ((end_address >= start_address) && (end_address <= 0xFFFF)) {
+    synchronized void addMemoryDevice(int startAddress, IMemoryDevice memoryDevice) {
+        if ((startAddress >= 0) && (startAddress <= 0xFFFF) && (memoryDevice != null)) {
+            int  endAddress  = startAddress + memoryDevice.getMemoryDeviceLength() - 1;
+            if ((endAddress >= startAddress) && (endAddress <= 0xFFFF)) {
                 // Добавляем устройство памяти
-                add(start_address, end_address, memoryDevice);
+                add(startAddress, endAddress, memoryDevice);
             }
         }
     }
@@ -71,9 +71,9 @@ final class cMemoryDevicesManager {
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
     synchronized int readByte(int address) {
-        for (int i = 0, start_address; (i < fSize) && ((start_address = fAddresses[0][i]) <= address); i++) {
+        for (int i = 0, startAddress; (i < fSize) && ((startAddress = fAddresses[0][i]) <= address); i++) {
             if (fAddresses[1][i] >= address) {
-                int value = fMemoryDevices[i].readByte(address - start_address);
+                int value = fMemoryDevices[i].readByte(address - startAddress);
                 if (value != -1) {
                     return value & 0xFF;
                 }
@@ -91,9 +91,9 @@ final class cMemoryDevicesManager {
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
     synchronized int debugReadByte(int address) {
-        for (int i = 0, start_address; (i < fSize) && ((start_address = fAddresses[0][i]) <= address); i++) {
+        for (int i = 0, startAddress; (i < fSize) && ((startAddress = fAddresses[0][i]) <= address); i++) {
             if (fAddresses[1][i] >= address) {
-                int value = fMemoryDevices[i].debugReadByte(address - start_address);
+                int value = fMemoryDevices[i].debugReadByte(address - startAddress);
                 if (value != -1) {
                     return value & 0xFF;
                 }
@@ -117,9 +117,9 @@ final class cMemoryDevicesManager {
      * @param value записываемый байт (байт представлен как int)
      */
     synchronized void writeByte(int address, int value) {
-        for (int i = 0, start_address; (i < fSize) && ((start_address = fAddresses[0][i]) <= address); i++) {
+        for (int i = 0, startAddress; (i < fSize) && ((startAddress = fAddresses[0][i]) <= address); i++) {
             if (fAddresses[1][i] >= address) {
-                fMemoryDevices[i].writeByte(address - start_address, value & 0xFF);
+                fMemoryDevices[i].writeByte(address - startAddress, value & 0xFF);
             }
         }
     }

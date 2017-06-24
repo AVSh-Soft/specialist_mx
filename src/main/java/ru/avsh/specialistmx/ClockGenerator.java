@@ -18,7 +18,7 @@ final class ClockGenerator implements Runnable {
 
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
 
-    private volatile CpuI8080 fCPU;
+    private volatile ProcessorI8080 fCPU;
     private volatile int     fIndexCPU;
     private volatile boolean fWaitFlag;
     private volatile boolean fPauseFlag;
@@ -122,8 +122,8 @@ final class ClockGenerator implements Runnable {
             }
             if ((fSize == index) && (fSize < MAX_DEVICES)) {
                 // Запоминаем ссылку на CPU и индекс CPU в массиве устройств
-                if (clockedDevice instanceof CpuI8080) {
-                         fCPU = (CpuI8080) clockedDevice;
+                if (clockedDevice instanceof ProcessorI8080) {
+                         fCPU = (ProcessorI8080) clockedDevice;
                     fIndexCPU = fSize;
                 }
                 fClockedDevices[fSize++] = clockedDevice; // fClockedDevices и fSize изменяются только тут

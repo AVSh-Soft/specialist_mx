@@ -18,9 +18,10 @@ import static ru.avsh.specialistmx.ConsStat.*;
  * @author -=AVSh=-
  */
 final class MainFrame extends JFrame {
+    private static final long serialVersionUID = -7222591210056082993L;
+
     private static final String INI_OPTION_FRAME_WIDTH  = "MainFrameWidth" ;
     private static final String INI_OPTION_FRAME_HEIGHT = "MainFrameHeight";
-
     private static final String DISK_A   =   "[A:] - ";
     private static final String DISK_B   =   "[B:] - ";
     private static final String NO_DISK  = "нет диска";
@@ -261,7 +262,7 @@ final class MainFrame extends JFrame {
         size21Item.addActionListener(e -> {
             ((JCheckBoxMenuItem)e.getSource()).setSelected(true);
             Dimension dim = getMinimumSize();
-            setSize(dim.width + cMD_SpMX_Screen.SCREEN_WIDTH, dim.height + cMD_SpMX_Screen.SCREEN_HEIGHT);
+            setSize(dim.width + MemDevScreen.SCREEN_WIDTH, dim.height + MemDevScreen.SCREEN_HEIGHT);
             setLocationRelativeTo(null);
         });
 
@@ -306,7 +307,7 @@ final class MainFrame extends JFrame {
                 Dimension cur = getSize();
                 Dimension dim = getMinimumSize();
                 size11Item.setSelected(cur.equals(dim));
-                dim.setSize(dim.width + cMD_SpMX_Screen.SCREEN_WIDTH, dim.height + cMD_SpMX_Screen.SCREEN_HEIGHT);
+                dim.setSize(dim.width + MemDevScreen.SCREEN_WIDTH, dim.height + MemDevScreen.SCREEN_HEIGHT);
                 size21Item.setSelected(getSize().equals(dim));
             }
         });

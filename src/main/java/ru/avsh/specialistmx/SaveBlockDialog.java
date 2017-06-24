@@ -15,18 +15,24 @@ import java.awt.event.ItemEvent;
 import java.io.File;
 import java.nio.file.Paths;
 
+import static javax.swing.JOptionPane.ERROR_MESSAGE;
+import static javax.swing.JOptionPane.showMessageDialog;
+import static ru.avsh.specialistmx.ConsStat.STR_ERROR;
+
 /**
  * Класс "Диалог сохранения блока".
  * @author -=AVSh=-
  */
 final class SaveBlockDialog extends JDialog {
+    private static final long serialVersionUID = -8762963068896802973L;
+
     private static final String WORD_MASK = "HHHH";
 
     private File    fFile  ;
     private boolean fResult;
 
     private int fBeginAddress;
-    private int fEndAddress  ;
+    private int   fEndAddress;
     private int fStartAddress;
 
     /**
@@ -54,6 +60,8 @@ final class SaveBlockDialog extends JDialog {
         JLabel fileTypeLabel = new JLabel("Тип файла:");
 
         JTextField fileNameTextField = new JTextField(new PlainDocument() {
+            private static final long serialVersionUID = -2956459963542774236L;
+
             @Override
             public void insertString(int offs, String str, AttributeSet a) throws BadLocationException {
                 if (str.matches("^[^*?\"<>|]+$")) {
@@ -253,7 +261,7 @@ final class SaveBlockDialog extends JDialog {
         okButton.addActionListener(e -> {
             String s = fileNameTextField.getText().trim();
             if (s.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Не задано имя файла для сохранения", "Ошибка", JOptionPane.ERROR_MESSAGE);
+                showMessageDialog(this, "Не задано имя файла для сохранения", STR_ERROR, ERROR_MESSAGE);
                 fileNameTextField.requestFocusInWindow();
                 return;
             }
@@ -265,7 +273,7 @@ final class SaveBlockDialog extends JDialog {
 
             s = fFile.getParent();
             if (!Paths.get(s).toFile().exists()) {
-                JOptionPane.showMessageDialog(this, String.format("Не найден путь: \"%s\" для сохранения файла: \"%s\"", s, fFile.getName()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                showMessageDialog(this, String.format("Не найден путь: \"%s\" для сохранения файла: \"%s\"", s, fFile.getName()), STR_ERROR, ERROR_MESSAGE);
                 fileNameTextField.requestFocusInWindow();
                 return;
             }
@@ -284,13 +292,13 @@ final class SaveBlockDialog extends JDialog {
                 s = (String) curTextField.getValue();
                 fStartAddress = Integer.parseInt(s, 16);
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, String.format("Ошибка задания адреса: [%s]%n%s", s, ex.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                showMessageDialog(this, String.format("Ошибка задания адреса: [%s]%n%s", s, ex.toString()), STR_ERROR, ERROR_MESSAGE);
                 curTextField.requestFocusInWindow();
                 return;
             }
 
             if (fBeginAddress > fEndAddress) {
-                JOptionPane.showMessageDialog(this, String.format("Начальный адрес: [%04X] больше конечного: [%04X]", fBeginAddress, fEndAddress), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                showMessageDialog(this, String.format("Начальный адрес: [%04X] больше конечного: [%04X]", fBeginAddress, fEndAddress), STR_ERROR, ERROR_MESSAGE);
                 beginAddressTextField.requestFocusInWindow();
                 return;
             }
