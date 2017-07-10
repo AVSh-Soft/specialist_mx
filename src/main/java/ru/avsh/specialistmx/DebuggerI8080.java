@@ -349,11 +349,11 @@ final class DebuggerI8080 extends JDialog {
 
         // Модель и таблица для вывода информации из регистровых пар CPU
         RegCpuTable regCpuTable = new RegCpuTable(new RegCpuTableModel());
-         regCpuTable.getColumnModel().getColumn(CR_COL_DAT).setCellEditor(wordCellEditorRCT);
+        regCpuTable.getColumnModel().getColumn(CR_COL_DAT).setCellEditor(wordCellEditorRCT);
 
         // Модель и таблица для вывода информации из стека CPU
         StackTable stackTable = new StackTable(new StackTableModel());
-         stackTable.getColumnModel().getColumn(SP_COL_DAT).setCellEditor(wordCellEditorST);
+        stackTable.getColumnModel().getColumn(SP_COL_DAT).setCellEditor(wordCellEditorST);
 
         // Модель и таблица для вывода информации о ловушках
         TrapsTable trapsTable = new TrapsTable(new TrapsTableModel());
@@ -696,7 +696,7 @@ final class DebuggerI8080 extends JDialog {
                     int colM = getFocusedColumnModel(table);
                     // Редактирование ячейки
                     if ((   ((table instanceof RegCpuTable) && (colM == CR_COL_DAT))
-                         || ((table instanceof StackTable) && (colM == SP_COL_DAT))
+                         || ((table instanceof StackTable ) && (colM == SP_COL_DAT))
                          || ((table instanceof MemDatTable) && (colM >= MD_COL_B00))) && table.getModel().isCellEditable(rowM, colM)) {
                         table.editCellAt(table.convertRowIndexToView(rowM), table.convertColumnIndexToView(colM));
                     }
@@ -2719,7 +2719,12 @@ final class DebuggerI8080 extends JDialog {
                 getColumnModel().getColumn(i).setMaxWidth(22);
             }
             getColumnModel().getColumn(MD_COL_STR).setMaxWidth(130);
+            // Устанавливаем режим выделения для строк
             setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+            // Устанавливаем режим выделения для столбцов (с установкой разрешения выделения)
+            TableColumnModel columnModel = getColumnModel();
+            columnModel.setColumnSelectionAllowed(true);
+            columnModel.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new MemDatStringRenderer());
             // Подключаемся к fLayer для прослушивания
