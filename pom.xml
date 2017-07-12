@@ -223,12 +223,12 @@
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
-            <version>15.0</version>
+            <version>LATEST</version>
         </dependency>
         <dependency>
             <groupId>org.ini4j</groupId>
             <artifactId>ini4j</artifactId>
-            <version>0.5.4</version>
+            <version>LATEST</version>
         </dependency>
     </dependencies>
 </project>
