@@ -206,8 +206,8 @@ final class DebuggerI8080 extends JDialog {
     private static final String EDITING_OR_NAVIGATING = "EditingOrNavigating";
 
     // Статические структуры для сохранения положения окна отладчика и значений регистровых пар
-    private static final Point fPrevLocation = new Point();
-    private static final int[] fPrevRegPairs = new int[DebugRegPairs.values().length];
+    private static final Point PREV_LOCATION  = new Point();
+    private static final int[] PREV_REG_PAIRS = new int[DebugRegPairs.values().length];
     // Статические переменные для сохранения страницы и адреса памяти таблицы данных памяти
     private static int fPrevDataPage   ;
     private static int fPrevDataAddress;
@@ -227,7 +227,7 @@ final class DebuggerI8080 extends JDialog {
      * @param prevLocation положение окна
      */
     private static synchronized void setPrevLocation(Point prevLocation) {
-        DebuggerI8080.fPrevLocation.setLocation(prevLocation);
+        PREV_LOCATION.setLocation(prevLocation);
     }
 
     /**
@@ -235,7 +235,7 @@ final class DebuggerI8080 extends JDialog {
      * @param prevDataPage страница памяти
      */
     private static synchronized void setPrevDataPage(int prevDataPage) {
-        DebuggerI8080.fPrevDataPage = prevDataPage;
+        fPrevDataPage = prevDataPage;
     }
 
     /**
@@ -243,7 +243,7 @@ final class DebuggerI8080 extends JDialog {
      * @param prevDataAddress адрес
      */
     private static synchronized void setPrevDataAddress(int prevDataAddress) {
-        DebuggerI8080.fPrevDataAddress = prevDataAddress;
+        fPrevDataAddress = prevDataAddress;
     }
 
     /**
@@ -251,7 +251,7 @@ final class DebuggerI8080 extends JDialog {
      * @param prevStringBytes строка поиска
      */
     private static synchronized void setPrevStringBytes(String prevStringBytes) {
-        DebuggerI8080.fPrevStringBytes = prevStringBytes;
+        fPrevStringBytes = prevStringBytes;
     }
 
     /**
@@ -863,12 +863,12 @@ final class DebuggerI8080 extends JDialog {
         // Устанавливаем курсор на адрес = PC в таблице fDisAsmTable
         fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPairs.PC), DA_COL_ADR);
 
-        if ((fPrevLocation.getX() < 1.0D) && (fPrevLocation.getY() < 1.0D)) {
+        if ((PREV_LOCATION.getX() < 1.0D) && (PREV_LOCATION.getY() < 1.0D)) {
             // Выводим окно отладчика в центре родительского окна
             setLocationRelativeTo(getOwner());
         } else {
             // Иначе выводим окно на предыдущую позицию
-            setLocation(fPrevLocation);
+            setLocation(PREV_LOCATION);
         }
 
         // Показываем окно отладчика
@@ -988,7 +988,7 @@ final class DebuggerI8080 extends JDialog {
          */
         synchronized void setValRegPair(DebugRegPairs regPair, int value) {
             // Сохраняем предыдущее значение регистровой пары
-            fPrevRegPairs[regPair.ordinal()] = fCPU.debugGetValRegPair(regPair);
+            PREV_REG_PAIRS[regPair.ordinal()] = fCPU.debugGetValRegPair(regPair);
             // Устанавливаем новое значение
             fCPU.debugSetValRegPair(regPair, value);
             // Отправляем событие наблюдателям
@@ -1001,7 +1001,7 @@ final class DebuggerI8080 extends JDialog {
          * @return значение
          */
         synchronized int getPrevValRegPair(DebugRegPairs regPair) {
-            return fPrevRegPairs[regPair.ordinal()];
+            return PREV_REG_PAIRS[regPair.ordinal()];
         }
 
         /**
@@ -1009,7 +1009,7 @@ final class DebuggerI8080 extends JDialog {
          */
         synchronized void saveAllRegPairs() {
             for (DebugRegPairs regPair : DebugRegPairs.values()) {
-                fPrevRegPairs[regPair.ordinal()] = getValRegPair(regPair);
+                PREV_REG_PAIRS[regPair.ordinal()] = getValRegPair(regPair);
             }
         }
 
