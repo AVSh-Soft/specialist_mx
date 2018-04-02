@@ -284,7 +284,7 @@ final class MainFrame extends JFrame {
         aboutItem.addActionListener(e -> {
             String name      = "Эмулятор \"".concat(SPMX_NAME).concat("\"");
             String version   = "x.x.x.x";
-            String copyright = "Copyright © 2017 \"AVSh Software\" (Александр Шевцов)";
+            String copyright = "Copyright © 2018 \"AVSh Software\" (Александр Шевцов)";
             try (InputStreamReader isr = new InputStreamReader(getClass().getResourceAsStream(RESOURCES.concat(SPMX_PROP_FILE)), "UTF-8")) {
                 Properties  property   = new Properties();
                 property.load(isr);

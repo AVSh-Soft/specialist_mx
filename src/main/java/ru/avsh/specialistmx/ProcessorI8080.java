@@ -3,11 +3,11 @@ package ru.avsh.specialistmx;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
-import java.util.*;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Класс "Процессор Intel C8080A (К580ВМ80А)".
@@ -65,16 +65,15 @@ final class ProcessorI8080 implements IClockedDevice {
     private static final int HOLD_ACKNOWLEDGE = 2;
 
     private final int[] fRegs;
+    private final Trap fCompareTrap;
     private final SpecialistMX fSpMX;
-    private final Trap  fCompareTrap;
+    private final AtomicInteger fCycles;
     private final SortedSet<Trap> fTraps;
-    //private final List<Trap>  fTraps;
-    private final MemoryDevicesManager fMDM ;
+    private final MemoryDevicesManager fMDM;
     private final MemoryDevicesManager fIoDM;
 
     private int fOpCode;
     private boolean fTestResult;
-    private volatile int fCycles;
     private volatile int fHoldPhase;
     private volatile boolean fDebugRun;
     private volatile boolean fTrapsFlag;
@@ -82,8 +81,9 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Конструктор.
+     *
      * @param spMX ссылка на объект класса SpecialistMX - "Компьютер 'Специалист MX'"
-     * @param mDM ссылка на объект класса MemoryDevicesManager - "Быстрый диспетчер устройств памяти" (устройства памяти)
+     * @param mDM  ссылка на объект класса MemoryDevicesManager - "Быстрый диспетчер устройств памяти" (устройства памяти)
      * @param ioDM ссылка на объект класса MemoryDevicesManager - "Быстрый диспетчер устройств памяти" (устройства ввода/вывода)
      */
     ProcessorI8080(@NotNull SpecialistMX spMX, @NotNull MemoryDevicesManager mDM, MemoryDevicesManager ioDM) {
@@ -94,9 +94,9 @@ final class ProcessorI8080 implements IClockedDevice {
         fRegs    = new int[10]; // B, C, D, E, H, L, F, A, SP, PC
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
 
+             fCycles = new AtomicInteger();
         fCompareTrap = new Trap(0,0);
               fTraps = new ConcurrentSkipListSet<>();
-              //new CopyOnWriteArrayList<>();
     }
 
     @Override
@@ -114,6 +114,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Получает значение регистра CPU по коду регистра.
+     *
      * @param codeReg B = 0, C = 1, D = 2, E = 3, H = 4, L = 5, M = 6, A = 7
      * @return значение регистра
      */
@@ -123,8 +124,9 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Устанавливает значение регистра CPU по коду регистра.
+     *
      * @param codeReg B = 0, C = 1, D = 2, E = 3, H = 4, L = 5, M = 6, A = 7
-     * @param value значение регистра
+     * @param value   значение регистра
      */
     private void setReg(int codeReg, int value) {
         if (codeReg == M) {
@@ -136,6 +138,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Получает значение регистровой пары CPU по коду пары, умноженной на 2.
+     *
      * @param codePair BC = 0, DE = 2, HL = 4, PSW = 6
      * @return значение
      */
@@ -145,8 +148,9 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Устанавливает значение регистровой пары CPU по коду пары, умноженной на 2.
+     *
      * @param codePair BC = 0, DE = 2, HL = 4, PSW = 6
-     * @param value значение
+     * @param value    значение
      */
     private void setRegPair(int codePair, int value) {
         if (codePair == P_PSW) {
@@ -160,6 +164,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Получает значение флага C (Перенос).
+     *
      * @return значение
      */
     private boolean getFlagC() {
@@ -168,6 +173,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Устанавливает значение флага C (Перенос).
+     *
      * @param value значение
      */
     private void setFlagC(boolean value) {
@@ -176,6 +182,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Получает значение флага AC (Дополнительный перенос).
+     *
      * @return значение
      */
     private boolean getFlagAC() {
@@ -184,6 +191,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Устанавливает значение флага AC (Дополнительный перенос).
+     *
      * @param value значение
      */
     private void setFlagAC(boolean value) {
@@ -192,6 +200,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Устанавливает флаги S (Знак), Z (Нуль) и P (Четность).
+     *
      * @param r результат вычислений в формате Byte
      */
     private void setFlagsSZP(int r) {
@@ -209,6 +218,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Складывает два/три байта с установкой всех флагов.
+     *
      * @param a первый байт
      * @param b второй байт
      * @param c третий байт
@@ -225,6 +235,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Вычитает из первого байта второй и третий байт с установкой всех флагов.
+     *
      * @param a первый байт
      * @param b второй байт
      * @param c третий байт
@@ -240,6 +251,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Выполняет логическое умножение первого байта на второй с установкой всех флагов.
+     *
      * @param a первый байт
      * @param b второй байт
      * @return результат
@@ -273,6 +285,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Проверяет флаги по коду условия.
+     *
      * @param codeCondition код условия от 0 до 7
      * @return результат проверки
      */
@@ -303,6 +316,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Получает значение регистра SP (Указатель стека).
+     *
      * @return значение
      */
     private int getSP() {
@@ -311,6 +325,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Устанавливает значение регистра SP (Указатель стека).
+     *
      * @param value значение
      */
     private void setSP(int value) {
@@ -319,6 +334,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Получает значение регистра PC (Регистр адреса).
+     *
      * @return значение
      */
     private int getPC() {
@@ -327,6 +343,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Устанавливает значение регистра PC (Регистр адреса).
+     *
      * @param value значение
      */
     private void setPC(int value) {
@@ -335,6 +352,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Помещает значение в стек.
+     *
      * @param value значение
      */
     private void pushWord(int value) {
@@ -344,6 +362,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Извлекает значение из стека.
+     *
      * @return значение
      */
     private int popWord() {
@@ -355,6 +374,7 @@ final class ProcessorI8080 implements IClockedDevice {
     /**
      * Читает байт из памяти по адресу, заданному в регистре PC (Регистр адреса)
      * и увеличивает значение регистра PC на 1.
+     *
      * @return считанный из устройства памяти байт
      */
     private int nextBytePC() {
@@ -366,6 +386,7 @@ final class ProcessorI8080 implements IClockedDevice {
     /**
      * Читает слово из памяти по адресу, заданному в регистре PC (Регистр
      * адреса) и увеличивает значение регистра PC на 2.
+     *
      * @return считанное из устройства памяти слово
      */
     private int nextWordPC() {
@@ -376,6 +397,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Начинает выполнение команды CPU.
+     *
      * @return количество циклов команды
      */
     private int cmdStart() {
@@ -1007,12 +1029,13 @@ final class ProcessorI8080 implements IClockedDevice {
     /**
      * Перводит CPU в режим ожидания (выполняется захват "HOLD").
      * (Данный метод нельзя запускать при остановленном тактовом генераторе!!!)
+     *
      * @param mode true/false = установить/снять режим "HOLD"
      */
     void hold(boolean mode) {
         if ((fHoldPhase == HOLD_IS_NOT_SET) == mode) {
             if (mode) {
-                if ((fCycles <= 1) || Thread.currentThread().getName().equals(ClockGenerator.THREAD_NAME)) {
+                if ((fCycles.get() <= 1) || Thread.currentThread().getName().equals(ClockGenerator.THREAD_NAME)) {
                     // Для потока тактового генератора останавливаем CPU сразу конечным значением HOLD_ACKNOWLEDGE,
                     // т.к. здесь вызов всегда происходит в последней фазе работы цикла CPU (из метода cmdFinish())
                     fHoldPhase = HOLD_ACKNOWLEDGE;
@@ -1033,6 +1056,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Показывает установлен ли режим "HOLD" для CPU.
+     *
      * @return true = установлен режим "HOLD"
      */
     boolean isHoldAcknowledge() {
@@ -1041,6 +1065,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Переводит устройства памяти и устройства ввода/вывода, подключенные к CPU, в режим "Пауза".
+     *
      * @param mode true/false = установить/снять режим "Пауза"
      */
     void pauseMemoryDevices(boolean mode) {
@@ -1052,6 +1077,7 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Выполняет запуск с заданного адреса.
+     *
      * @param address адрес запуска
      */
     synchronized void run(int address) {
@@ -1060,7 +1086,8 @@ final class ProcessorI8080 implements IClockedDevice {
 
     /**
      * Выполняет сброс CPU.
-     * @param address адрес запуска
+     *
+     * @param address            адрес запуска
      * @param resetMemoryDevices true - выполняет сброс устройств памяти
      */
     synchronized void reset(int address, boolean resetMemoryDevices) {
@@ -1122,10 +1149,11 @@ final class ProcessorI8080 implements IClockedDevice {
     /**
      * Получает значение регистровой пары CPU.
      * (Метод для вызова из отладчика)
+     *
      * @param regPair регистровая пара
      * @return значение
      */
-    synchronized int debugGetValRegPair(DebugRegPairs regPair) {
+    synchronized int debugGetValRegPair(final DebugRegPairs regPair) {
         switch (regPair) {
             case AF:
                 return (fRegs[A] << 8) | fRegs[F];
@@ -1146,10 +1174,11 @@ final class ProcessorI8080 implements IClockedDevice {
     /**
      * Устанавливает значение регистровой пары CPU.
      * (Метод для вызова из отладчика)
+     *
      * @param regPair регистровая пара
-     * @param value значение
+     * @param value   значение
      */
-    synchronized void debugSetValRegPair(DebugRegPairs regPair, int value) {
+    synchronized void debugSetValRegPair(final DebugRegPairs regPair, final int value) {
         switch (regPair) {
             case AF:
                 fRegs[A]  = (value >> 8) & 0xFF;
@@ -1179,42 +1208,24 @@ final class ProcessorI8080 implements IClockedDevice {
     /**
      * Добавляет ловушку.
      * (Метод для вызова из отладчика)
-     * @param page номер страницы памяти
-     * @param address адрес ловушки
+     *
+     * @param page     номер страницы памяти
+     * @param address  адрес ловушки
      * @param stepOver true = StepOver ловушка
      */
-    void debugAddTrap(int page, int address, boolean stepOver) {
-        Trap trap = new Trap(page, address);
+    void debugAddTrap(final int page, final int address, final boolean stepOver) {
+        final Trap trap = new Trap(page, address);
         if (!stepOver && trap.equals(fTrapStepOver)) {
             fTrapStepOver = null;
         }
-        if (fTraps.contains(trap)) {
-            fTraps.add(trap);
-/*
-            fTraps.sort((o1, o2) -> {
-                if ((o1 == null) && (o2 == null)) {
-                    return -1;
-                } else if (o1 == null) {
-                    return -1;
-                } else if (o2 == null) {
-                    return  1;
-                } else {
-                    if (o1.equals(o2)) {
-                        return  0;
-                    } else if (((o1.getPage() << 16) | o1.getAddress()) < ((o2.getPage() << 16) | o2.getAddress())) {
-                        return -1;
-                    } else {
-                        return  1;
-                    }
-                }
-            });
-*/
+        if (!fTraps.contains(trap)) {
             if (stepOver) {
                 if (fTrapStepOver != null) {
                     fTraps.remove(fTrapStepOver);
                 }
                 fTrapStepOver = trap;
             }
+            fTraps.add(trap);
         }
         fTrapsFlag = !fTraps.isEmpty();
     }
@@ -1222,11 +1233,12 @@ final class ProcessorI8080 implements IClockedDevice {
     /**
      * Удаляет ловушку.
      * (Метод для вызова из отладчика)
-     * @param page номер страницы памяти
+     *
+     * @param page    номер страницы памяти
      * @param address адрес ловушки
      */
-    void debugRemTrap(int page,  int address) {
-        Trap trap = new Trap(page, address);
+    void debugRemTrap(final int page, final int address) {
+        final Trap trap = new Trap(page, address);
         if (trap.equals(fTrapStepOver)) {
             fTrapStepOver = null;
         }
@@ -1240,37 +1252,40 @@ final class ProcessorI8080 implements IClockedDevice {
      */
     void debugClearTraps() {
         fTraps.clear();
-        fTrapsFlag    = false;
         fTrapStepOver =  null;
+        fTrapsFlag    = false;
     }
 
     /**
      * Проверяет, установлена ли по заданному адресу StepOver ловушка.
      * (Метод для вызова из отладчика)
-     * @param page номер страницы памяти
+     *
+     * @param page    номер страницы памяти
      * @param address адрес
      * @return true = ловушка StepOver установлена
      */
-    private boolean debugIsStepOverTrap(int page, int address) {
-        Trap trap = new Trap(page, address);
+    private boolean debugIsStepOverTrap(final int page, final int address) {
+        final Trap trap = new Trap(page, address);
         return fTrapsFlag && trap.equals(fTrapStepOver) && (fTraps.contains(trap));
     }
 
     /**
      * Проверяет, установлена ли по заданному адресу ловушка.
      * (Метод для вызова из отладчика)
-     * @param page номер страницы памяти
+     *
+     * @param page    номер страницы памяти
      * @param address адрес
      * @return true = ловушка установлена
      */
-    boolean debugIsTrap(int page, int address) {
-        Trap trap = new Trap(page,  address);
+    boolean debugIsTrap(final int page, final int address) {
+        final Trap trap = new Trap(page,  address);
         return fTrapsFlag && !trap.equals(fTrapStepOver) && (fTraps.contains(trap));
     }
 
     /**
      * Возвращает количество установленных ловушек.
      * (Метод для вызова из отладчика)
+     *
      * @return количество установленных ловушек
      */
     int debugGetTrapCount() {
@@ -1280,21 +1295,21 @@ final class ProcessorI8080 implements IClockedDevice {
     /**
      * Возвращает ловушку по индексу в списке ловушек.
      * (Метод для вызова из отладчика)
+     *
      * @param index индекс ловушки
      * @return ловушка
      */
-    Trap debugGetTrap(int index) {
-        int i = fTraps.indexOf(fTrapStepOver);
-        return fTraps.get(((i != -1) && (i <= index)) ? (index + 1) : index);
+    Trap debugGetTrap(final int index) {
+        return fTraps.stream().filter(trap -> !trap.equals(fTrapStepOver)).skip(index).findFirst().orElse(null);
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     @Override
     public boolean cycle() {
-        if (fCycles <= 1)  {
+        if (fCycles.get() <= 1)  {
             switch (fHoldPhase) {
                 case HOLD_IS_NOT_SET:
-                    fCycles = cmdStart();
+                    fCycles.set(cmdStart());
                     return false;
                 case HOLD_IN_PROCESS:
                     fHoldPhase = HOLD_ACKNOWLEDGE;
@@ -1303,11 +1318,11 @@ final class ProcessorI8080 implements IClockedDevice {
                     return true;
                 default:
                     fHoldPhase = 0;
-                    fCycles = cmdStart();
+                    fCycles.set(cmdStart());
                     return false;
             }
         } else {
-            if (--fCycles == 1) {
+            if (fCycles.decrementAndGet() == 1) {
                 cmdFinish();
                 return true;
             }
