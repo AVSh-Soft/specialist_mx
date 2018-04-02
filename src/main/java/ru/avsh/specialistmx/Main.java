@@ -3,6 +3,9 @@ package ru.avsh.specialistmx;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * Главный класс для запуска.
+ */
 class Main {
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> {
