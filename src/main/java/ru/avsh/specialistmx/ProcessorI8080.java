@@ -3,9 +3,10 @@ package ru.avsh.specialistmx;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -48,7 +49,7 @@ final class ProcessorI8080 implements IClockedDevice {
     private static final int M  = 6;
 
     // Индексы регистровых пар для методов getValRegPair()/setValRegPair() (здесь без enum - для скорости)
-    //private static final int P_BC  = 0;
+    private static final int P_BC  = 0;
     private static final int P_DE  = 2;
     private static final int P_HL  = 4;
     private static final int P_PSW = 6;
@@ -66,7 +67,8 @@ final class ProcessorI8080 implements IClockedDevice {
     private final int[] fRegs;
     private final SpecialistMX fSpMX;
     private final Trap  fCompareTrap;
-    private final List<Trap>  fTraps;
+    private final SortedSet<Trap> fTraps;
+    //private final List<Trap>  fTraps;
     private final MemoryDevicesManager fMDM ;
     private final MemoryDevicesManager fIoDM;
 
@@ -93,7 +95,8 @@ final class ProcessorI8080 implements IClockedDevice {
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
 
         fCompareTrap = new Trap(0,0);
-              fTraps = new CopyOnWriteArrayList<>();
+              fTraps = new ConcurrentSkipListSet<>();
+              //new CopyOnWriteArrayList<>();
     }
 
     @Override
@@ -995,7 +998,7 @@ final class ProcessorI8080 implements IClockedDevice {
         if (fTrapsFlag) {
             // Здесь без порождения новых объектов (для скорости)
             fCompareTrap.change(fSpMX.getPage(), getPC());
-            if (fTraps.indexOf(fCompareTrap) != -1) {
+            if (fTraps.contains(fCompareTrap)) {
                 startDebugger();
             }
         }
@@ -1180,13 +1183,14 @@ final class ProcessorI8080 implements IClockedDevice {
      * @param address адрес ловушки
      * @param stepOver true = StepOver ловушка
      */
-    void debugAddTrap(int page,  int address, boolean stepOver) {
+    void debugAddTrap(int page, int address, boolean stepOver) {
         Trap trap = new Trap(page, address);
         if (!stepOver && trap.equals(fTrapStepOver)) {
             fTrapStepOver = null;
         }
-        if (fTraps.indexOf(trap) == -1) {
+        if (fTraps.contains(trap)) {
             fTraps.add(trap);
+/*
             fTraps.sort((o1, o2) -> {
                 if ((o1 == null) && (o2 == null)) {
                     return -1;
@@ -1204,6 +1208,7 @@ final class ProcessorI8080 implements IClockedDevice {
                     }
                 }
             });
+*/
             if (stepOver) {
                 if (fTrapStepOver != null) {
                     fTraps.remove(fTrapStepOver);
@@ -1248,7 +1253,7 @@ final class ProcessorI8080 implements IClockedDevice {
      */
     private boolean debugIsStepOverTrap(int page, int address) {
         Trap trap = new Trap(page, address);
-        return fTrapsFlag && trap.equals(fTrapStepOver) && (fTraps.indexOf(trap) != -1);
+        return fTrapsFlag && trap.equals(fTrapStepOver) && (fTraps.contains(trap));
     }
 
     /**
@@ -1260,7 +1265,7 @@ final class ProcessorI8080 implements IClockedDevice {
      */
     boolean debugIsTrap(int page, int address) {
         Trap trap = new Trap(page,  address);
-        return fTrapsFlag && !trap.equals(fTrapStepOver) && (fTraps.indexOf(trap) != -1);
+        return fTrapsFlag && !trap.equals(fTrapStepOver) && (fTraps.contains(trap));
     }
 
     /**
@@ -1269,7 +1274,7 @@ final class ProcessorI8080 implements IClockedDevice {
      * @return количество установленных ловушек
      */
     int debugGetTrapCount() {
-        return ((fTrapStepOver != null) && (fTraps.indexOf(fTrapStepOver) != -1)) ? (fTraps.size() - 1) : fTraps.size();
+        return ((fTrapStepOver != null) && fTraps.contains(fTrapStepOver)) ? (fTraps.size() - 1) : fTraps.size();
     }
 
     /**
@@ -1329,58 +1334,60 @@ final class ProcessorI8080 implements IClockedDevice {
 /**
  * Класс "Ловушка".
  */
-final class Trap {
-    private int fPage;
-    private int fAddress;
+final class Trap implements Comparable<Trap> {
+    private int fValue;
 
     /**
      * Конструктор.
-     * @param page номер страницы памяти
+     *
+     * @param page    номер страницы памяти
      * @param address адрес
      */
     Trap(int page, int address) {
-        fPage    = page;
-        fAddress = address;
+        fValue = (page << 16) | address;
     }
 
     /**
      * Возвращает номер страницы памяти.
+     *
      * @return номер страницы памяти
      */
     int getPage() {
-        return fPage;
+        return fValue >> 16;
     }
 
     /**
      * Возвращает адрес.
+     *
      * @return адрес
      */
     int getAddress() {
-        return fAddress;
+        return fValue & 0xFFFF;
     }
 
     /**
      * Изменяет ловушку.
-     * @param page номер страницы памяти
+     *
+     * @param page    номер страницы памяти
      * @param address адрес
      */
     void change(int page, int address) {
-        fPage     = page;
-        fAddress  = address;
+        fValue = (page << 16) | address;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (o instanceof Trap) {
-            Trap trap = (Trap) o;
-            return ((fPage == trap.fPage) && (fAddress == trap.fAddress));
-        }
-        return super.equals(o);
+    public boolean equals(Object obj) {
+        return (obj instanceof Trap) && (fValue == ((Trap) obj).fValue);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fPage, fAddress);
+        return Integer.hashCode(fValue);
+    }
+
+    @Override
+    public int compareTo(@NotNull Trap anotherTrap) {
+        return Integer.compare(this.fValue, anotherTrap.fValue);
     }
 }
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
