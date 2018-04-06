@@ -15,6 +15,7 @@ public class WideCaret extends DefaultCaret {
 
     /**
      * Конструктор.
+     *
      * @param rate the rate in milliseconds, 0 to stop blinking
      */
     public WideCaret(int rate) {
@@ -36,10 +37,10 @@ public class WideCaret extends DefaultCaret {
 
     @Override
     public void paint(Graphics g) {
-        JTextComponent comp = getComponent();
+        final JTextComponent comp = getComponent();
         if (comp != null) {
-            char dotChar;
-            Rectangle rect;
+            final char dotChar;
+            final Rectangle rect;
             try {
                 int  dot = getDot();
                     rect = comp.modelToView(dot);

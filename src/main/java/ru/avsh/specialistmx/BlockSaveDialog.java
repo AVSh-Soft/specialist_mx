@@ -50,16 +50,16 @@ final class BlockSaveDialog extends JDialog {
     private void initComponents() {
         setTitle("Сохранить блок");
 
-        JPanel dialogPane  = new JPanel();
-        JPanel mainPane    = new JPanel();
-        JPanel filePane    = new JPanel();
-        JPanel addressPane = new JPanel();
-        JPanel buttonBar   = new JPanel();
+        final JPanel dialogPane  = new JPanel();
+        final JPanel mainPane    = new JPanel();
+        final JPanel filePane    = new JPanel();
+        final JPanel addressPane = new JPanel();
+        final JPanel buttonBar   = new JPanel();
 
-        JLabel fileNameLabel = new JLabel("Имя файла:");
-        JLabel fileTypeLabel = new JLabel("Тип файла:");
+        final JLabel fileNameLabel = new JLabel("Имя файла:");
+        final JLabel fileTypeLabel = new JLabel("Тип файла:");
 
-        JTextField fileNameTextField = new JTextField(new PlainDocument() {
+        final JTextField fileNameTextField = new JTextField(new PlainDocument() {
             private static final long serialVersionUID = -2956459963542774236L;
 
             @Override
@@ -70,28 +70,28 @@ final class BlockSaveDialog extends JDialog {
             }
         }, "", 0);
 
-        JButton             fileNameButton = new JButton("...");
-        JComboBox<String> fileTypeComboBox = new JComboBox<>(new String[]{"cpu(i80)", "rks"}); // Индекс: "cpu(i80)" = 0, "rks" = 1
-        JSeparator           fileSeparator = new JSeparator();
+        final JButton             fileNameButton = new JButton("...");
+        final JComboBox<String> fileTypeComboBox = new JComboBox<>(new String[]{"cpu(i80)", "rks"}); // Индекс: "cpu(i80)" = 0, "rks" = 1
+        final JSeparator           fileSeparator = new JSeparator();
 
-        JLabel addressLabel      = new JLabel("Адреса:");
-        JLabel beginAddressLabel = new JLabel("Начало:");
-        ExtFormattedTextField beginAddressTextField = new ExtFormattedTextField(WORD_MASK, '0');
-        JLabel endAddressLabel   = new JLabel("Конец:" );
-        ExtFormattedTextField endAddressTextField   = new ExtFormattedTextField(WORD_MASK, '0');
-        JLabel startAddressLabel = new JLabel("Старт:" );
-        ExtFormattedTextField startAddressTextField = new ExtFormattedTextField(WORD_MASK, '0');
-        JSeparator addressSeparator = new JSeparator();
+        final JLabel addressLabel      = new JLabel("Адреса:");
+        final JLabel beginAddressLabel = new JLabel("Начало:");
+        final ExtFormattedTextField beginAddressTextField = new ExtFormattedTextField(WORD_MASK, '0');
+        final JLabel endAddressLabel   = new JLabel("Конец:" );
+        final ExtFormattedTextField endAddressTextField   = new ExtFormattedTextField(WORD_MASK, '0');
+        final JLabel startAddressLabel = new JLabel("Старт:" );
+        final ExtFormattedTextField startAddressTextField = new ExtFormattedTextField(WORD_MASK, '0');
+        final JSeparator addressSeparator = new JSeparator();
 
-        JButton okButton     = new JButton("OK"    );
-        JButton cancelButton = new JButton("Отмена");
+        final JButton okButton     = new JButton("OK"    );
+        final JButton cancelButton = new JButton("Отмена");
 
         beginAddressTextField.setValue("0000");
           endAddressTextField.setValue("0000");
         startAddressTextField.setValue("0000");
 
         // this
-        Container contentPane = getContentPane();
+        final Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
         // dialogPane
         {
@@ -173,7 +173,7 @@ final class BlockSaveDialog extends JDialog {
             public void focusLost(FocusEvent e) {
                 String s = fileNameTextField.getText();
                 if (!s.isEmpty()) {
-                    String ext = fileTypeComboBox.getSelectedItem().toString().substring(0, 3);
+                    final String ext = String.valueOf(fileTypeComboBox.getSelectedItem()).substring(0, 3);
                     int ind = s.lastIndexOf('.');
                     if (ind > 0) {
                         s = s.substring(0, ind + 1).concat(ext);
@@ -189,9 +189,9 @@ final class BlockSaveDialog extends JDialog {
         fileNameButton.addActionListener(e -> {
             File file;
             String fileName = fileNameTextField.getText().trim();
-            String fileType = fileTypeComboBox.getSelectedItem().toString().substring(0, 3);
+            String fileType = String.valueOf(fileTypeComboBox.getSelectedItem()).substring(0, 3);
 
-            JFileChooser chooser = new JFileChooser();
+            final JFileChooser chooser = new JFileChooser();
             chooser.setDialogTitle("Сохранить файл");
             if (fileName.isEmpty()) {
                 chooser.setCurrentDirectory(new File(ConsStat.getCurPath()));

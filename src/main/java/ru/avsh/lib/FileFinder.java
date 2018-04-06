@@ -153,10 +153,10 @@ public class FileFinder {
      * @return список (List) найденных объектов
      */
     private List<File> find(String startPath, String mask, int objectType) {
-        List<File> res = new ArrayList<>(100);
+        final List<File> result = new ArrayList<>(100);
         //проверка параметров
         if ((startPath != null) && (mask != null)) {
-            File topDir = new File(startPath);
+            final File topDir = new File(startPath);
             //проверка начальной директории
             if (topDir.exists()) {
                 //если задано регулярное выражение, создаем Pattern
@@ -168,14 +168,14 @@ public class FileFinder {
                 directoriesNumber = 0;
                 totalLength       = 0;
                 //выполняем поиск
-                search(topDir, res, objectType);
+                search(topDir, result, objectType);
                 //присваиваем null шаблону, т.к. при следующем вызове find...
                 //регулярное выражение может быть не задано
                 p = null;
             }
         }
         //возвращаем результат
-        return res;
+        return result;
     }
 
     /**
@@ -183,12 +183,12 @@ public class FileFinder {
      * Если, в процессе поиска, встречает вложенную директорию (папку), то рекурсивно вызывает сам себя.
      *
      * @param topDirectory текущая директория
-     * @param res          результат поиска
+     * @param result       результат поиска
      * @param objectType   объект для поиска
      */
-    private void search(File topDirectory, List<File> res, int objectType) {
+    private void search(File topDirectory, List<File> result, int objectType) {
         //получаем список всех объектов в текущей директории
-        File[] list = topDirectory.listFiles();
+        final File[] list = topDirectory.listFiles();
         if (list != null) {
             //просматриваем все объекты по-очереди
             for (File file : list) {
@@ -200,10 +200,10 @@ public class FileFinder {
                         //...добавляем текущий объект в список результатов,
                         //и обновляем значения счетчиков
                         directoriesNumber++;
-                        res.add(file);
+                        result.add(file);
                     }
                     //выполняем поиск во вложенных директориях
-                    search(file, res, objectType);
+                    search(file, result, objectType);
                 }
                 //если это файл
                 else {
@@ -214,7 +214,7 @@ public class FileFinder {
                         //и обновляем значения счетчиков
                         filesNumber++;
                         totalLength += file.length();
-                        res.add(file);
+                        result.add(file);
                     }
                 }
             }

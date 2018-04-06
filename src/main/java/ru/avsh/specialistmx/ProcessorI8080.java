@@ -1333,7 +1333,7 @@ final class ProcessorI8080 implements IClockedDevice {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if ((o == null) || (getClass() != o.getClass())) return false;
         ProcessorI8080 processorI8080 = (ProcessorI8080) o;
         return Objects.equals(fSpMX, processorI8080.fSpMX) &&
                Objects.equals( fMDM, processorI8080.fMDM ) &&

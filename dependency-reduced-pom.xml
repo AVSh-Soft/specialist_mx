@@ -4,7 +4,7 @@
   <groupId>ru.avsh.specialistmx</groupId>
   <artifactId>specialist_mx</artifactId>
   <name>Specialist MX</name>
-  <version>1.7.1</version>
+  <version>1.7.2</version>
   <description>The emulator of the computer "${project.name}"</description>
   <scm>
     <connection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git</connection>
@@ -171,7 +171,7 @@
   <properties>
     <resources.dir>ru/avsh/specialistmx/resources</resources.dir>
     <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
-    <copyright>Copyright © 2017 ${company.name}</copyright>
+    <copyright>Copyright © 2018 ${company.name}</copyright>
     <lib.dir>lib</lib.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jdkVersion>1.8</jdkVersion>
