@@ -211,7 +211,7 @@ final class BlockSaveDialog extends JDialog {
             if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
                 file = chooser.getSelectedFile();
                 fileName = file.getPath();
-                int ind = fileName.lastIndexOf('.');
+                final int ind = fileName.lastIndexOf('.');
                 if (ind != -1) {
                     fileName = fileName.substring(0, ind + 1).concat(fileType);
                 } else {
@@ -227,8 +227,8 @@ final class BlockSaveDialog extends JDialog {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 String s = fileNameTextField.getText();
                 if (!s.isEmpty()) {
-                    String ext = ((String) e.getItem()).substring(0, 3);
-                    int ind = s.lastIndexOf('.');
+                    final String ext = ((String) e.getItem()).substring(0, 3);
+                    final int ind = s.lastIndexOf('.');
                     if (ind > 0) {
                         s = s.substring(0, ind + 1).concat(ext);
                     } else {
@@ -237,7 +237,7 @@ final class BlockSaveDialog extends JDialog {
                     fileNameTextField.setText(s);
                 }
 
-                boolean f = (((JComboBox) e.getSource()).getSelectedIndex() == 0); // true если выбран тип файла "cpu(i80)"
+                final boolean f = ((JComboBox) e.getSource()).getSelectedIndex() == 0; // true если выбран тип файла "cpu(i80)"
                     startAddressLabel.setEnabled(f);
                 startAddressTextField.setEnabled(f);
                 if (!f) {
