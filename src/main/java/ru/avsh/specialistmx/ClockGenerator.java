@@ -110,6 +110,7 @@ final class ClockGenerator implements Runnable {
     /**
      * Добавляет тактируемое устройство в массив.
      * Метод должен вызываться до старта тактового генератора.
+     *
      * @param clockedDevice тактируемое устройство
      */
     synchronized void addClockedDevice(IClockedDevice clockedDevice) {
@@ -133,6 +134,7 @@ final class ClockGenerator implements Runnable {
 
     /**
      * Возвращает значение счетчика тактов.
+     *
      * @return значение счетчика тактов
      */
     long getCyclesCounter() {
@@ -141,6 +143,7 @@ final class ClockGenerator implements Runnable {
 
     /**
      * Возвращает значение тактовой частоты.
+     *
      * @return тактовая частота в Гц
      */
     int getClockSpeed() {
@@ -149,6 +152,7 @@ final class ClockGenerator implements Runnable {
 
     /**
      * Задает тактовую частоту.
+     *
      * @param clockSpeed тактовая частота в Гц
      */
     void setClockSpeed(int clockSpeed) {
@@ -158,6 +162,7 @@ final class ClockGenerator implements Runnable {
 
     /**
      * Показывает приостановлен тактовый генератор или нет.
+     *
      * @return - true = CPU приостановлен
      */
     boolean isPaused() {
@@ -166,8 +171,9 @@ final class ClockGenerator implements Runnable {
 
     /**
      * Переводит тактовый генератор в режим "Пауза".
+     *
      * @param mode true/false = установить/снять режим "Пауза"
-     * @param dev true = устанавливать/снимать режим "Пауза" и для устройств памяти
+     * @param dev  true = устанавливать/снимать режим "Пауза" и для устройств памяти
      */
     void pause(boolean mode, boolean dev) {
         if (fPauseFlag != mode) {
@@ -215,6 +221,7 @@ final class ClockGenerator implements Runnable {
     /**
      * Выполняет одну команду CPU в режиме "Пауза" тактового генератора.
      * (Метод для вызова из отладчика)
+     *
      * @return true = команда выполнена успешно
      */
     synchronized boolean execOneCmdCPU() {

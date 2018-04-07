@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 
 /**
  * Статические переменные и константы для проекта.
+ *
  * @author -=AVSh=-
  */
 final class ConsStat {
@@ -55,6 +56,7 @@ final class ConsStat {
 
     /**
      * Возвращает текущий путь к файлам эмулятора.
+     *
      * @return - текущий путь
      */
     static String getCurPath() {
@@ -63,6 +65,7 @@ final class ConsStat {
 
     /**
      * Устанавливает текущий путь к файлам эмулятора.
+     *
      * @param fCurPath - текущий путь
      */
     static void setCurPath(String fCurPath) {

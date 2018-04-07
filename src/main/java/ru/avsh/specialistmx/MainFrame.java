@@ -15,6 +15,7 @@ import static ru.avsh.specialistmx.ConsStat.*;
 
 /**
  * Класс для формирования главного окна приложения (меню, кнопоки обработчики событий).
+ *
  * @author -=AVSh=-
  */
 final class MainFrame extends JFrame {
@@ -31,6 +32,7 @@ final class MainFrame extends JFrame {
 
     /**
      * Конструктор.
+     *
      * @param spMX ссылка на объект класса SpecialistMX - "Компьютер 'Специалист MX'"
      */
     MainFrame(@NotNull SpecialistMX spMX) {
@@ -39,61 +41,61 @@ final class MainFrame extends JFrame {
         setIconImage(new ImageIcon(getClass().getResource(RESOURCES.concat(SPMX_ICON_FILE))).getImage());
         setTitle    ("");
 
-        JMenuBar menuBar = new JMenuBar();
+        final JMenuBar menuBar = new JMenuBar();
         setJMenuBar(menuBar);
 
-        JMenu fileMenu      = new JMenu("Файл");
+        final JMenu fileMenu      = new JMenu("Файл");
         menuBar.add(fileMenu  );
-        JMenuItem openItem  = new JMenuItem("Открыть...");
+        final JMenuItem openItem  = new JMenuItem("Открыть...");
         fileMenu.add(openItem );
         fileMenu.addSeparator();
-        JCheckBoxMenuItem   romItem = new JCheckBoxMenuItem(ROM_PREF);
+        final JCheckBoxMenuItem   romItem = new JCheckBoxMenuItem(ROM_PREF);
         fileMenu.add(romItem  );
         fileMenu.addSeparator();
-        JCheckBoxMenuItem diskAItem = new JCheckBoxMenuItem(DISK_A.concat(NO_DISK));
+        final JCheckBoxMenuItem diskAItem = new JCheckBoxMenuItem(DISK_A.concat(NO_DISK));
         fileMenu.add(diskAItem);
-        JCheckBoxMenuItem diskBItem = new JCheckBoxMenuItem(DISK_B.concat(NO_DISK));
+        final JCheckBoxMenuItem diskBItem = new JCheckBoxMenuItem(DISK_B.concat(NO_DISK));
         fileMenu.add(diskBItem);
         fileMenu.addSeparator();
-        JMenuItem saveItem  = new JMenuItem("Сохранить блок...");
+        final JMenuItem saveItem  = new JMenuItem("Сохранить блок...");
         fileMenu.add(saveItem );
         fileMenu.addSeparator();
-        JMenuItem resetItem = new JMenuItem("Сбросить");
+        final JMenuItem resetItem = new JMenuItem("Сбросить");
         fileMenu.add(resetItem);
         fileMenu.addSeparator();
-        JMenuItem exitItem  = new JMenuItem("Выход");
+        final JMenuItem exitItem  = new JMenuItem("Выход");
         fileMenu.add(exitItem );
 
-        JMenu viewMenu      = new JMenu("Просмотр");
+        final JMenu viewMenu      = new JMenu("Просмотр");
         menuBar.add(viewMenu   );
-        JMenuItem infoItem  = new JMenuItem("Состояние CPU/RAM");
+        final JMenuItem infoItem  = new JMenuItem("Состояние CPU/RAM");
         viewMenu.add(infoItem  );
-        JMenuItem debugItem = new JMenuItem("Запуск отладчика" );
+        final JMenuItem debugItem = new JMenuItem("Запуск отладчика" );
         viewMenu.add(debugItem );
         viewMenu.addSeparator( );
-        JCheckBoxMenuItem size11Item = new JCheckBoxMenuItem("Размер 1:1");
+        final JCheckBoxMenuItem size11Item = new JCheckBoxMenuItem("Размер 1:1");
         viewMenu.add(size11Item);
-        JCheckBoxMenuItem size21Item = new JCheckBoxMenuItem("Размер 2:1");
+        final JCheckBoxMenuItem size21Item = new JCheckBoxMenuItem("Размер 2:1");
         viewMenu.add(size21Item);
         viewMenu.addSeparator( );
-        JRadioButtonMenuItem modeMXItem = new JRadioButtonMenuItem("Клавиатура \"".concat(SPMX_NAME).concat("\""));
+        final JRadioButtonMenuItem modeMXItem = new JRadioButtonMenuItem("Клавиатура \"".concat(SPMX_NAME).concat("\""));
         modeMXItem.setSelected(!fSpMX.isKeyboardMode());
-        JRadioButtonMenuItem modeSTItem = new JRadioButtonMenuItem("Клавиатура \"Специалист\"");
+        final JRadioButtonMenuItem modeSTItem = new JRadioButtonMenuItem("Клавиатура \"Специалист\"");
         modeSTItem.setSelected( fSpMX.isKeyboardMode());
         viewMenu.add(modeMXItem);
         viewMenu.add(modeSTItem);
 
-        JMenu aboutMenu     = new JMenu("О программе");
+        final JMenu aboutMenu     = new JMenu("О программе");
         menuBar.add(aboutMenu  );
-        JMenuItem aboutItem = new JMenuItem("О программе...");
+        final JMenuItem aboutItem = new JMenuItem("О программе...");
         aboutMenu.add(aboutItem);
 
-        JPanel controlPanel = new JPanel();
+        final JPanel controlPanel = new JPanel();
 
-        JButton  openBtn = new JButton( "Открыть" );
-        JButton  saveBtn = new JButton("Сохранить");
-        JButton resetBtn = new JButton("Сбросить" );
-        JButton debugBtn = new JButton("Отладчик" );
+        final JButton  openBtn = new JButton( "Открыть" );
+        final JButton  saveBtn = new JButton("Сохранить");
+        final JButton resetBtn = new JButton("Сбросить" );
+        final JButton debugBtn = new JButton("Отладчик" );
 
          openBtn.setToolTipText("Открывает (загружает и запускает) файлы *.rom, *.mon, *.cpu(i80), *.rks, *.odi");
          saveBtn.setToolTipText("Сохраняет блок данных в файлы *.cpu(i80) и *.rks");
@@ -113,8 +115,8 @@ final class MainFrame extends JFrame {
         // -=-=-=-=- Обработчики событий -=-=-=-=-
         // -= Обработка событий клавиатуры =-
         KeyEventDispatcher keyEventDispatcher = e -> {
-            int id      = e.getID();
-            int keyCode = e.getKeyCode();
+            final int id      = e.getID();
+            final int keyCode = e.getKeyCode();
             if (this.isActive() && ((id == KeyEvent.KEY_PRESSED) || (id == KeyEvent.KEY_RELEASED))) {
                 if (id == KeyEvent.KEY_PRESSED) {
                     switch (keyCode) {
@@ -146,13 +148,13 @@ final class MainFrame extends JFrame {
 
         // -= Открытие файла =-
         openBtn.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser(getCurPath());
+            final JFileChooser chooser = new JFileChooser(getCurPath());
             chooser.setDialogTitle(STR_OPEN_FILE);
             chooser.setFileFilter(new FileNameExtensionFilter("Файлы: *.rom, *.mon, *.cpu, *.rks, *.odi", "rom", "mon", "cpu", "rks", "odi"));
 
             if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-                File   file     =    chooser.getSelectedFile();
-                String fileName = file.getName().toLowerCase();
+                final File   file     =    chooser.getSelectedFile();
+                final String fileName = file.getName().toLowerCase();
 
                 setCurPath(file.getParent());
 
@@ -171,10 +173,10 @@ final class MainFrame extends JFrame {
                     result = fSpMX.loadFileRKS(file);
                 } else if (fileName.endsWith("odi")) {
                     Object[] options = {"[A:]", "[B:]"};
-                    int selected  = JOptionPane.showOptionDialog(this, "В какой дисковод вставить диск?",
+                    final int selected  = JOptionPane.showOptionDialog(this, "В какой дисковод вставить диск?",
                             "Выбор дисковода", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
                     if (selected != JOptionPane.CLOSED_OPTION) {
-                        boolean fdd = selected == JOptionPane.NO_OPTION;
+                        final boolean fdd = selected == JOptionPane.NO_OPTION;
                         diskInsertEject(fdd, file, fdd ? diskBItem : diskAItem);
                     }
                 }
@@ -184,17 +186,17 @@ final class MainFrame extends JFrame {
 
         // -= Управление ROM-файлами =-
         romItem.addActionListener(e -> {
-            File curRomFile = fSpMX.getCurRomFile();
+            final File curRomFile = fSpMX.getCurRomFile();
             if ((curRomFile != null) && (JOptionPane.showConfirmDialog(this,
                     "Заменить текущий ROM-файл на встроенный?", "Что делать?", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION)) {
                 fSpMX.putIni (INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, "");
                 fSpMX.restart(false, false);
             } else {
-                JFileChooser chooser = new JFileChooser((curRomFile != null) ? curRomFile.getParent() : getCurPath());
+                final JFileChooser chooser = new JFileChooser((curRomFile != null) ? curRomFile.getParent() : getCurPath());
                 chooser.setDialogTitle(STR_OPEN_FILE);
                 chooser.setFileFilter (new FileNameExtensionFilter("Файлы: *.rom", "rom"));
                 if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-                    File file = chooser.getSelectedFile();
+                    final File file = chooser.getSelectedFile();
                     setCurPath(file.getParent());
                     if (fSpMX.loadFileROM(file)) {
                         fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, fSpMX.getShortPath(file));
@@ -212,12 +214,12 @@ final class MainFrame extends JFrame {
 
         // -= Сохранение файла =-
         saveBtn.addActionListener(e -> {
-            BlockSaveDialog blockSaveDialog = new BlockSaveDialog(this);
+            final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(this);
 
             boolean result = true;
             if (blockSaveDialog.getResult()) {
-                File   file     = blockSaveDialog.getFile   ();
-                String fileName = file.getName().toLowerCase();
+                final File   file     = blockSaveDialog.getFile   ();
+                final String fileName = file.getName().toLowerCase();
                 if        (fileName.endsWith("cpu")) {
                     result = fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress());
                 } else if (fileName.endsWith("rks")) {
@@ -265,7 +267,7 @@ final class MainFrame extends JFrame {
         });
         size21Item.addActionListener(e -> {
             ((JCheckBoxMenuItem)e.getSource()).setSelected(true);
-            Dimension dim = getMinimumSize();
+            final Dimension dim = getMinimumSize();
             setSize(dim.width + MemDevScreen.SCREEN_WIDTH, dim.height + MemDevScreen.SCREEN_HEIGHT);
             setLocationRelativeTo(null);
         });
@@ -308,8 +310,8 @@ final class MainFrame extends JFrame {
             // Обработчик вызывается, при изменении размеров фрейма
             @Override
             public void componentResized(ComponentEvent e) {
-                Dimension cur = getSize();
-                Dimension dim = getMinimumSize();
+                final Dimension cur = getSize();
+                final Dimension dim = getMinimumSize();
                 size11Item.setSelected(cur.equals(dim));
                 dim.setSize(dim.width + MemDevScreen.SCREEN_WIDTH, dim.height + MemDevScreen.SCREEN_HEIGHT);
                 size21Item.setSelected(getSize().equals(dim));
@@ -350,8 +352,8 @@ final class MainFrame extends JFrame {
 
         // Восстанавливаем размеры фрейма из ini-файла
         {
-            Integer width  = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
-            Integer height = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
+            final Integer width  = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
+            final Integer height = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
             if ((width != null) && (height != null)) {
                 setSize(width, height);
             }
@@ -373,7 +375,7 @@ final class MainFrame extends JFrame {
         boolean insert = true; // По умолчанию вставка диска
 
         if (file == null) {
-            JFileChooser chooser = new JFileChooser(getCurPath());
+            final JFileChooser chooser = new JFileChooser(getCurPath());
             chooser.setDialogTitle(STR_OPEN_FILE);
             chooser.setFileFilter (new FileNameExtensionFilter("Файлы: *.odi", "odi"));
             insert = chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION;
@@ -383,9 +385,9 @@ final class MainFrame extends JFrame {
             }
         }
 
-        String diskName = fdd ? DISK_B : DISK_A;
+        final String diskName = fdd ? DISK_B : DISK_A;
         if (insert) {
-            String fileName = "\"".concat(file.getName()).concat("\"");
+            final String fileName = "\"".concat(file.getName()).concat("\"");
             try {
                 fSpMX.insertDisk(fdd, file);
                 targetMenuItem.setSelected(true );
@@ -407,7 +409,7 @@ final class MainFrame extends JFrame {
      * Устанавливает параметры пункта меню для отображения/управления ROM-файл(а/ом) эмулятора.
      */
     private void setRomItem(@NotNull JCheckBoxMenuItem romItem) {
-        File romFile = fSpMX.getCurRomFile();
+        final File romFile = fSpMX.getCurRomFile();
         if ( romFile == null) {
              romItem.setSelected(false);
              romItem.setToolTipText("");

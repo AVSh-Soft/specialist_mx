@@ -12,8 +12,8 @@ class Main {
              JFrame.setDefaultLookAndFeelDecorated(true);
             JDialog.setDefaultLookAndFeelDecorated(true);
 
-            SpecialistMX spMX  = new SpecialistMX( );
-                  JFrame frame = new MainFrame(spMX);
+            final SpecialistMX spMX  = new SpecialistMX( );
+            final       JFrame frame = new MainFrame(spMX);
 
             spMX.setMainFrame(frame);
 
