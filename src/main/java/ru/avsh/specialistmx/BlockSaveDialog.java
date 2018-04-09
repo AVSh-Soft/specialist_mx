@@ -1,6 +1,6 @@
 package ru.avsh.specialistmx;
 
-import ru.avsh.lib.ExtFormattedTextField;
+import ru.avsh.lib.JFormattedTextFieldExt;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -76,11 +76,11 @@ final class BlockSaveDialog extends JDialog {
 
         final JLabel addressLabel      = new JLabel("Адреса:");
         final JLabel beginAddressLabel = new JLabel("Начало:");
-        final ExtFormattedTextField beginAddressTextField = new ExtFormattedTextField(WORD_MASK, '0');
+        final JFormattedTextFieldExt beginAddressTextField = new JFormattedTextFieldExt(WORD_MASK, '0');
         final JLabel endAddressLabel   = new JLabel("Конец:" );
-        final ExtFormattedTextField endAddressTextField   = new ExtFormattedTextField(WORD_MASK, '0');
+        final JFormattedTextFieldExt endAddressTextField   = new JFormattedTextFieldExt(WORD_MASK, '0');
         final JLabel startAddressLabel = new JLabel("Старт:" );
-        final ExtFormattedTextField startAddressTextField = new ExtFormattedTextField(WORD_MASK, '0');
+        final JFormattedTextFieldExt startAddressTextField = new JFormattedTextFieldExt(WORD_MASK, '0');
         final JSeparator addressSeparator = new JSeparator();
 
         final JButton okButton     = new JButton("OK"    );
@@ -170,7 +170,7 @@ final class BlockSaveDialog extends JDialog {
         // Потеря фокуса на поле с именем файла
         fileNameTextField.addFocusListener(new FocusAdapter() {
             @Override
-            public void focusLost(FocusEvent e) {
+            public void focusLost(FocusEvent focusEvent) {
                 String s = fileNameTextField.getText();
                 if (!s.isEmpty()) {
                     final String ext = String.valueOf(fileTypeComboBox.getSelectedItem()).substring(0, 3);
@@ -186,7 +186,7 @@ final class BlockSaveDialog extends JDialog {
         });
 
         // Нажатие на кнопку около имени файла
-        fileNameButton.addActionListener(e -> {
+        fileNameButton.addActionListener(actionEvent -> {
             File file;
             String fileName = fileNameTextField.getText().trim();
             String fileType = String.valueOf(fileTypeComboBox.getSelectedItem()).substring(0, 3);
@@ -223,12 +223,12 @@ final class BlockSaveDialog extends JDialog {
         });
 
         // Изменение типа файла
-        fileTypeComboBox.addItemListener(e -> {
-            if (e.getStateChange() == ItemEvent.SELECTED) {
+        fileTypeComboBox.addItemListener(itemEvent -> {
+            if (itemEvent.getStateChange() == ItemEvent.SELECTED) {
                 String s = fileNameTextField.getText();
                 if (!s.isEmpty()) {
-                    final String ext = ((String) e.getItem()).substring(0, 3);
-                    final int ind = s.lastIndexOf('.');
+                    final String ext = ((String) itemEvent.getItem()).substring(0, 3);
+                    final    int ind = s.lastIndexOf('.');
                     if (ind > 0) {
                         s = s.substring(0, ind + 1).concat(ext);
                     } else {
@@ -237,10 +237,11 @@ final class BlockSaveDialog extends JDialog {
                     fileNameTextField.setText(s);
                 }
 
-                final boolean f = ((JComboBox) e.getSource()).getSelectedIndex() == 0; // true если выбран тип файла "cpu(i80)"
-                    startAddressLabel.setEnabled(f);
-                startAddressTextField.setEnabled(f);
-                if (!f) {
+                // true если выбран тип файла "cpu(i80)"
+                final boolean isCPU = ((JComboBox) itemEvent.getSource()).getSelectedIndex() == 0;
+                    startAddressLabel.setEnabled(isCPU);
+                startAddressTextField.setEnabled(isCPU);
+                if (!isCPU) {
                     startAddressTextField.setValue(beginAddressTextField.getValue());
                 }
             }
@@ -249,7 +250,7 @@ final class BlockSaveDialog extends JDialog {
         // Потеря фокуса на поле с адресом начала
         beginAddressTextField.addFocusListener(new FocusAdapter() {
             @Override
-            public void focusLost(FocusEvent e) {
+            public void focusLost(FocusEvent focusEvent) {
                 // Если выбран тип файла "rks"
                 if (fileTypeComboBox.getSelectedIndex() == 1) {
                     startAddressTextField.setValue(beginAddressTextField.getValue());
@@ -258,7 +259,7 @@ final class BlockSaveDialog extends JDialog {
         });
 
         // Нажатие на кнопку "OK"
-        okButton.addActionListener(e -> {
+        okButton.addActionListener(actionEvent -> {
             String s = fileNameTextField.getText().trim();
             if (s.isEmpty()) {
                 showMessageDialog(this, "Не задано имя файла для сохранения", STR_ERROR, ERROR_MESSAGE);
@@ -308,7 +309,7 @@ final class BlockSaveDialog extends JDialog {
         });
 
         // Нажатие на кнопку "Cancel"
-        cancelButton.addActionListener(e -> setVisible(false));
+        cancelButton.addActionListener(actionEvent -> setVisible(false));
 
         // -=-=-=-=- Завершение формирования окна диалога -=-=-=-=-
         // Устанавливаем размеры окна

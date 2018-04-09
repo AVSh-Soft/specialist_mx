@@ -11,7 +11,7 @@ import java.text.ParseException;
  *
  * @author -=AVSh=-
  */
-public class ExtFormattedTextField extends JFormattedTextField {
+public class JFormattedTextFieldExt extends JFormattedTextField {
     private static final long serialVersionUID = 8878373188408325948L;
 
     /**
@@ -20,17 +20,17 @@ public class ExtFormattedTextField extends JFormattedTextField {
      * @param mask        Sets the mask dictating the legal characters.
      * @param placeholder Character used when formatting if the value does not completely fill the mask.
      */
-    public ExtFormattedTextField(String mask, char placeholder) {
+    public JFormattedTextFieldExt(String mask, char placeholder) {
         super();
 
-        final MaskFormatter mf = new MaskFormatter();
-        mf.setPlaceholderCharacter(placeholder);
+        final MaskFormatter maskFormatter = new MaskFormatter();
+        maskFormatter.setPlaceholderCharacter(placeholder);
         try {
-            mf.setMask(mask);
+            maskFormatter.setMask(mask);
         } catch (ParseException e) {
             // Если маска задана некорректно, то маска не будет применяться
         }
-        setFormatterFactory(new DefaultFormatterFactory(mf));
+        setFormatterFactory(new DefaultFormatterFactory(maskFormatter));
 
         setHorizontalAlignment(SwingConstants.CENTER);
         setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));

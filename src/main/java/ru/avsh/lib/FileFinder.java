@@ -18,8 +18,7 @@ public class FileFinder {
     private static final int DIRECTORIES = 1;
     private static final int ALL         = 2;
     //классы для работы с регулярными выражениями
-    private Pattern p = null;
-    private Matcher m = null;
+    private Pattern pattern = null;
     //общий размер найденных файлов
     private long totalLength = 0;
     //общее количество найденных файлов
@@ -34,7 +33,7 @@ public class FileFinder {
      * @param startPath Начальная директория поиска
      * @return Список (List) найденных объектов
      */
-    public List<File> findAll(String startPath) {
+    public List<File> findAll(final String startPath) {
         return find(startPath, "", ALL);
     }
 
@@ -47,7 +46,7 @@ public class FileFinder {
      * @param mask      регулярное выражение, которому должны соответствовать имена найденный объектов
      * @return Список (List) найденных объектов
      */
-    public List<File> findAll(String startPath, String mask) {
+    public List<File> findAll(final String startPath, final String mask) {
         return find(startPath, mask, ALL);
     }
 
@@ -58,7 +57,7 @@ public class FileFinder {
      * @param startPath Начальная директория поиска
      * @return Список (List) найденных объектов
      */
-    public List<File> findFiles(String startPath) {
+    public List<File> findFiles(final String startPath) {
         return find(startPath, "", FILES);
     }
 
@@ -71,7 +70,7 @@ public class FileFinder {
      * @param mask      регулярное выражение, которому должны соответствовать имена найденный объектов
      * @return Список (List) найденных объектов
      */
-    public List<File> findFiles(String startPath, String mask) {
+    public List<File> findFiles(final String startPath, final String mask) {
         return find(startPath, mask, FILES);
     }
 
@@ -82,7 +81,7 @@ public class FileFinder {
      * @param startPath Начальная директория поиска
      * @return Список (List) найденных объектов
      */
-    public List<File> findDirectories(String startPath) {
+    public List<File> findDirectories(final String startPath) {
         return find(startPath, "", DIRECTORIES);
     }
 
@@ -95,7 +94,7 @@ public class FileFinder {
      * @param mask      регулярное выражение, которому должны соответствовать имена найденный объектов
      * @return Список (List) найденных объектов
      */
-    public List<File> findDirectories(String startPath, String mask) {
+    public List<File> findDirectories(final String startPath, final String mask) {
         return find(startPath, mask, DIRECTORIES);
     }
 
@@ -132,16 +131,16 @@ public class FileFinder {
      * @param name имя файла
      * @return true, если найденный объект соответствует регулярному выражению
      */
-    private boolean accept(String name) {
+    private boolean accept(final String name) {
         //если регулярное выражение не задано...
-        if (p == null) {
+        if (pattern == null) {
             //...значит объект подходит
             return true;
         }
         //создаем Matcher
-        m = p.matcher(name);
+        final Matcher matcher = pattern.matcher(name);
         //выполняем проверку
-        return m.matches();
+        return matcher.matches();
     }
 
     /**
@@ -152,7 +151,7 @@ public class FileFinder {
      * @param objectType объект для поиска
      * @return список (List) найденных объектов
      */
-    private List<File> find(String startPath, String mask, int objectType) {
+    private List<File> find(final String startPath, final String mask, final int objectType) {
         final List<File> result = new ArrayList<>(100);
         //проверка параметров
         if ((startPath != null) && (mask != null)) {
@@ -161,7 +160,7 @@ public class FileFinder {
             if (topDir.exists()) {
                 //если задано регулярное выражение, создаем Pattern
                 if (!mask.equals("")) {
-                    p = Pattern.compile(mask, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+                    pattern = Pattern.compile(mask, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
                 }
                 //обнуляем все счетчики
                 filesNumber       = 0;
@@ -171,7 +170,7 @@ public class FileFinder {
                 search(topDir, result, objectType);
                 //присваиваем null шаблону, т.к. при следующем вызове find...
                 //регулярное выражение может быть не задано
-                p = null;
+                pattern = null;
             }
         }
         //возвращаем результат
@@ -186,12 +185,12 @@ public class FileFinder {
      * @param result       результат поиска
      * @param objectType   объект для поиска
      */
-    private void search(File topDirectory, List<File> result, int objectType) {
+    private void search(final File topDirectory, final List<File> result, final int objectType) {
         //получаем список всех объектов в текущей директории
         final File[] list = topDirectory.listFiles();
         if (list != null) {
             //просматриваем все объекты по-очереди
-            for (File file : list) {
+            for (final File file : list) {
                 //если это директория (папка)...
                 if (file.isDirectory()) {
                     //...выполняем проверку на соответствие типу объекта

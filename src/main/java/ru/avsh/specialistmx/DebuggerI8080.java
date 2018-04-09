@@ -1,7 +1,7 @@
 package ru.avsh.specialistmx;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.lib.ExtFormattedTextField;
+import ru.avsh.lib.JFormattedTextFieldExt;
 import ru.avsh.specialistmx.ProcessorI8080.DebugRegPairs;
 
 import javax.swing.*;
@@ -19,6 +19,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.PlainDocument;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.EnumMap;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.function.Function;
@@ -120,18 +121,9 @@ final class DebuggerI8080 extends JDialog {
     * STEP     - выполнен шаг CPU (изменилось всё).
     */
     private enum TypesEvents {
-        REG_PAIR, TRAPS, MEMORY, PAGE, STEP;
-        // Для сохранения деталей события
-        private Object fDetail;
-        // Возвращает детали события
-        Object getDetail(){
-            return this.fDetail;
-        }
-        // Сохраняет детали события
-        void setDetail(Object detail){
-            this.fDetail = detail;
-        }
+        REG_PAIR, TRAPS, MEMORY, PAGE, STEP
     }
+    private static final EnumMap<TypesEvents, Object> TYPES_EVENTS_DETAIL = new EnumMap<>(TypesEvents.class);
 
     // Константы дизассемблера
     private static final int FOR_ALIGNMENT = 16; // Длина участка для выравнивания кода
@@ -277,34 +269,34 @@ final class DebuggerI8080 extends JDialog {
     private void initComponents() {
         setTitle("Отладчик для процессора i8080 (К580ВМ80А)");
 
-        JPanel dialogPane   = new JPanel();
-        JPanel contentPanel = new JPanel();
-        JPanel buttonBar    = new JPanel();
+        final JPanel dialogPane   = new JPanel();
+        final JPanel contentPanel = new JPanel();
+        final JPanel buttonBar    = new JPanel();
 
-        JScrollPane disAsmScrollPane = new JScrollPane();
-        JScrollPane regCpuScrollPane = new JScrollPane();
-        JScrollPane memDatScrollPane = new JScrollPane();
-        JScrollPane  stackScrollPane = new JScrollPane();
-        JScrollPane  trapsScrollPane = new JScrollPane();
+        final JScrollPane disAsmScrollPane = new JScrollPane();
+        final JScrollPane regCpuScrollPane = new JScrollPane();
+        final JScrollPane memDatScrollPane = new JScrollPane();
+        final JScrollPane  stackScrollPane = new JScrollPane();
+        final JScrollPane  trapsScrollPane = new JScrollPane();
 
         // Байтовые поля для редактора ячеек таблицы fDisAsmTable
-        final ExtFormattedTextField byteFieldDAT = new ExtFormattedTextField(BYTE_MASK, '0');
+        final JFormattedTextFieldExt byteFieldDAT = new JFormattedTextFieldExt(BYTE_MASK, '0');
         final DefaultCellEditor byteCellEditorDAT = new      DefaultCellEditor(byteFieldDAT);
 
         // Двухбайтовые поля для редактора ячеек таблицы regCpuTable
-        final ExtFormattedTextField wordFieldRCT = new ExtFormattedTextField(WORD_MASK, '0');
+        final JFormattedTextFieldExt wordFieldRCT = new JFormattedTextFieldExt(WORD_MASK, '0');
         final DefaultCellEditor wordCellEditorRCT = new      DefaultCellEditor(wordFieldRCT);
 
         // Двухбайтовые поля для редактора ячеек таблицы stackTable
-        final ExtFormattedTextField wordFieldST  = new ExtFormattedTextField(WORD_MASK, '0');
+        final JFormattedTextFieldExt wordFieldST  = new JFormattedTextFieldExt(WORD_MASK, '0');
         final DefaultCellEditor wordCellEditorST  = new      DefaultCellEditor(wordFieldST);
 
         // Байтовые поля для редактора ячеек таблицы таблицы fMemDatTable
-        final ExtFormattedTextField byteFieldMDT = new ExtFormattedTextField(BYTE_MASK, '0');
+        final JFormattedTextFieldExt byteFieldMDT = new JFormattedTextFieldExt(BYTE_MASK, '0');
         final DefaultCellEditor byteCellEditorMDT = new      DefaultCellEditor(byteFieldMDT);
 
         // Строковое поле из 16 символов для редактора ячеек таблицы таблицы fMemDatTable
-        final ExtFormattedTextField strFieldMDT  = new ExtFormattedTextField(STR16_MASK, ' ');
+        final JFormattedTextFieldExt strFieldMDT  = new JFormattedTextFieldExt(STR16_MASK, ' ');
         final DefaultCellEditor strCellEditorMDT  = new      DefaultCellEditor(strFieldMDT);
 
         // Параметры таблицы fDisAsmTable с дизассемблированными данными
@@ -319,14 +311,14 @@ final class DebuggerI8080 extends JDialog {
         fMemDatTable.getColumnModel().getColumn(MD_COL_STR).setCellEditor(strCellEditorMDT);
 
         // Метка для вывода информации из регистра флагов CPU
-        FlagsRegLabel flagsRegLabel = new FlagsRegLabel();
+        final FlagsRegLabel flagsRegLabel = new FlagsRegLabel();
 
         // Кнопки установки/сброса флагов CPU (FLAGS = SZ?A?P?C)
-        JButton flagSButton = new JButton(new String(new char[]{FLAGS.charAt(0)}));
-        JButton flagZButton = new JButton(new String(new char[]{FLAGS.charAt(1)}));
-        JButton flagAButton = new JButton(new String(new char[]{FLAGS.charAt(3)}));
-        JButton flagPButton = new JButton(new String(new char[]{FLAGS.charAt(5)}));
-        JButton flagCButton = new JButton(new String(new char[]{FLAGS.charAt(7)}));
+        final JButton flagSButton = new JButton(new String(new char[]{FLAGS.charAt(0)}));
+        final JButton flagZButton = new JButton(new String(new char[]{FLAGS.charAt(1)}));
+        final JButton flagAButton = new JButton(new String(new char[]{FLAGS.charAt(3)}));
+        final JButton flagPButton = new JButton(new String(new char[]{FLAGS.charAt(5)}));
+        final JButton flagCButton = new JButton(new String(new char[]{FLAGS.charAt(7)}));
         {
             final Dimension dim = new Dimension(17, 17);
             final Insets    ins = new Insets   ( 1, 1, 1, 1);
@@ -348,19 +340,19 @@ final class DebuggerI8080 extends JDialog {
         }
 
         // Модель и таблица для вывода информации из регистровых пар CPU
-        RegCpuTable regCpuTable = new RegCpuTable(new RegCpuTableModel());
+        final RegCpuTable regCpuTable = new RegCpuTable(new RegCpuTableModel());
         regCpuTable.getColumnModel().getColumn(CR_COL_DAT).setCellEditor(wordCellEditorRCT);
 
         // Модель и таблица для вывода информации из стека CPU
-        StackTable stackTable = new StackTable(new StackTableModel());
+        final StackTable stackTable = new StackTable(new StackTableModel());
         stackTable.getColumnModel().getColumn(SP_COL_DAT).setCellEditor(wordCellEditorST);
 
         // Модель и таблица для вывода информации о ловушках
-        TrapsTable trapsTable = new TrapsTable(new TrapsTableModel());
+        final TrapsTable trapsTable = new TrapsTable(new TrapsTableModel());
 
         // Кнопки для работы с ловушками
-        JButton deleteTrapButton = new JButton("Delete");
-        JButton clearTrapsButton = new JButton("Clear" );
+        final JButton deleteTrapButton = new JButton("Delete");
+        final JButton clearTrapsButton = new JButton("Clear" );
         {
             final Dimension dim = new Dimension(78, 14);
             final Insets    ins = new Insets   ( 1, 1, 1, 1);
@@ -375,44 +367,44 @@ final class DebuggerI8080 extends JDialog {
         }
 
         // Метка для вывода информации о текущей странице CPU
-        CpuMemPageLabel cpuMemPageLabel = new CpuMemPageLabel();
+        final CpuMemPageLabel cpuMemPageLabel = new CpuMemPageLabel();
 
         // Переключатель страниц памяти для просмотра кода
-        CodeMemPagesComboBox codeMemPagesComboBox = new CodeMemPagesComboBox();
+        final CodeMemPagesComboBox codeMemPagesComboBox = new CodeMemPagesComboBox();
 
         // Переключатель страниц памяти для просмотра данных
-        DataMemPagesComboBox dataMemPagesComboBox = new DataMemPagesComboBox();
+        final DataMemPagesComboBox dataMemPagesComboBox = new DataMemPagesComboBox();
 
-        JButton findButton = new JButton("Find");
-        JButton    button2 = new JButton("---" );
-        JButton    button3 = new JButton("---" );
-        JButton    button4 = new JButton("---" );
+        final JButton findButton = new JButton("Find");
+        final JButton    button2 = new JButton("---" );
+        final JButton    button3 = new JButton("---" );
+        final JButton    button4 = new JButton("---" );
 
         // Основные кнопки управления отладчиком
-        Action performStep = new AbstractAction("F6 Step") {
+        final Action performStep = new AbstractAction("F6 Step") {
             private static final long serialVersionUID = 6179694362946312263L;
 
             @Override
-            public void actionPerformed(ActionEvent e) {
+            public void actionPerformed(ActionEvent actionEvent) {
                 step();
             }
         };
 
-        Action performStepOver = new AbstractAction("F7 Step Over") {
+        final Action performStepOver = new AbstractAction("F7 Step Over") {
             private static final long serialVersionUID = -8028618186701256410L;
 
             @Override
-            public void actionPerformed(ActionEvent e) {
+            public void actionPerformed(ActionEvent actionEvent) {
                 stepOver();
             }
         };
 
-        JButton     gotoButton = new JButton("Go to");
-        JButton     toPCButton = new JButton("To PC");
-        JButton      runButton = new JButton("Run to cursor");
-        JButton     stepButton = new JButton(performStep    );
-        JButton stepOverButton = new JButton(performStepOver);
-        JButton       okButton = new JButton("OK");
+        final JButton     gotoButton = new JButton("Go to");
+        final JButton     toPCButton = new JButton("To PC");
+        final JButton      runButton = new JButton("Run to cursor");
+        final JButton     stepButton = new JButton(performStep    );
+        final JButton stepOverButton = new JButton(performStepOver);
+        final JButton       okButton = new JButton("OK");
 
             stepButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0), "performStep"    );
             stepButton.getActionMap().put("performStep"    , performStep    );
@@ -432,7 +424,7 @@ final class DebuggerI8080 extends JDialog {
 
         // --- Настраиваем расположение компонентов ---
         // -=- contentPane -=-
-        Container contentPane = getContentPane();
+        final Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 
         // -=- dialogPane -=-
@@ -606,33 +598,34 @@ final class DebuggerI8080 extends JDialog {
         // -=-=-=-=- Обработчики событий -=-=-=-=-
         {
             // Срабатывает в начале и конце редактирования - корректируем позицию курсора, устанавливаем значение и фокус компонена JFormattedTextField
-            final HierarchyListener hl = e -> {
-                if ((e.getChangedParent() instanceof JTable) && (e.getComponent() instanceof JFormattedTextField)) {
-                    final JTable              tbl = (JTable)              e.getChangedParent();
-                    final JFormattedTextField ftf = (JFormattedTextField) e.getComponent    ();
+            final HierarchyListener hierarchyListener = hierarchyEvent -> {
+                if ((hierarchyEvent.getChangedParent() instanceof JTable) &&
+                        (hierarchyEvent.getComponent() instanceof JFormattedTextField)) {
+                    final JTable              tbl = (JTable)              hierarchyEvent.getChangedParent();
+                    final JFormattedTextField ftf = (JFormattedTextField) hierarchyEvent.getComponent    ();
 
                     if (!tbl.isEditing() && !ftf.isFocusOwner() && (ftf.getCaretPosition() > 0)) {
                         ftf.setValue(tbl.getModel().getValueAt(getFocusedRowModel(tbl), getFocusedColumnModel(tbl)));
-                        ftf.requestFocusInWindow();
-                        ftf.setCaretPosition(0);
+                        ftf.requestFocusInWindow ();
+                        ftf.setCaretPosition    (0);
                     }
                 }
             };
             // Добавляем в компоненты
-            byteFieldDAT.addHierarchyListener(hl);
-            wordFieldRCT.addHierarchyListener(hl);
-             wordFieldST.addHierarchyListener(hl);
-            byteFieldMDT.addHierarchyListener(hl);
-             strFieldMDT.addHierarchyListener(hl);
+            byteFieldDAT.addHierarchyListener(hierarchyListener);
+            wordFieldRCT.addHierarchyListener(hierarchyListener);
+             wordFieldST.addHierarchyListener(hierarchyListener);
+            byteFieldMDT.addHierarchyListener(hierarchyListener);
+             strFieldMDT.addHierarchyListener(hierarchyListener);
         }
 
         {
             // При потере фокуса на редактируемомом байте/слове - отменяем редактирование
-            final FocusAdapter fa = new FocusAdapter() {
+            final FocusAdapter focusAdapter = new FocusAdapter() {
                 @Override
-                public void focusLost(FocusEvent e) {
-                    if (((Component) e.getSource()).getParent() instanceof JTable) {
-                        final JTable tbl = (JTable) ((Component) e.getSource()).getParent();
+                public void focusLost(FocusEvent focusEvent) {
+                    if (((Component) focusEvent.getSource()).getParent() instanceof JTable) {
+                        final JTable tbl = (JTable) ((Component) focusEvent.getSource()).getParent();
                         if (tbl.isEditing()) {
                             tbl.getCellEditor().cancelCellEditing();
                         }
@@ -640,17 +633,17 @@ final class DebuggerI8080 extends JDialog {
                 }
             };
             // Добавляем в компоненты
-            byteFieldDAT.addFocusListener(fa);
-            wordFieldRCT.addFocusListener(fa);
-             wordFieldST.addFocusListener(fa);
-            byteFieldMDT.addFocusListener(fa);
-             strFieldMDT.addFocusListener(fa);
+            byteFieldDAT.addFocusListener(focusAdapter);
+            wordFieldRCT.addFocusListener(focusAdapter);
+             wordFieldST.addFocusListener(focusAdapter);
+            byteFieldMDT.addFocusListener(focusAdapter);
+             strFieldMDT.addFocusListener(focusAdapter);
         }
 
         // При потере фокуса на таблице fDisAsmTable - убираем пометку адресов
         fDisAsmTable.addFocusListener(new FocusAdapter() {
             @Override
-            public void focusLost(FocusEvent e) {
+            public void focusLost(FocusEvent focusEvent) {
                 fFocusedAddress  =  -1;
                 fDisAsmTable.repaint();
             }
@@ -662,10 +655,11 @@ final class DebuggerI8080 extends JDialog {
             private static final long serialVersionUID = -6938596434272573049L;
 
             @Override
-            public void actionPerformed(ActionEvent e) {
-                final TableModel model   =  fDisAsmTable.getModel();
-                int rowM =    getFocusedRowModel(fDisAsmTable);
-                int colM = getFocusedColumnModel(fDisAsmTable);
+            public void actionPerformed(ActionEvent actionEvent) {
+                final TableModel model = fDisAsmTable.getModel();
+
+                final int rowM =    getFocusedRowModel(fDisAsmTable);
+                final int colM = getFocusedColumnModel(fDisAsmTable);
                 switch (colM) {
                     case DA_COL_BT0:
                     case DA_COL_BT1:
@@ -686,14 +680,15 @@ final class DebuggerI8080 extends JDialog {
         });
 
         {
-            final AbstractAction aa = new AbstractAction() {
+            final AbstractAction abstractAction = new AbstractAction() {
                 private static final long serialVersionUID = 2593281858748981540L;
 
                 @Override
-                public void actionPerformed(ActionEvent e) {
-                    final JTable table = (JTable) e.getSource();
-                    int rowM =    getFocusedRowModel(table);
-                    int colM = getFocusedColumnModel(table);
+                public void actionPerformed(ActionEvent actionEvent) {
+                    final JTable table = (JTable) actionEvent.getSource();
+
+                    final int rowM =    getFocusedRowModel(table);
+                    final int colM = getFocusedColumnModel(table);
                     // Редактирование ячейки
                     if ((   ((table instanceof RegCpuTable) && (colM == CR_COL_DAT))
                          || ((table instanceof StackTable ) && (colM == SP_COL_DAT))
@@ -705,15 +700,15 @@ final class DebuggerI8080 extends JDialog {
 
             // Изменяем реакцию на клавишу Enter в таблице regCpuTable
             regCpuTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
-            regCpuTable.getActionMap().put(EDITING_OR_NAVIGATING, aa);
+            regCpuTable.getActionMap().put(EDITING_OR_NAVIGATING, abstractAction);
 
             // Изменяем реакцию на клавишу Enter в таблице stackTable
             stackTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
-            stackTable.getActionMap().put(EDITING_OR_NAVIGATING, aa);
+            stackTable.getActionMap().put(EDITING_OR_NAVIGATING, abstractAction);
 
             // Изменяем реакцию на клавишу Enter в таблице fMemDatTable
             fMemDatTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
-            fMemDatTable.getActionMap().put(EDITING_OR_NAVIGATING, aa);
+            fMemDatTable.getActionMap().put(EDITING_OR_NAVIGATING, abstractAction);
         }
 
         // Изменяем реакцию на клавишу Enter в таблице trapsTable
@@ -722,10 +717,10 @@ final class DebuggerI8080 extends JDialog {
             private static final long serialVersionUID = 4734432549045273397L;
 
             @Override
-            public void actionPerformed(ActionEvent e) {
-                int  rowM  = getFocusedRowModel((JTable) e.getSource());
+            public void actionPerformed(ActionEvent actionEvent) {
+                final int rowM = getFocusedRowModel((JTable) actionEvent.getSource());
                 if ((rowM != -1) && (rowM < fLayer.getTrapCount())) {
-                    Trap trap = fLayer.getTrap(rowM);
+                    final Trap trap = fLayer.getTrap(rowM);
                     // Переходим на ловушку в таблице с кодом
                           fLayer.setCodePage(trap.getPage());
                     fDisAsmTable.gotoAddress(trap.getAddress(), DA_COL_ADR);
@@ -736,11 +731,11 @@ final class DebuggerI8080 extends JDialog {
         // Изменяем реакцию на двойной клик мышью в колонке DA_COL_CMD таблицы fDisAsmTable
         fDisAsmTable.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                if ((   e.getClickCount() == 2)
-                     && (getFocusedColumnModel(fDisAsmTable) == DA_COL_CMD)
-                     && (fFocusedAddress  >= 0)
-                     && ((DisAsmTableModel) fDisAsmTable.getModel()).isJmpCmd(getFocusedRowModel(fDisAsmTable))) {
+            public void mouseClicked(MouseEvent mouseEvent) {
+                if ((mouseEvent.getClickCount() == 2)
+                        && (getFocusedColumnModel(fDisAsmTable) == DA_COL_CMD)
+                        && (fFocusedAddress >= 0)
+                        && ((DisAsmTableModel) fDisAsmTable.getModel()).isJmpCmd(getFocusedRowModel(fDisAsmTable))) {
                     fDisAsmTable.gotoAddress(fFocusedAddress, DA_COL_ADR); // Переход по адресу в команде
                 }
             }
@@ -749,13 +744,13 @@ final class DebuggerI8080 extends JDialog {
         // Изменяем реакцию на двойной клик мышью в колонках таблицы с ловушками trapsTable
         trapsTable.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    int  rowM  = getFocusedRowModel((JTable) e.getComponent());
+            public void mouseClicked(MouseEvent mouseEvent) {
+                if (mouseEvent.getClickCount() == 2) {
+                    final int rowM = getFocusedRowModel((JTable) mouseEvent.getComponent());
                     if ((rowM != -1) && (rowM < fLayer.getTrapCount())) {
                         Trap trap = fLayer.getTrap(rowM);
                         // Переходим на ловушку в таблице с кодом
-                              fLayer.setCodePage(trap.getPage());
+                        fLayer.setCodePage(trap.getPage());
                         fDisAsmTable.gotoAddress(trap.getAddress(), DA_COL_ADR);
                     }
                 }
@@ -764,24 +759,24 @@ final class DebuggerI8080 extends JDialog {
 
         {
             // Обработчик событий для кнопок установки/сброса флагов
-            final ActionListener al = e -> {
-                int index = FLAGS.indexOf(e.getActionCommand());
-                if ((index != -1) && (index <= 7)) {
+            final ActionListener actionListener = actionEvent -> {
+                final int index = FLAGS.indexOf(actionEvent.getActionCommand());
+                if (index != -1) {
                     // Инвертируем бит, соответствующий названию кнопки
                     fLayer.setValRegPair(DebugRegPairs.AF, fLayer.getValRegPair(DebugRegPairs.AF) ^ (1 << (7 - index)));
                 }
             };
             // Добавляем в компоненты
-            flagSButton.addActionListener(al);
-            flagZButton.addActionListener(al);
-            flagAButton.addActionListener(al);
-            flagPButton.addActionListener(al);
-            flagCButton.addActionListener(al);
+            flagSButton.addActionListener(actionListener);
+            flagZButton.addActionListener(actionListener);
+            flagAButton.addActionListener(actionListener);
+            flagPButton.addActionListener(actionListener);
+            flagCButton.addActionListener(actionListener);
         }
 
         // Обработчик событий для кнопки удаления ловушки
-        deleteTrapButton.addActionListener(e -> {
-            int  rowM  = getFocusedRowModel(trapsTable);
+        deleteTrapButton.addActionListener(actionEvent -> {
+            final int rowM = getFocusedRowModel(trapsTable);
             if ((rowM != -1) && (rowM < fLayer.getTrapCount())) {
                 Trap trap = fLayer.getTrap(rowM);
                 fLayer.remTrap(trap.getPage(), trap.getAddress());
@@ -789,37 +784,39 @@ final class DebuggerI8080 extends JDialog {
         });
 
         // Обработчик событий для кнопки очистки ловушек
-        clearTrapsButton.addActionListener(e -> fLayer.clearTraps());
+        clearTrapsButton.addActionListener(actionEvent -> fLayer.clearTraps());
 
         // Обработчик выбора страницы памяти Code RAM
-        codeMemPagesComboBox.addItemListener(e -> {
-            if (e.getStateChange() == ItemEvent.SELECTED) {
-                int index = ((JComboBox) e.getSource()).getSelectedIndex();
-                fLayer.setCodePage((index == fLayer.getNumPages() - 1) ? MemDevMainMemory.ROM_DISK : index); // Учитываются особенности класса MemDevMainMemory
+        codeMemPagesComboBox.addItemListener (itemEvent -> {
+            if (itemEvent.getStateChange() == ItemEvent.SELECTED) {
+                final int index = ((JComboBox) itemEvent.getSource()).getSelectedIndex();
+                // Учитываются особенности класса MemDevMainMemory
+                fLayer.setCodePage((index == (fLayer.getNumPages() - 1)) ? MemDevMainMemory.ROM_DISK : index);
             }
         });
 
         // Обработчик выбора страницы памяти Data RAM
-        dataMemPagesComboBox.addItemListener(e -> {
-            if (e.getStateChange() == ItemEvent.SELECTED) {
-                int index = ((JComboBox) e.getSource()).getSelectedIndex();
-                fLayer.setDataPage((index == fLayer.getNumPages() - 1) ? MemDevMainMemory.ROM_DISK : index); // Учитываются особенности класса MemDevMainMemory
+        dataMemPagesComboBox.addItemListener (itemEvent -> {
+            if (itemEvent.getStateChange() == ItemEvent.SELECTED) {
+                final int index = ((JComboBox) itemEvent.getSource()).getSelectedIndex();
+                // Учитываются особенности класса MemDevMainMemory
+                fLayer.setDataPage((index == (fLayer.getNumPages() - 1)) ? MemDevMainMemory.ROM_DISK : index);
             }
         });
 
         // Определяем обработчики кнопок
-        gotoButton.addActionListener(e -> gotoAddress());
-        toPCButton.addActionListener(e -> {
+        gotoButton.addActionListener(actionEvent -> gotoAddress());
+        toPCButton.addActionListener(actionEvent -> {
                   fLayer.setCodePage(fLayer.getCpuPage());
             fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPairs.PC), DA_COL_ADR);
 
         });
-         runButton.addActionListener(e -> runToCursor());
-          okButton.addActionListener(e -> {
+         runButton.addActionListener(actionEvent -> runToCursor());
+          okButton.addActionListener(actionEvent -> {
             fLayer.saveAllRegPairs();
             setVisible(false);
         });
-        findButton.addActionListener(e -> findData());
+        findButton.addActionListener(actionEvent -> findData());
 
         // Обрабатываем события закрытия окна отладчика
         addWindowListener(new WindowAdapter() {
@@ -851,8 +848,8 @@ final class DebuggerI8080 extends JDialog {
 
         // Восстанавливаем размеры фрейма из ini-файла
         {
-            Integer width  = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
-            Integer height = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
+            final Integer width  = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
+            final Integer height = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
             if ((width != null) && (height != null)) {
                 setSize(width, height);
             }
@@ -933,7 +930,7 @@ final class DebuggerI8080 extends JDialog {
                 return;
             }
             // Установим детали события
-            event.setDetail(detail);
+            TYPES_EVENTS_DETAIL.put(event, detail);
             // Отправляем оповещение наблюдателю
                  setChanged(      );
             notifyObservers(event );
@@ -948,7 +945,7 @@ final class DebuggerI8080 extends JDialog {
          */
         private boolean eventCheck(Object event, @NotNull TypesEvents checkEvent, Object checkDetail) {
             if (checkEvent.equals(event)) {
-                Object  detail = ((TypesEvents) event).getDetail();
+                Object  detail = TYPES_EVENTS_DETAIL.get((TypesEvents) event);
                 return (detail == null) || (checkDetail == null) || checkDetail.equals(detail);
             }
             return false;
@@ -1712,7 +1709,7 @@ final class DebuggerI8080 extends JDialog {
                 // Восстанавливаем предыдущую позицию
                 gotoAddress(rowM, colM);
             } else if (fLayer.eventCheck(arg, TypesEvents.TRAPS, null)) {
-                Object detail = TypesEvents.TRAPS.getDetail();
+                Object detail = TYPES_EVENTS_DETAIL.get(TypesEvents.TRAPS);
                 if ((detail == null) || ((detail instanceof Trap) && (((Trap) detail).getPage() == fLayer.getCodePage()))) {
                     repaint();
                 }
@@ -2306,7 +2303,7 @@ final class DebuggerI8080 extends JDialog {
                 ((AbstractTableModel) getModel()).fireTableDataChanged();
                 // Позиционируемся на добавленную ловушку
                    int index;
-                Object detail = TypesEvents.TRAPS.getDetail();
+                Object detail = TYPES_EVENTS_DETAIL.get(TypesEvents.TRAPS);
                 if ((detail instanceof Trap) && ((index = fLayer.getTrapIndex((Trap) detail)) != -1)) {
                     gotoTableCell(this, convertRowIndexToView(index), convertColumnIndexToView(TP_COL_PAG), false);
                 }
@@ -2823,8 +2820,8 @@ final class DebuggerI8080 extends JDialog {
         class InputAddressPanel extends JPanel {
             private static final long serialVersionUID = 3879988331395756986L;
 
-            private final ExtFormattedTextField fCodeAddress;
-            private final ExtFormattedTextField fDataAddress;
+            private final JFormattedTextFieldExt fCodeAddress;
+            private final JFormattedTextFieldExt fDataAddress;
 
             // Конструктор
             private InputAddressPanel() {
@@ -2835,9 +2832,9 @@ final class DebuggerI8080 extends JDialog {
                 codeLabel.setFont(HEADER_FONT);
                 dataLabel.setFont(HEADER_FONT);
 
-                fCodeAddress = new ExtFormattedTextField(WORD_MASK, '0');
+                fCodeAddress = new JFormattedTextFieldExt(WORD_MASK, '0');
                 fCodeAddress.setValue(String.format("%04X", getFocusedRowModel(fDisAsmTable)));
-                fDataAddress = new ExtFormattedTextField(WORD_MASK, '0');
+                fDataAddress = new JFormattedTextFieldExt(WORD_MASK, '0');
                 fDataAddress.setValue(String.format("%04X", fMemDatTable.getAddress()));
 
                 add(codeLabel);

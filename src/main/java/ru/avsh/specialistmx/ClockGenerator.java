@@ -19,12 +19,12 @@ final class ClockGenerator implements Runnable {
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
 
     private volatile ProcessorI8080 fCPU;
-    private volatile int     fIndexCPU;
-    private volatile boolean fWaitFlag;
-    private volatile boolean fPauseFlag;
-    private volatile int     fClockSpeed;
-    private volatile int     fIterationCycles;
-    private volatile boolean fPrevCpuHoldMode;
+    private volatile int            fIndexCPU  ;
+    private volatile boolean        fWaitFlag  ;
+    private volatile boolean        fPauseFlag ;
+    private volatile int            fClockSpeed;
+    private volatile int            fIterationCycles;
+    private volatile boolean        fPrevCpuHoldMode;
 
     /**
      * Конструктор.
@@ -113,7 +113,7 @@ final class ClockGenerator implements Runnable {
      *
      * @param clockedDevice тактируемое устройство
      */
-    synchronized void addClockedDevice(IClockedDevice clockedDevice) {
+    synchronized void addClockedDevice(final IClockedDevice clockedDevice) {
         if (clockedDevice != null) {
             int index = 0;
             for (; index < fSize; index++) {
@@ -155,7 +155,7 @@ final class ClockGenerator implements Runnable {
      *
      * @param clockSpeed тактовая частота в Гц
      */
-    void setClockSpeed(int clockSpeed) {
+    void setClockSpeed(final int clockSpeed) {
         fClockSpeed      = clockSpeed;
         fIterationCycles = (int) Math.round(TIME_OF_PULSE * clockSpeed / 1_000_000_000.0);
     }
@@ -175,7 +175,7 @@ final class ClockGenerator implements Runnable {
      * @param mode true/false = установить/снять режим "Пауза"
      * @param dev  true = устанавливать/снимать режим "Пауза" и для устройств памяти
      */
-    void pause(boolean mode, boolean dev) {
+    void pause(final boolean mode, final boolean dev) {
         if (fPauseFlag != mode) {
             if (mode) {
                 // Останавливаем CPU и устройства памяти

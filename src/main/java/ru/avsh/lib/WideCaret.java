@@ -18,16 +18,16 @@ public class WideCaret extends DefaultCaret {
      *
      * @param rate the rate in milliseconds, 0 to stop blinking
      */
-    public WideCaret(int rate) {
+    public WideCaret(final int rate) {
         setBlinkRate(rate);
     }
 
     @Override
-    protected synchronized void damage(Rectangle r) {
-        if (r != null) {
-            x = r.x;
-            y = r.y;
-            height = r.height;
+    protected synchronized void damage(final Rectangle rectangle) {
+        if (rectangle != null) {
+            x = rectangle.x;
+            y = rectangle.y;
+            height = rectangle.height;
             if (width <= 0) {
                 width = getComponent().getWidth();
             }
@@ -36,32 +36,32 @@ public class WideCaret extends DefaultCaret {
     }
 
     @Override
-    public void paint(Graphics g) {
-        final JTextComponent comp = getComponent();
-        if (comp != null) {
+    public void paint(final Graphics graphics) {
+        final JTextComponent component = getComponent();
+        if (component != null) {
             final char dotChar;
-            final Rectangle rect;
+            final Rectangle rectangle;
             try {
-                int  dot = getDot();
-                    rect = comp.modelToView(dot);
-                if (rect == null) {
+                final int dot = getDot();
+                    rectangle = component.modelToView(dot);
+                if (rectangle == null) {
                     return;
                 }
-                dotChar = comp.getText(dot, 1).charAt(0);
+                dotChar = component.getText(dot, 1).charAt(0);
             } catch (BadLocationException e) {
                 return;
             }
-            if ((x != rect.x) || (y != rect.y)) {
+            if ((x != rectangle.x) || (y != rectangle.y)) {
                 repaint();
-                     x = rect.x;
-                     y = rect.y;
-                height = rect.height;
+                     x = rectangle.x;
+                     y = rectangle.y;
+                height = rectangle.height;
             }
-            g.setColor  (comp.getCaretColor());
-            g.setXORMode(comp.getBackground());
-            width = (dotChar == '\n') ? 1 : g.getFontMetrics().charWidth(dotChar);
+            graphics.setColor  (component.getCaretColor());
+            graphics.setXORMode(component.getBackground());
+            width = (dotChar == '\n') ? 1 : graphics.getFontMetrics().charWidth(dotChar);
             if (isVisible()) {
-                g.fillRect(rect.x, rect.y, width, rect.height);
+                graphics.fillRect(rectangle.x, rectangle.y, width, rectangle.height);
             }
         }
     }
