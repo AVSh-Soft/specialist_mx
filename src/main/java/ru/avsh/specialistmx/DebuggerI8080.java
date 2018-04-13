@@ -1272,11 +1272,11 @@ final class DebuggerI8080 extends JDialog {
          * @return считанный байт
          */
         synchronized int readByte(final int page, final int address) {
-            int curPage  = fSpMX.getPage();
-            if (curPage !=    page) {
-                fSpMX.setPage(page);
+            final int curPage  = fSpMX.getPage();
+            if (      curPage != page) {
+                fSpMX.setPage(   page);
             }
-            int result = fSpMX.readByte(address);
+            final int result   = fSpMX.readByte(address);
             if (page  !=      curPage) {
                 fSpMX.setPage(curPage);
             }
@@ -1291,11 +1291,11 @@ final class DebuggerI8080 extends JDialog {
          * @return считанный байт
          */
         synchronized int debugReadByte(final int page, final int address) {
-            int curPage  = fSpMX.getPage();
-            if (curPage !=    page) {
-                fSpMX.setPage(page);
+            final int curPage  = fSpMX.getPage();
+            if (      curPage != page) {
+                fSpMX.setPage(   page);
             }
-            int result = fSpMX.debugReadByte(address);
+            final int result   = fSpMX.debugReadByte(address);
             if (page  !=      curPage) {
                 fSpMX.setPage(curPage);
             }
@@ -1310,9 +1310,9 @@ final class DebuggerI8080 extends JDialog {
          * @param value   байт
          */
         synchronized void writeByte(final int page, final int address, final int value) {
-            int curPage  = fSpMX.getPage();
-            if (curPage !=    page) {
-                fSpMX.setPage(page);
+            final int curPage  = fSpMX.getPage();
+            if (      curPage != page) {
+                fSpMX.setPage(   page);
             }
             fSpMX.writeByte(address, value);
             if (page !=       curPage) {
@@ -1338,6 +1338,18 @@ final class DebuggerI8080 extends JDialog {
     private class DisAsmTableModel extends AbstractTableModel {
         private static final long serialVersionUID = 4535761990838509705L;
 
+        // Индекс адреса
+        private static final int IND_ADR = 0;
+        // Индекс байта 0 команды CPU (кода команды CPU)
+        private static final int IND_CMD = 1;
+        // Индекс байта 1 команды CPU
+        private static final int IND_BT1 = 2;
+        // Индекс байта 2 команды CPU
+        private static final int IND_BT2 = 3;
+
+        // Длина под адрес и данные команды CPU
+        private static final int DATA_LENGTH = IND_BT2 + 1;
+
         private final int[][] fStartBuffer;
         private final int[][] fMovedBuffer;
 
@@ -1346,30 +1358,31 @@ final class DebuggerI8080 extends JDialog {
          */
         DisAsmTableModel() {
             super();
-            fStartBuffer = new int[BUF_SIZE][4]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
-            fMovedBuffer = new int[BUF_SIZE][4]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
+            fStartBuffer = new int[BUF_SIZE][DATA_LENGTH]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
+            fMovedBuffer = new int[BUF_SIZE][DATA_LENGTH]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
         }
 
         /**
          * Заполняет буфер адресами и данными команд CPU.
          *
-         * @param buf     буфер
-         * @param address адрес начала (адрес точного начала кода)
+         * @param buf          буфер
+         * @param beginAddress адрес начала (адрес точного начала кода)
          */
-        private void fillBuffer(final int[][] buf, int address) {
+        private void fillBuffer(final int[][] buf, final int beginAddress) {
             final int page =  fLayer.getCodePage();
             final int pc   = (fLayer.getCpuPage () == page) ? fLayer.getValRegPair(DebugRegPair.PC) : 0;
 
-            for (int i = 0; i < BUF_SIZE; i++) {
-                                     buf[i][0] = address;
-                int length = CMD_LEN[buf[i][1] = fLayer.debugReadByte(page, address)];
-                if ((pc <= address) || (pc >= address + length)) {
-                    buf[i][2] = (--length > 0) ? fLayer.debugReadByte(page, ++address) : -1;
-                    buf[i][3] = (--length > 0) ? fLayer.debugReadByte(page, ++address) : -1;
+            int address = beginAddress;
+            for (int i  = 0; i < BUF_SIZE; i++) {
+                                     buf[i][IND_ADR] = address;
+                int cmdLen = CMD_LEN[buf[i][IND_CMD] = fLayer.debugReadByte(page,   address)];
+                if ((pc   <= address) || (pc  >= address + cmdLen)) {
+                    buf[i][IND_BT1] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : -1;
+                    buf[i][IND_BT2] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : -1;
                 } else { // Устраняем коллизии
-                    length = pc - address;
-                    buf[i][2] = (--length > 0) ? fLayer.debugReadByte(page, ++address) : -2;
-                    buf[i][3] = (--length > 0) ? fLayer.debugReadByte(page, ++address) : -2;
+                    cmdLen = pc - address;
+                    buf[i][IND_BT1] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : -2;
+                    buf[i][IND_BT2] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : -2;
                 }
                 address++;
             }
@@ -1377,24 +1390,26 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Возвращает массив с данными команды CPU по заданному адресу.
+         *
          * @param address адрес
          * @return массив с данными команды CPU
          */
-        private int[] getData(int address) {
+        private int[] getData(final int address) {
             // Заполняем буфер данных из начальных адресов (таблица постоянно читает данные из начальной позиции)
-            if (fStartBuffer[BUF_SIZE - 1][0] == 0) {
+            if (fStartBuffer[BUF_SIZE - 1][IND_ADR] == 0) {
                 fillBuffer(fStartBuffer, 0);
             }
 
-            int[][] curBuf;
-            int movedStart = fStartBuffer[BUF_SIZE - 1][0] + CMD_LEN[fStartBuffer[BUF_SIZE - 1][1]]; // Начальный адрес данных после fStartBuffer
+            final int[][] curBuf;
+            // Начальный адрес данных после fStartBuffer
+            int movedStart = fStartBuffer[BUF_SIZE - 1][IND_ADR] + CMD_LEN[fStartBuffer[BUF_SIZE - 1][IND_CMD]];
             // Определяем из какого буфера брать данные
             if (address < movedStart) {
-                curBuf  = fStartBuffer;
+                 curBuf = fStartBuffer;
             } else {
-                curBuf = fMovedBuffer;
+                 curBuf = fMovedBuffer;
                 // Если в буфере данных из текущих адресов нет необходимых данных - заполняем буфер
-                if ((address < fMovedBuffer[0][0]) || (address > fMovedBuffer[BUF_SIZE - 1][0])) {
+                if ((address < fMovedBuffer[0][IND_ADR]) || (address > fMovedBuffer[BUF_SIZE - 1][IND_ADR])) {
                     if (address >= movedStart    + THREE_QUARTER + FOR_ALIGNMENT) {
                         if (address    >  0xFFFF - THREE_QUARTER) {
                             movedStart =  0xFFFF - BUF_SIZE      - FOR_ALIGNMENT;
@@ -1403,7 +1418,9 @@ final class DebuggerI8080 extends JDialog {
                         }
                         // Пытаемся выполнить выравнивание кода (в надежде, что повезет :-)
                         //noinspection StatementWithEmptyBody
-                        for (int end_adr = movedStart + FOR_ALIGNMENT, page = fLayer.getCodePage(), len; movedStart + (len = CMD_LEN[fLayer.debugReadByte(page, end_adr)]) < end_adr; movedStart += len) {
+                        for (  int page = fLayer.getCodePage(), endAddress  = movedStart + FOR_ALIGNMENT,  len;
+                             movedStart + (len = CMD_LEN[fLayer.debugReadByte(page, endAddress)]) < endAddress;
+                             movedStart += len) {
                             //
                         }
                     }
@@ -1412,24 +1429,24 @@ final class DebuggerI8080 extends JDialog {
             }
             // Ищем в выбранном буфере данные по заданному адресу
             for (int i = 0; i < BUF_SIZE; i++) {
-                if (curBuf[i][0] == address) {
+                if (curBuf[i][IND_ADR] == address) {
                     return curBuf[i];
                 }
             }
-            return null;
+            return new int[0];
         }
 
         /**
          * Возвращает true, если по заданному адресу находится команда передачи управления (JMP/CALL).
+         *
          * @param address адрес
          * @return результат
          */
-        boolean isJmpCmd(int address) {
-            int[] data  = getData(address);
-            if (  data != null) {
-                int codeCmd = data[1];
-                for (int codeJmp :  JMP_CMD) {
-                    if ( codeJmp == codeCmd) {
+        boolean isJmpCmd(final int     address) {
+            final int[] data = getData(address);
+            if ( data.length == DATA_LENGTH) {
+                for (int codeJmp :       JMP_CMD)  {
+                    if ( codeJmp == data[IND_CMD]) {
                         return true;
                     }
                 }
@@ -1439,29 +1456,30 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Возвращает адрес/16-битные данные из команды CPU или -1, если в команде нет адреса/16-битных данных.
+         *
          * @param address адрес команды
          * @return адрес из команды
          */
-        int getAddressFromCmd(int address) {
-            int[] data  = getData(address);
-            if (  data != null) {
-                return data[2] | data[3] << 8;
+        int getAddressFromCmd(final int address) {
+            final int[] data  = getData(address);
+            if ( data.length == DATA_LENGTH) {
+                return data[IND_BT1] | (data[IND_BT2]  << 8);
             }
             return -1;
         }
 
         /**
          * Возвращает адрес следующей команды после команды вызова подпрограммы (CALL/RST).
+         *
          * @param address адрес
          * @return результат = адрес следующей команды или -1, если по заданному адресу нет команды вызова подпрограммы
          */
-        int getAddressAfterCallCmd(int address) {
-            int[] data  = getData(address);
-            if (  data != null) {
-                int codeCmd = data[1];
+        int getAddressAfterCallCmd(final int address) {
+            final int[] data  =      getData(address);
+            if (  data.length == DATA_LENGTH) {
                 for (int codeCall : CALL_CMD) {
-                    if ( codeCall == codeCmd) {
-                        return address + CMD_LEN[codeCmd];
+                    if ( codeCall ==   data[IND_CMD]) {
+                        return CMD_LEN[data[IND_CMD]] + address;
                     }
                 }
             }
@@ -1470,9 +1488,9 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void fireTableDataChanged() {
-            fStartBuffer[BUF_SIZE - 1][0] = 0;
-            fMovedBuffer[           0][0] = 0;
-            fMovedBuffer[BUF_SIZE - 1][0] = 0;
+            fStartBuffer[BUF_SIZE - 1][IND_ADR] = 0;
+            fMovedBuffer[           0][IND_ADR] = 0;
+            fMovedBuffer[BUF_SIZE - 1][IND_ADR] = 0;
             super.fireTableDataChanged();
         }
 
@@ -1488,8 +1506,10 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            Object obj;
-            if ((columnIndex >= 0) && (columnIndex <= getColumnCount()) && ((obj = getValueAt(0, columnIndex)) != null)) {
+            final Object obj;
+            if (   (columnIndex >= 0)
+                && (columnIndex <= getColumnCount())
+                && ((  obj = getValueAt(0, columnIndex)) != null)) {
                 return obj.getClass();
             }
             return super.getColumnClass(columnIndex);
@@ -1516,14 +1536,14 @@ final class DebuggerI8080 extends JDialog {
         }
 
         @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
-            int[] data  = getData(rowIndex);
-            if (  data != null) {
+        public Object getValueAt(int   rowIndex, int columnIndex) {
+            final int[] data = getData(rowIndex);
+            if (data.length == DATA_LENGTH) {
                 switch (columnIndex) {
                     case DA_COL_TRP:
                         return fLayer.isTrap(fLayer.getCodePage(), rowIndex);
                     case DA_COL_ADR:
-                        return String.format("%04X:", data[0]);
+                        return String.format("%04X:", data[IND_ADR]);
                     case DA_COL_BT0:
                     case DA_COL_BT1:
                     case DA_COL_BT2: {
@@ -1532,12 +1552,14 @@ final class DebuggerI8080 extends JDialog {
                     }
                     case DA_COL_CMD:
                         // Вызываем рекурсивно
-                        if (data[3] == -2) {
+                        if (data[IND_BT2] == -2) {
                             // Выводим только байты в случае коллизий
-                            return "DB   ".concat((String) getValueAt(rowIndex, DA_COL_BT0)).concat((data[2] >= 0 ? ", ".concat((String) getValueAt(rowIndex, DA_COL_BT1)) : ""));
+                            return "DB   ".concat((String) getValueAt(rowIndex, DA_COL_BT0))
+                                          .concat((data[IND_BT1] >= 0) ? ", ".concat((String) getValueAt(rowIndex, DA_COL_BT1)) : "");
                         } else {
                             // Выводим мнемоники
-                            return MNEMONICS[data[1]].concat((String) getValueAt(rowIndex, DA_COL_BT2)).concat((String) getValueAt(rowIndex, DA_COL_BT1));
+                            return MNEMONICS[data[IND_CMD]].concat((String) getValueAt(rowIndex, DA_COL_BT2))
+                                                           .concat((String) getValueAt(rowIndex, DA_COL_BT1));
                         }
                     default:
                         return "";
@@ -1561,7 +1583,7 @@ final class DebuggerI8080 extends JDialog {
                 case DA_COL_BT0:
                 case DA_COL_BT1:
                 case DA_COL_BT2:
-                    return !getValueAt(rowIndex, columnIndex).equals("");
+                    return ((String) getValueAt(rowIndex, columnIndex)).length() > 0;
                 case DA_COL_CMD:
                     return false;
                 default:
@@ -1628,12 +1650,13 @@ final class DebuggerI8080 extends JDialog {
                     return this;
                 }
 
-                           value = (value == null) ? Boolean.FALSE : (Boolean) value;
-                boolean equalsPC = (fLayer.getCodePage() == fLayer.getCpuPage()) && (table.convertRowIndexToModel(row) == fLayer.getValRegPair(DebugRegPair.PC));
+                final boolean booleanValue =    (value != null) && (boolean) value;
+                final boolean     equalsPC =    (fLayer.getCodePage() == fLayer.getCpuPage())
+                                             && (table.convertRowIndexToModel(row) == fLayer.getValRegPair(DebugRegPair.PC));
 
                 if (isSelected) {
                     setForeground(table.getSelectionForeground());
-                    if ((Boolean) value) {
+                    if (booleanValue) {
                         setBackground(YELLOW_RED  );
                     } else if (equalsPC) {
                         setBackground(YELLOW_GREEN);
@@ -1642,7 +1665,7 @@ final class DebuggerI8080 extends JDialog {
                     }
                 } else {
                     setForeground(table.getForeground());
-                    if ((Boolean) value) {
+                    if (booleanValue) {
                         setBackground(Color.red  );
                     } else if (equalsPC) {
                         setBackground(Color.green);
@@ -1650,7 +1673,7 @@ final class DebuggerI8080 extends JDialog {
                         setBackground(table.getBackground());
                     }
                 }
-                setSelected((Boolean) value);
+                setSelected(booleanValue);
 
                 if (hasFocus) {
                     if (fFocusedAddress >= 0) {
@@ -1680,9 +1703,9 @@ final class DebuggerI8080 extends JDialog {
 
                 final DisAsmTableModel model = (DisAsmTableModel) table.getModel();
 
-                int address = table.convertRowIndexToModel   (row   );
-                int columnM = table.convertColumnIndexToModel(column);
-                int pc      = fLayer.getValRegPair(DebugRegPair.PC );
+                final int address = table.convertRowIndexToModel   (row   );
+                final int columnM = table.convertColumnIndexToModel(column);
+                final int pc      = fLayer.getValRegPair(DebugRegPair.PC  );
 
                 if (columnM == DA_COL_CMD) {
                     setHorizontalAlignment(LEFT);
@@ -1691,7 +1714,9 @@ final class DebuggerI8080 extends JDialog {
                 }
 
                 if (isSelected) {
-                    if (((columnM == DA_COL_ADR) || (columnM == DA_COL_CMD)) && (fFocusedAddress >= 0) && ((columnM == DA_COL_ADR ? address : model.getAddressFromCmd(address)) == fFocusedAddress)) {
+                    if (   ((columnM == DA_COL_ADR) || (columnM == DA_COL_CMD))
+                        && (fFocusedAddress >= 0)
+                        && ((columnM == DA_COL_ADR ? address : model.getAddressFromCmd(address)) == fFocusedAddress)) {
                         setForeground(Color.red);
                     } else {
                         setForeground(table.getSelectionForeground());
@@ -1702,7 +1727,9 @@ final class DebuggerI8080 extends JDialog {
                         setBackground(table.getSelectionBackground());
                     }
                 } else {
-                    if (((columnM == DA_COL_ADR) || (columnM == DA_COL_CMD)) && (fFocusedAddress >= 0) && ((columnM == DA_COL_ADR ? address : model.getAddressFromCmd(address)) == fFocusedAddress)) {
+                    if (   ((columnM == DA_COL_ADR) || (columnM == DA_COL_CMD))
+                        && (fFocusedAddress >= 0)
+                        && ((columnM == DA_COL_ADR ? address : model.getAddressFromCmd(address)) == fFocusedAddress)) {
                         setForeground(Color.red);
                     } else {
                         setForeground(table.getForeground());
@@ -1716,7 +1743,8 @@ final class DebuggerI8080 extends JDialog {
 
                 if (hasFocus) {
                     int addressCmd = -1;
-                    if (((columnM == DA_COL_ADR) || (columnM == DA_COL_CMD)) && ((addressCmd = columnM == DA_COL_ADR ? address : model.getAddressFromCmd(address)) >= 0)) {
+                    if (   ((columnM == DA_COL_ADR) || (columnM == DA_COL_CMD))
+                        && ((addressCmd = columnM == DA_COL_ADR ? address : model.getAddressFromCmd(address)) >= 0)) {
                         setForeground(Color.red);
                     }
                     if (fFocusedAddress != addressCmd) {
@@ -1735,6 +1763,7 @@ final class DebuggerI8080 extends JDialog {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Конструктор.
+         *
          * @param dm модель данных
          */
         DisAsmTable(TableModel dm) {
@@ -1754,7 +1783,7 @@ final class DebuggerI8080 extends JDialog {
             setDefaultRenderer(Boolean.class, new DisAsmBooleanRenderer());
             setDefaultRenderer( String.class, new DisAsmStringRenderer());
             // Блокируем вывод пустых строк и отключаем сортировку колонок
-            TableRowSorter<TableModel> sorter = new TableRowSorter<>(dm);
+            final TableRowSorter<TableModel> sorter = new TableRowSorter<>(dm);
             for (int column = 0; column < sorter.getModel().getColumnCount(); column++) {
                 sorter.setSortable(column, false);
             }
@@ -1771,8 +1800,8 @@ final class DebuggerI8080 extends JDialog {
                 || fLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CODE)
                 || fLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.PC)
                 || fLayer.eventCheck(event, EventType.STEP    , null)) {
-                int rowM = getFocusedRowModel(this);
-                int colM = getFocusedColumnModel(this);
+                final int rowM = getFocusedRowModel   (this);
+                final int colM = getFocusedColumnModel(this);
                 // Вызываем обновление данных
                 ((AbstractTableModel) getModel()).fireTableDataChanged();
                 // Восстанавливаем предыдущую позицию
@@ -1787,21 +1816,23 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Выполняет переход к заданному адресу в таблице дизассемблера.
+         *
          * @param address адрес
-         * @param column колонка (в формате табличной модели), которую необходимо выделить
+         * @param colM    колонка (в формате табличной модели), которую необходимо выделить
          */
-        void gotoAddress(int address, int column) {
-            int rowV;
-            int colV = convertColumnIndexToView(column);
-            if (colV != -1) {
+        void gotoAddress(final int address, final int colM) {
+            final int colV  = convertColumnIndexToView(colM);
+            if (      colV != -1) {
                 // Пытаемся найти видимую строку <= address
-                address &= 0xFFFF;
-                while (((rowV = convertRowIndexToView(address)) == -1) && (address > 0)) {
-                    address--;
+                int rowV;
+                int rowM = address & 0xFFFF;
+                while (((rowV = convertRowIndexToView(rowM)) == -1) && (rowM > 0)) {
+                    rowM--;
                 }
                 // Если нашли строку, то выполняем позиционирование на неё
                 if (rowV != -1) {
-                    fFocusedAddress = -1; //сбрасываем fFocusedAddress
+                    // Сбрасываем fFocusedAddress
+                    fFocusedAddress = -1;
                     gotoTableCell(this, rowV, colV, true);
                 }
             }
@@ -1822,12 +1853,12 @@ final class DebuggerI8080 extends JDialog {
             @Override
             protected void paintEnabledText(JLabel l, Graphics g, String s, int textX, int textY) {
                 if (!s.isEmpty()) {
-                    int y      = l.getY();
-                    int height = l.getHeight();
-                    int index  = l.getDisplayedMnemonicIndex();
+                    final int y      = l.getY();
+                    final int height = l.getHeight();
+                    final int index  = l.getDisplayedMnemonicIndex();
 
-                    int pAF = fLayer.getPrevValRegPair(DebugRegPair.AF);
-                    int cAF = fLayer.getValRegPair    (DebugRegPair.AF);
+                    final int pAF = fLayer.getPrevValRegPair(DebugRegPair.AF);
+                    final int cAF = fLayer.getValRegPair    (DebugRegPair.AF);
 
                     char c;
                     int  width;
