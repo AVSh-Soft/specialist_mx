@@ -1767,8 +1767,8 @@ final class DebuggerI8080 extends JDialog {
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (   fLayer.eventCheck(event, EventType.MEMORY  , fLayer.getCodePage())
-                || fLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CODE)
-                || fLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.PC)
+                || fLayer.eventCheck(event, EventType.PAGE    ,  MemoryPageType.CODE)
+                || fLayer.eventCheck(event, EventType.REG_PAIR,      DebugRegPair.PC)
                 || fLayer.eventCheck(event, EventType.STEP    , null)) {
                 int rowM =    getFocusedRowModel(this);
                 int colM = getFocusedColumnModel(this);

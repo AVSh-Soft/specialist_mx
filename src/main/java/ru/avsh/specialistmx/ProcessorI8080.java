@@ -54,8 +54,8 @@ final class ProcessorI8080 implements IClockedDevice {
     private static final int P_HL  = 4;
     private static final int P_PSW = 6;
 
-    // Регистровые пары для отладчика
-    enum DebugRegPairs {
+    // Регистровая пара для отладчика
+    enum DebugRegPair {
         AF, BC, DE, HL, SP, PC
     }
 
@@ -1123,7 +1123,7 @@ final class ProcessorI8080 implements IClockedDevice {
                         hold(false);
                         // Удаляем StepOver ловушку, если она вызвала отладчик
                         int page    = fSpMX.getPage();
-                        int address = debugGetValRegPair(DebugRegPairs.PC);
+                        int address = debugGetValRegPair(DebugRegPair.PC);
                         if (debugIsStepOverTrap(page, address)) {
                                    debugRemTrap(page, address);
                         }
@@ -1153,7 +1153,7 @@ final class ProcessorI8080 implements IClockedDevice {
      * @param regPair регистровая пара
      * @return значение
      */
-    synchronized int debugGetValRegPair(final DebugRegPairs regPair) {
+    synchronized int debugGetValRegPair(final DebugRegPair regPair) {
         switch (regPair) {
             case AF:
                 return (fRegs[A] << 8) | fRegs[F];
@@ -1178,7 +1178,7 @@ final class ProcessorI8080 implements IClockedDevice {
      * @param regPair регистровая пара
      * @param value   значение
      */
-    synchronized void debugSetValRegPair(final DebugRegPairs regPair, final int value) {
+    synchronized void debugSetValRegPair(final DebugRegPair regPair, final int value) {
         switch (regPair) {
             case AF:
                 fRegs[A]  = (value >> 8) & 0xFF;
