@@ -879,7 +879,7 @@ final class DebuggerI8080 extends JDialog {
 
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
-     * Класс "Событие".
+     * Класс "Внутреннее событие".
      */
     private class InnerEvent {
         private EventType type  ;
@@ -970,7 +970,7 @@ final class DebuggerI8080 extends JDialog {
          * @param type   тип события
          * @param detail детали события
          */
-        void sendEvent(EventType type, Object detail) {
+        void sendEvent(final EventType type, final Object detail) {
             if (fDisableEvents) {
                 return;
             }
@@ -987,7 +987,7 @@ final class DebuggerI8080 extends JDialog {
          * @param checkDetail проверочные детали события (для null детали не важны)
          * @return true = событие необходимо обработать
          */
-        private boolean eventCheck(@NotNull InnerEvent event, EventType checkType, Object checkDetail) {
+        private boolean eventCheck(@NotNull final InnerEvent event, final EventType checkType, final Object checkDetail) {
             if (event.getType() == checkType) {
                 final Object detail = event.getDetail();
                 return (detail == null) || (checkDetail == null) || detail.equals(checkDetail);
@@ -1008,7 +1008,7 @@ final class DebuggerI8080 extends JDialog {
             // Отключаем режим "Пауза" для устройств памяти
             fCPU.pauseMemoryDevices(false);
             // Выполнем одну команду CPU
-            boolean result = fSpMX.getGen().execOneCmdCPU();
+            final boolean result = fSpMX.getGen().execOneCmdCPU();
             // Включаем режим "Пауза" для устройств памяти
             fCPU.pauseMemoryDevices(true );
             return result;
@@ -1020,7 +1020,7 @@ final class DebuggerI8080 extends JDialog {
          * @param regPair регистровая пара
          * @return значение
          */
-        int getValRegPair(DebugRegPair regPair) {
+        int getValRegPair(final DebugRegPair regPair) {
             return fCPU.debugGetValRegPair(regPair);
         }
 
@@ -1030,7 +1030,7 @@ final class DebuggerI8080 extends JDialog {
          * @param regPair регистровая пара
          * @param value   значение
          */
-        synchronized void setValRegPair(DebugRegPair regPair, int value) {
+        synchronized void setValRegPair(final DebugRegPair regPair, final int value) {
             // Сохраняем предыдущее значение регистровой пары
             PREV_REG_PAIRS[regPair.ordinal()] = fCPU.debugGetValRegPair(regPair);
             // Устанавливаем новое значение
@@ -1045,7 +1045,7 @@ final class DebuggerI8080 extends JDialog {
          * @param regPair регистровая пара
          * @return значение
          */
-        synchronized int getPrevValRegPair(DebugRegPair regPair) {
+        synchronized int getPrevValRegPair(final DebugRegPair regPair) {
             return PREV_REG_PAIRS[regPair.ordinal()];
         }
 
@@ -1064,12 +1064,17 @@ final class DebuggerI8080 extends JDialog {
          * @return значение регистра флагов.
          */
         String getVisViewsFlagsReg() {
-            char   c;
-            char[] r = new char[8];
-            int    f = getValRegPair(DebugRegPair.AF);
-            for (int i = 7; i >= 0; i--, f >>= 1) {
-                c    = FLAGS.charAt(i);
-                r[i] = (c == '?') ? Character.forDigit(f & 1, 2) : ((f & 1) == 1 ? c : '.');
+            final char[] r = new char[FLAGS.length()];
+
+            char c;
+            int  f = getValRegPair(DebugRegPair.AF);
+            for (int i = FLAGS.length() - 1; i >= 0; i--, f >>= 1) {
+                c = FLAGS.charAt(i);
+                if ((f & 1) == 0) {
+                    r[i] = (c == '?') ? '0' : '.';
+                } else {
+                    r[i] = (c == '?') ? '1' :  c ;
+                }
             }
             return new String(r);
         }
@@ -1081,8 +1086,8 @@ final class DebuggerI8080 extends JDialog {
          * @return -1 = изменений нет, 0 = изменился младший байт, 1 = изменился старший байт, 2 = изменились оба байта
          * (Для SP и PC всегда 2 = оба байта, если были изменения)
          */
-        int getChangesRegPair(DebugRegPair regPair) {
-            int xor = getPrevValRegPair(regPair) ^ getValRegPair(regPair);
+        int getChangesRegPair(final DebugRegPair regPair) {
+            final int xor = getPrevValRegPair(regPair) ^ getValRegPair(regPair);
             if (xor > 0) {
                 if        (( xor < 0x100)       && (regPair != DebugRegPair.SP) && (regPair != DebugRegPair.PC)) {
                     return 0;
@@ -1102,7 +1107,7 @@ final class DebuggerI8080 extends JDialog {
          * @param address  адрес ловушки
          * @param stepOver true = StepOver ловушка
          */
-        void addTrap(int page,  int address, boolean stepOver) {
+        void addTrap(final int page, final int address, final boolean stepOver) {
             fCPU.debugAddTrap(page, address, stepOver);
             // Отправляем событие наблюдателям
             if (!stepOver) {
@@ -1116,7 +1121,7 @@ final class DebuggerI8080 extends JDialog {
          * @param page    номер страницы памяти
          * @param address адрес ловушки
          */
-        void remTrap(int page,  int address) {
+        void remTrap(final int page, final int address) {
             fCPU.debugRemTrap(page, address);
             // Отправляем событие наблюдателям
             sendEvent(EventType.TRAPS, new Trap(page, address));
@@ -1138,7 +1143,7 @@ final class DebuggerI8080 extends JDialog {
          * @param address адрес
          * @return true = ловушка установлена
          */
-        boolean isTrap(int page, int address) {
+        boolean isTrap(final int page, final int address) {
             return fCPU.debugIsTrap(page, address);
         }
 
@@ -1157,7 +1162,7 @@ final class DebuggerI8080 extends JDialog {
          * @param index индекс ловушки
          * @return ловушка
          */
-        Trap getTrap(int index) {
+        Trap getTrap(final int index) {
             return fCPU.debugGetTrap(index);
         }
 
@@ -1167,13 +1172,8 @@ final class DebuggerI8080 extends JDialog {
          * @param trap ловушка
          * @return индекс
          */
-        int getTrapIndex(Trap trap) {
-            for (int index = getTrapCount() - 1; index >= 0; index--) {
-                if (trap.equals(getTrap(index))) {
-                    return index;
-                }
-            }
-            return -1;
+        int getTrapIndex(final Trap trap) {
+            return fCPU.debugGetTrapIndex(trap);
         }
 
         /**
@@ -1208,7 +1208,7 @@ final class DebuggerI8080 extends JDialog {
          *
          * @param page номер страницы
          */
-        synchronized void setCodePage(int page) {
+        synchronized void setCodePage(final int page) {
             if (fCodePage != page) {
                 fCodePage  = page;
                 sendEvent(EventType.PAGE, MemoryPageType.CODE);
@@ -1220,7 +1220,7 @@ final class DebuggerI8080 extends JDialog {
          *
          * @param page номер страницы
          */
-        synchronized void setDataPage(int page) {
+        synchronized void setDataPage(final int page) {
             if (fDataPage != page) {
                 fDataPage  = page;
                 sendEvent(EventType.PAGE, MemoryPageType.DATA);
@@ -1232,7 +1232,7 @@ final class DebuggerI8080 extends JDialog {
          *
          * @param page номер страницы
          */
-        void setCpuPage(int page) {
+        void setCpuPage(final int page) {
             if (fSpMX.getPage() != page) {
                 fSpMX.setPage(page);
                 sendEvent(EventType.PAGE, MemoryPageType.CPU);
@@ -1254,7 +1254,7 @@ final class DebuggerI8080 extends JDialog {
          * @param page номер страницы
          * @return имя страницы
          */
-        String getNamePage(int page) {
+        String getNamePage(final int page) {
             if (page == 0) {
                 return "RAM";
             } else if ((page > 0) && (page < getNumPages() - 1)) {
@@ -1271,7 +1271,7 @@ final class DebuggerI8080 extends JDialog {
          * @param address адрес
          * @return считанный байт
          */
-        synchronized int readByte(int page, int address) {
+        synchronized int readByte(final int page, final int address) {
             int curPage  = fSpMX.getPage();
             if (curPage !=    page) {
                 fSpMX.setPage(page);
@@ -1290,7 +1290,7 @@ final class DebuggerI8080 extends JDialog {
          * @param address адрес
          * @return считанный байт
          */
-        synchronized int debugReadByte(int page, int address) {
+        synchronized int debugReadByte(final int page, final int address) {
             int curPage  = fSpMX.getPage();
             if (curPage !=    page) {
                 fSpMX.setPage(page);
@@ -1309,7 +1309,7 @@ final class DebuggerI8080 extends JDialog {
          * @param address адрес
          * @param value   байт
          */
-        synchronized void writeByte(int page, int address, int value) {
+        synchronized void writeByte(final int page, final int address, final int value) {
             int curPage  = fSpMX.getPage();
             if (curPage !=    page) {
                 fSpMX.setPage(page);
@@ -1352,16 +1352,17 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Заполняет буфер адресами и данными команд CPU.
-         * @param buf буфер
+         *
+         * @param buf     буфер
          * @param address адрес начала (адрес точного начала кода)
          */
-        private void fillBuffer(int[][] buf, int address) {
-            int page =  fLayer.getCodePage();
-            int pc   = (fLayer.getCpuPage () == page) ? fLayer.getValRegPair(DebugRegPair.PC) : 0;
+        private void fillBuffer(final int[][] buf, int address) {
+            final int page =  fLayer.getCodePage();
+            final int pc   = (fLayer.getCpuPage () == page) ? fLayer.getValRegPair(DebugRegPair.PC) : 0;
 
-            for (int i = 0, length; i < BUF_SIZE; i++) {
-                                 buf[i][0] = address;
-                length = CMD_LEN[buf[i][1] = fLayer.debugReadByte(page, address)];
+            for (int i = 0; i < BUF_SIZE; i++) {
+                                     buf[i][0] = address;
+                int length = CMD_LEN[buf[i][1] = fLayer.debugReadByte(page, address)];
                 if ((pc <= address) || (pc >= address + length)) {
                     buf[i][2] = (--length > 0) ? fLayer.debugReadByte(page, ++address) : -1;
                     buf[i][3] = (--length > 0) ? fLayer.debugReadByte(page, ++address) : -1;
@@ -1767,10 +1768,10 @@ final class DebuggerI8080 extends JDialog {
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (   fLayer.eventCheck(event, EventType.MEMORY  , fLayer.getCodePage())
-                || fLayer.eventCheck(event, EventType.PAGE    ,  MemoryPageType.CODE)
-                || fLayer.eventCheck(event, EventType.REG_PAIR,      DebugRegPair.PC)
+                || fLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CODE)
+                || fLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.PC)
                 || fLayer.eventCheck(event, EventType.STEP    , null)) {
-                int rowM =    getFocusedRowModel(this);
+                int rowM = getFocusedRowModel(this);
                 int colM = getFocusedColumnModel(this);
                 // Вызываем обновление данных
                 ((AbstractTableModel) getModel()).fireTableDataChanged();

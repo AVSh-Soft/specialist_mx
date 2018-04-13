@@ -3,11 +3,13 @@ package ru.avsh.specialistmx;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * Класс "Процессор Intel C8080A (К580ВМ80А)".
@@ -1145,7 +1147,6 @@ final class ProcessorI8080 implements IClockedDevice {
 
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // -= Методы для отладчика =-
-
     /**
      * Получает значение регистровой пары CPU.
      * (Метод для вызова из отладчика)
@@ -1301,6 +1302,17 @@ final class ProcessorI8080 implements IClockedDevice {
      */
     Trap debugGetTrap(final int index) {
         return fTraps.stream().filter(trap -> !trap.equals(fTrapStepOver)).skip(index).findFirst().orElse(null);
+    }
+
+    /**
+     * Возвращает индекс ловушки.
+     * (Метод для вызова из отладчика)
+     *
+     * @param trap ловушка
+     * @return индекс
+     */
+    int debugGetTrapIndex(final Trap trap) {
+        return new ArrayList<>(fTraps).indexOf(trap);
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
