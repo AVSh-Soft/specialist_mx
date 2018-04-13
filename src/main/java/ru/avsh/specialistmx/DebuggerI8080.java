@@ -2,7 +2,7 @@ package ru.avsh.specialistmx;
 
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.lib.JFormattedTextFieldExt;
-import ru.avsh.specialistmx.ProcessorI8080.DebugRegPairs;
+import ru.avsh.specialistmx.ProcessorI8080.DebugRegPair;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -19,7 +19,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.PlainDocument;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.EnumMap;
+import java.util.Objects;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.function.Function;
@@ -31,6 +31,7 @@ import static ru.avsh.specialistmx.ConsStat.STR_ERROR;
 
 /**
  * Класс "Отладчик для процессора i8080 (К580ВМ80А)".
+ *
  * @author -=AVSh=-
  */
 final class DebuggerI8080 extends JDialog {
@@ -103,27 +104,26 @@ final class DebuggerI8080 extends JDialog {
     private static final int[] CALL_CMD = {0xC4, 0xD4, 0xE4, 0xF4, 0xCC, 0xDC, 0xEC, 0xFC, 0xCD, 0xC7, 0xD7, 0xE7, 0xF7, 0xCF, 0xDF, 0xEF, 0xFF};
 
     /**
-     * Типы страниц памяти в отладчике:
+     * Типы страницы памяти в отладчике:
      * CPU  - страница, в которой работает CPU;
      * CODE - страница, в которой просматривается код;
      * DATA - страница, в которой просматриваются данные.
      */
-    private enum TypesMemoryPages {
+    private enum MemoryPageType {
         CPU, CODE, DATA
     }
 
     /**
-    * Типы событий:
-    * REG_PAIR - изменилась регистровая пара;
-    * TRAPS    - изменились ловушки;
-    * MEMORY   - изменилась память;
-    * PAGE     - изменилась страница памяти;
-    * STEP     - выполнен шаг CPU (изменилось всё).
-    */
-    private enum TypesEvents {
+     * Тип события:
+     * REG_PAIR - изменилась регистровая пара;
+     * TRAPS    - изменились ловушки;
+     * MEMORY   - изменилась память;
+     * PAGE     - изменилась страница памяти;
+     * STEP     - выполнен шаг CPU (изменилось всё).
+     */
+    private enum EventType {
         REG_PAIR, TRAPS, MEMORY, PAGE, STEP
     }
-    private static final EnumMap<TypesEvents, Object> TYPES_EVENTS_DETAIL = new EnumMap<>(TypesEvents.class);
 
     // Константы дизассемблера
     private static final int FOR_ALIGNMENT = 16; // Длина участка для выравнивания кода
@@ -142,7 +142,7 @@ final class DebuggerI8080 extends JDialog {
     private static final int DA_COL_CMD = 5;
 
     // Количество строк и колонок таблицы с регистровыми парами CPU
-    private static final int CR_NUM_ROWS    = DebugRegPairs.values().length;
+    private static final int CR_NUM_ROWS    = DebugRegPair.values().length;
     private static final int CR_NUM_COLUMNS = 3;
     // Колонки таблицы с регистровыми парами CPU
     private static final int CR_COL_REG = 0;
@@ -199,7 +199,7 @@ final class DebuggerI8080 extends JDialog {
 
     // Статические структуры для сохранения положения окна отладчика и значений регистровых пар
     private static final Point PREV_LOCATION  = new Point();
-    private static final int[] PREV_REG_PAIRS = new int[DebugRegPairs.values().length];
+    private static final int[] PREV_REG_PAIRS = new int[DebugRegPair.values().length];
     // Статические переменные для сохранения страницы и адреса памяти таблицы данных памяти
     private static int fPrevDataPage   ;
     private static int fPrevDataAddress;
@@ -216,6 +216,7 @@ final class DebuggerI8080 extends JDialog {
 
     /**
      * Сохраняет положение окна отладчика.
+     *
      * @param prevLocation положение окна
      */
     private static synchronized void setPrevLocation(Point prevLocation) {
@@ -224,6 +225,7 @@ final class DebuggerI8080 extends JDialog {
 
     /**
      * Сохраняет номер страницы памяти для просмотра данных.
+     *
      * @param prevDataPage страница памяти
      */
     private static synchronized void setPrevDataPage(int prevDataPage) {
@@ -232,6 +234,7 @@ final class DebuggerI8080 extends JDialog {
 
     /**
      * Сохраняет текущий адрес страницы памяти для просмотра данных.
+     *
      * @param prevDataAddress адрес
      */
     private static synchronized void setPrevDataAddress(int prevDataAddress) {
@@ -240,6 +243,7 @@ final class DebuggerI8080 extends JDialog {
 
     /**
      * Сохраняет строку поиска.
+     *
      * @param prevStringBytes строка поиска
      */
     private static synchronized void setPrevStringBytes(String prevStringBytes) {
@@ -248,6 +252,7 @@ final class DebuggerI8080 extends JDialog {
 
     /**
      * Конструктор.
+     *
      * @param spMX ссылка на главный класс эмулятора.
      */
     DebuggerI8080(@NotNull SpecialistMX spMX) {
@@ -763,7 +768,7 @@ final class DebuggerI8080 extends JDialog {
                 final int index = FLAGS.indexOf(actionEvent.getActionCommand());
                 if (index != -1) {
                     // Инвертируем бит, соответствующий названию кнопки
-                    fLayer.setValRegPair(DebugRegPairs.AF, fLayer.getValRegPair(DebugRegPairs.AF) ^ (1 << (7 - index)));
+                    fLayer.setValRegPair(DebugRegPair.AF, fLayer.getValRegPair(DebugRegPair.AF) ^ (1 << (7 - index)));
                 }
             };
             // Добавляем в компоненты
@@ -808,7 +813,7 @@ final class DebuggerI8080 extends JDialog {
         gotoButton.addActionListener(actionEvent -> gotoAddress());
         toPCButton.addActionListener(actionEvent -> {
                   fLayer.setCodePage(fLayer.getCpuPage());
-            fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPairs.PC), DA_COL_ADR);
+            fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
 
         });
          runButton.addActionListener(actionEvent -> runToCursor());
@@ -858,7 +863,7 @@ final class DebuggerI8080 extends JDialog {
         // Устанавливаем курсор на адрес = fPrevDataAddress
         fMemDatTable.gotoAddress(fPrevDataAddress);
         // Устанавливаем курсор на адрес = PC в таблице fDisAsmTable
-        fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPairs.PC), DA_COL_ADR);
+        fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
 
         if ((PREV_LOCATION.getX() < 1.0D) && (PREV_LOCATION.getY() < 1.0D)) {
             // Выводим окно отладчика в центре родительского окна
@@ -872,6 +877,44 @@ final class DebuggerI8080 extends JDialog {
         setVisible(true);
     }
 
+    //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    /**
+     * Класс "Событие".
+     */
+    private class InnerEvent {
+        private EventType type  ;
+        private Object    detail;
+
+        InnerEvent(EventType type, Object detail) {
+            this.type   = type  ;
+            this.detail = detail;
+        }
+
+        EventType getType() {
+            return type;
+        }
+
+        Object getDetail() {
+            return detail;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if ((o == null) || (getClass() != o.getClass())) {
+                return false;
+            }
+            InnerEvent event = (InnerEvent) o;
+            return (type == event.type) && Objects.equals(detail, event.detail);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(type, detail);
+        }
+    }
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Класс "Слой для взаимодействия отладчика с CPU и памятью".
@@ -889,7 +932,7 @@ final class DebuggerI8080 extends JDialog {
         Layer(ProcessorI8080 cpu) {
             fCPU = cpu;
             // Заполняем пустой массив предыдущих значений регистровых пар
-            if ((getPrevValRegPair(DebugRegPairs.AF) & 0xFF) == 0) {
+            if ((getPrevValRegPair(DebugRegPair.AF) & 0xFF) == 0) {
                 saveAllRegPairs();
             }
             // Установим страницу памяти для просмотра кода = странице, в которой работает CPU
@@ -900,6 +943,7 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Показывает отключены события или нет.
+         *
          * @return true = события отключены.
          */
         boolean isEventsDisabled() {
@@ -922,37 +966,38 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Отправляет событие наблюдателям.
-         * @param event событие
+         *
+         * @param type   тип события
          * @param detail детали события
          */
-        void sendEvent(TypesEvents event, Object detail) {
+        void sendEvent(EventType type, Object detail) {
             if (fDisableEvents) {
                 return;
             }
-            // Установим детали события
-            TYPES_EVENTS_DETAIL.put(event, detail);
             // Отправляем оповещение наблюдателю
-                 setChanged(      );
-            notifyObservers(event );
+                 setChanged();
+            notifyObservers(new InnerEvent(type, detail));
         }
 
         /**
          * Выполняет проверку события.
-         * @param event событие
-         * @param checkEvent проверочное событие
+         *
+         * @param event       событие
+         * @param checkType   проверочный тип события
          * @param checkDetail проверочные детали события (для null детали не важны)
          * @return true = событие необходимо обработать
          */
-        private boolean eventCheck(Object event, @NotNull TypesEvents checkEvent, Object checkDetail) {
-            if (checkEvent.equals(event)) {
-                Object  detail = TYPES_EVENTS_DETAIL.get((TypesEvents) event);
-                return (detail == null) || (checkDetail == null) || checkDetail.equals(detail);
+        private boolean eventCheck(@NotNull InnerEvent event, EventType checkType, Object checkDetail) {
+            if (event.getType() == checkType) {
+                final Object detail = event.getDetail();
+                return (detail == null) || (checkDetail == null) || detail.equals(checkDetail);
             }
             return false;
         }
 
         /**
          * Выполняет одну команду CPU в режиме "Пауза" тактового генератора.
+         *
          * @return true = команда выполнена успешно
          */
         boolean execOneCmdCPU() {
@@ -971,33 +1016,36 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Получает значение регистровой пары CPU.
+         *
          * @param regPair регистровая пара
          * @return значение
          */
-        int getValRegPair(DebugRegPairs regPair) {
+        int getValRegPair(DebugRegPair regPair) {
             return fCPU.debugGetValRegPair(regPair);
         }
 
         /**
          * Устанавливает значение регистровой пары CPU.
+         *
          * @param regPair регистровая пара
-         * @param value значение
+         * @param value   значение
          */
-        synchronized void setValRegPair(DebugRegPairs regPair, int value) {
+        synchronized void setValRegPair(DebugRegPair regPair, int value) {
             // Сохраняем предыдущее значение регистровой пары
             PREV_REG_PAIRS[regPair.ordinal()] = fCPU.debugGetValRegPair(regPair);
             // Устанавливаем новое значение
             fCPU.debugSetValRegPair(regPair, value);
             // Отправляем событие наблюдателям
-            sendEvent(TypesEvents.REG_PAIR, regPair);
+            sendEvent(EventType.REG_PAIR, regPair);
         }
 
         /**
          * Получает предыдущее значение регистровой пары CPU.
+         *
          * @param regPair регистровая пара
          * @return значение
          */
-        synchronized int getPrevValRegPair(DebugRegPairs regPair) {
+        synchronized int getPrevValRegPair(DebugRegPair regPair) {
             return PREV_REG_PAIRS[regPair.ordinal()];
         }
 
@@ -1005,19 +1053,20 @@ final class DebuggerI8080 extends JDialog {
          * Сохраняет значения всех регистровых пар в массиве.
          */
         synchronized void saveAllRegPairs() {
-            for (DebugRegPairs regPair : DebugRegPairs.values()) {
+            for (DebugRegPair regPair : DebugRegPair.values()) {
                 PREV_REG_PAIRS[regPair.ordinal()] = getValRegPair(regPair);
             }
         }
 
         /**
          * Получает визуальное представление регистра флагов.
+         *
          * @return значение регистра флагов.
          */
         String getVisViewsFlagsReg() {
             char   c;
             char[] r = new char[8];
-            int    f = getValRegPair(DebugRegPairs.AF);
+            int    f = getValRegPair(DebugRegPair.AF);
             for (int i = 7; i >= 0; i--, f >>= 1) {
                 c    = FLAGS.charAt(i);
                 r[i] = (c == '?') ? Character.forDigit(f & 1, 2) : ((f & 1) == 1 ? c : '.');
@@ -1027,16 +1076,17 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Показывает как изменилась регистровая пара (сравнивает предыдущее и текущее значение регистровой пары).
+         *
          * @param regPair регистровая пара
          * @return -1 = изменений нет, 0 = изменился младший байт, 1 = изменился старший байт, 2 = изменились оба байта
          * (Для SP и PC всегда 2 = оба байта, если были изменения)
          */
-        int getChangesRegPair(DebugRegPairs regPair) {
+        int getChangesRegPair(DebugRegPair regPair) {
             int xor = getPrevValRegPair(regPair) ^ getValRegPair(regPair);
             if (xor > 0) {
-                if        (( xor < 0x100)       && (regPair != DebugRegPairs.SP) && (regPair != DebugRegPairs.PC)) {
+                if        (( xor < 0x100)       && (regPair != DebugRegPair.SP) && (regPair != DebugRegPair.PC)) {
                     return 0;
-                } else if (((xor % 0x100) == 0) && (regPair != DebugRegPairs.SP) && (regPair != DebugRegPairs.PC)) {
+                } else if (((xor % 0x100) == 0) && (regPair != DebugRegPair.SP) && (regPair != DebugRegPair.PC)) {
                     return 1;
                 } else {
                     return 2;
@@ -1047,27 +1097,29 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Добавляет ловушку.
-         * @param page номер страницы памяти
-         * @param address адрес ловушки
+         *
+         * @param page     номер страницы памяти
+         * @param address  адрес ловушки
          * @param stepOver true = StepOver ловушка
          */
         void addTrap(int page,  int address, boolean stepOver) {
             fCPU.debugAddTrap(page, address, stepOver);
             // Отправляем событие наблюдателям
             if (!stepOver) {
-                sendEvent(TypesEvents.TRAPS, new Trap(page, address));
+                sendEvent(EventType.TRAPS, new Trap(page, address));
             }
         }
 
         /**
          * Удаляет ловушку.
-         * @param page номер страницы памяти
+         *
+         * @param page    номер страницы памяти
          * @param address адрес ловушки
          */
         void remTrap(int page,  int address) {
             fCPU.debugRemTrap(page, address);
             // Отправляем событие наблюдателям
-            sendEvent(TypesEvents.TRAPS, new Trap(page, address));
+            sendEvent(EventType.TRAPS, new Trap(page, address));
         }
 
         /**
@@ -1076,12 +1128,13 @@ final class DebuggerI8080 extends JDialog {
         void clearTraps() {
             fCPU.debugClearTraps();
             // Отправляем событие наблюдателям
-            sendEvent(TypesEvents.TRAPS, null);
+            sendEvent(EventType.TRAPS, null);
         }
 
         /**
          * Проверяет, установлена ли по заданному адресу ловушка.
-         * @param page номер страницы памяти
+         *
+         * @param page    номер страницы памяти
          * @param address адрес
          * @return true = ловушка установлена
          */
@@ -1091,6 +1144,7 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Возвращает количество установленных ловушек.
+         *
          * @return количество установленных ловушек
          */
         int getTrapCount() {
@@ -1099,6 +1153,7 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Возвращает ловушку по индексу в списке ловушек.
+         *
          * @param index индекс ловушки
          * @return ловушка
          */
@@ -1108,6 +1163,7 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Возвращает индекс ловушки.
+         *
          * @param trap ловушка
          * @return индекс
          */
@@ -1122,6 +1178,7 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Возвращает номер страницы памяти, в которой просматривается код.
+         *
          * @return номер страницы
          */
         synchronized int getCodePage() {
@@ -1130,6 +1187,7 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Возвращает номер страницы памяти, в которой просматриваются данные.
+         *
          * @return номер страницы
          */
         synchronized int getDataPage() {
@@ -1138,6 +1196,7 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Возвращает номер страницы памяти, в которой работает CPU.
+         *
          * @return номер страницы
          */
         int getCpuPage() {
@@ -1146,39 +1205,43 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Устанавливает номер страницы памяти для просмотра кода.
+         *
          * @param page номер страницы
          */
         synchronized void setCodePage(int page) {
             if (fCodePage != page) {
                 fCodePage  = page;
-                sendEvent(TypesEvents.PAGE, TypesMemoryPages.CODE);
+                sendEvent(EventType.PAGE, MemoryPageType.CODE);
             }
         }
 
         /**
          * Устанавливает номер страницы памяти для просмотра данных.
+         *
          * @param page номер страницы
          */
         synchronized void setDataPage(int page) {
             if (fDataPage != page) {
                 fDataPage  = page;
-                sendEvent(TypesEvents.PAGE, TypesMemoryPages.DATA);
+                sendEvent(EventType.PAGE, MemoryPageType.DATA);
             }
         }
 
         /**
          * Устанавливает номер страницы памяти для CPU.
+         *
          * @param page номер страницы
          */
         void setCpuPage(int page) {
             if (fSpMX.getPage() != page) {
                 fSpMX.setPage(page);
-                sendEvent(TypesEvents.PAGE, TypesMemoryPages.CPU);
+                sendEvent(EventType.PAGE, MemoryPageType.CPU);
             }
         }
 
         /**
          * Возвращает количество страниц памяти (учитываются все страницы памяти - основная, RAM и ROM диски).
+         *
          * @return количество страниц памяти
          */
         int getNumPages() {
@@ -1187,6 +1250,7 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Возвращает имя страницы памяти.
+         *
          * @param page номер страницы
          * @return имя страницы
          */
@@ -1202,7 +1266,8 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Читает байт из памяти (прямое чтение).
-         * @param page страница памяти
+         *
+         * @param page    страница памяти
          * @param address адрес
          * @return считанный байт
          */
@@ -1220,7 +1285,8 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Читает байт из памяти (безопасное чтение).
-         * @param page страница памяти
+         *
+         * @param page    страница памяти
          * @param address адрес
          * @return считанный байт
          */
@@ -1238,9 +1304,10 @@ final class DebuggerI8080 extends JDialog {
 
         /**
          * Записывает байт в память.
-         * @param page страница памяти
+         *
+         * @param page    страница памяти
          * @param address адрес
-         * @param value байт
+         * @param value   байт
          */
         synchronized void writeByte(int page, int address, int value) {
             int curPage  = fSpMX.getPage();
@@ -1251,7 +1318,7 @@ final class DebuggerI8080 extends JDialog {
             if (page !=       curPage) {
                 fSpMX.setPage(curPage);
             }
-            sendEvent(TypesEvents.MEMORY, page);
+            sendEvent(EventType.MEMORY, page);
         }
 
         /**
@@ -1261,7 +1328,7 @@ final class DebuggerI8080 extends JDialog {
             // Устанавливаем Code Page = CPU Page
             fCodePage = fSpMX.getPage();
             // Отправляем событие наблюдателям
-            sendEvent(TypesEvents.STEP, null);
+            sendEvent(EventType.STEP, null);
         }
     }
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -1290,7 +1357,7 @@ final class DebuggerI8080 extends JDialog {
          */
         private void fillBuffer(int[][] buf, int address) {
             int page =  fLayer.getCodePage();
-            int pc   = (fLayer.getCpuPage () == page) ? fLayer.getValRegPair(DebugRegPairs.PC) : 0;
+            int pc   = (fLayer.getCpuPage () == page) ? fLayer.getValRegPair(DebugRegPair.PC) : 0;
 
             for (int i = 0, length; i < BUF_SIZE; i++) {
                                  buf[i][0] = address;
@@ -1561,7 +1628,7 @@ final class DebuggerI8080 extends JDialog {
                 }
 
                            value = (value == null) ? Boolean.FALSE : (Boolean) value;
-                boolean equalsPC = (fLayer.getCodePage() == fLayer.getCpuPage()) && (table.convertRowIndexToModel(row) == fLayer.getValRegPair(DebugRegPairs.PC));
+                boolean equalsPC = (fLayer.getCodePage() == fLayer.getCpuPage()) && (table.convertRowIndexToModel(row) == fLayer.getValRegPair(DebugRegPair.PC));
 
                 if (isSelected) {
                     setForeground(table.getSelectionForeground());
@@ -1614,7 +1681,7 @@ final class DebuggerI8080 extends JDialog {
 
                 int address = table.convertRowIndexToModel   (row   );
                 int columnM = table.convertColumnIndexToModel(column);
-                int pc      = fLayer.getValRegPair(DebugRegPairs.PC );
+                int pc      = fLayer.getValRegPair(DebugRegPair.PC );
 
                 if (columnM == DA_COL_CMD) {
                     setHorizontalAlignment(LEFT);
@@ -1698,18 +1765,19 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void update(Observable o, Object arg) {
-            if (   fLayer.eventCheck(arg, TypesEvents.MEMORY  , fLayer.getCodePage())
-                || fLayer.eventCheck(arg, TypesEvents.PAGE    , TypesMemoryPages.CODE)
-                || fLayer.eventCheck(arg, TypesEvents.REG_PAIR, DebugRegPairs.PC)
-                || fLayer.eventCheck(arg, TypesEvents.STEP    , null)) {
+            final InnerEvent event = (InnerEvent) arg;
+            if (   fLayer.eventCheck(event, EventType.MEMORY  , fLayer.getCodePage())
+                || fLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CODE)
+                || fLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.PC)
+                || fLayer.eventCheck(event, EventType.STEP    , null)) {
                 int rowM =    getFocusedRowModel(this);
                 int colM = getFocusedColumnModel(this);
                 // Вызываем обновление данных
                 ((AbstractTableModel) getModel()).fireTableDataChanged();
                 // Восстанавливаем предыдущую позицию
                 gotoAddress(rowM, colM);
-            } else if (fLayer.eventCheck(arg, TypesEvents.TRAPS, null)) {
-                Object detail = TYPES_EVENTS_DETAIL.get(TypesEvents.TRAPS);
+            } else if (fLayer.eventCheck(event, EventType.TRAPS, null)) {
+                final Object detail = event.getDetail();
                 if ((detail == null) || ((detail instanceof Trap) && (((Trap) detail).getPage() == fLayer.getCodePage()))) {
                     repaint();
                 }
@@ -1757,8 +1825,8 @@ final class DebuggerI8080 extends JDialog {
                     int height = l.getHeight();
                     int index  = l.getDisplayedMnemonicIndex();
 
-                    int pAF = fLayer.getPrevValRegPair(DebugRegPairs.AF);
-                    int cAF = fLayer.getValRegPair    (DebugRegPairs.AF);
+                    int pAF = fLayer.getPrevValRegPair(DebugRegPair.AF);
+                    int cAF = fLayer.getValRegPair    (DebugRegPair.AF);
 
                     char c;
                     int  width;
@@ -1799,8 +1867,9 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void update(Observable o, Object arg) {
-            if (   fLayer.eventCheck(arg, TypesEvents.REG_PAIR, DebugRegPairs.AF)
-                || fLayer.eventCheck(arg, TypesEvents.STEP    , null)) {
+            final InnerEvent event = (InnerEvent) arg;
+            if (   fLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.AF)
+                || fLayer.eventCheck(event, EventType.STEP    , null)) {
                 setText(fLayer.getVisViewsFlagsReg());
                 repaint();
             }
@@ -1857,11 +1926,11 @@ final class DebuggerI8080 extends JDialog {
         public Object getValueAt(int rowIndex, int columnIndex) {
             switch (columnIndex) {
                 case CR_COL_REG:
-                    return DebugRegPairs.values()[rowIndex].name();
+                    return DebugRegPair.values()[rowIndex].name();
                 case CR_COL_EQU:
                     return "=";
                 case CR_COL_DAT:
-                    return String.format("%04X", fLayer.getValRegPair(DebugRegPairs.values()[rowIndex]));
+                    return String.format("%04X", fLayer.getValRegPair(DebugRegPair.values()[rowIndex]));
                 default:
                     return null;
             }
@@ -1888,13 +1957,13 @@ final class DebuggerI8080 extends JDialog {
                     break;
                 case CR_COL_DAT:
                     try {
-                        DebugRegPairs regPair = DebugRegPairs.values()[rowIndex];
+                        DebugRegPair regPair = DebugRegPair.values()[rowIndex];
                         // Пишем данные в регистровые пары
                         fLayer.setValRegPair(regPair, Integer.parseInt((String) aValue, 16));
-                        if (DebugRegPairs.PC.equals(regPair)) {
+                        if (DebugRegPair.PC.equals(regPair)) {
                             // Если была запись в PC, то показываем код из страницы CPU и переходим на address = PC
                                   fLayer.setCodePage(fLayer.getCpuPage());
-                            fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPairs.PC), DA_COL_ADR);
+                            fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
                         }
                     } catch (NumberFormatException e) {
                         showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
@@ -1967,7 +2036,7 @@ final class DebuggerI8080 extends JDialog {
                     return this;
                 }
                 fPaintColumn   = table.convertColumnIndexToModel(column);
-                fCompareResult = fLayer.getChangesRegPair(DebugRegPairs.values()[table.convertRowIndexToModel(row)]);
+                fCompareResult = fLayer.getChangesRegPair(DebugRegPair.values()[table.convertRowIndexToModel(row)]);
 
                 if (fCompareResult >= 0) {
                     setBackground(table.getSelectionBackground());
@@ -2018,8 +2087,9 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void update(Observable o, Object arg) {
-            if (   fLayer.eventCheck(arg, TypesEvents.REG_PAIR, null)
-                || fLayer.eventCheck(arg, TypesEvents.STEP    , null)) {
+            final InnerEvent event = (InnerEvent) arg;
+            if (   fLayer.eventCheck(event, EventType.REG_PAIR, null)
+                || fLayer.eventCheck(event, EventType.STEP    , null)) {
                 repaint();
             }
         }
@@ -2069,7 +2139,7 @@ final class DebuggerI8080 extends JDialog {
         public Object getValueAt(int rowIndex, int columnIndex) {
             if (columnIndex == SP_COL_DAT) {
                 int page    = fLayer.getCpuPage();
-                int address = fLayer.getValRegPair(DebugRegPairs.SP) + (rowIndex << 1);
+                int address = fLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
                 return String.format("%04X", fLayer.debugReadByte(page, address) | (fLayer.debugReadByte(page, address + 1) << 8));
             }
             return null;
@@ -2084,7 +2154,7 @@ final class DebuggerI8080 extends JDialog {
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
             if (columnIndex == SP_COL_DAT) {
                 int page    = fLayer.getCpuPage();
-                int address = fLayer.getValRegPair(DebugRegPairs.SP) + (rowIndex << 1);
+                int address = fLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
                 try {
                     int value = Integer.parseInt((String) aValue, 16);
                     fLayer.disableEvents();
@@ -2095,7 +2165,7 @@ final class DebuggerI8080 extends JDialog {
                 } finally {
                     if (fLayer.isEventsDisabled()) {
                         fLayer.enableEvents();
-                        fLayer.sendEvent(TypesEvents.MEMORY, page);
+                        fLayer.sendEvent(EventType.MEMORY, page);
                     }
                 }
                 return;
@@ -2165,10 +2235,11 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void update(Observable o, Object arg) {
-            if (   fLayer.eventCheck(arg, TypesEvents.REG_PAIR, DebugRegPairs.SP)
-                || fLayer.eventCheck(arg, TypesEvents.MEMORY  , fLayer.getCpuPage())
-                || fLayer.eventCheck(arg, TypesEvents.PAGE    , TypesMemoryPages.CPU)
-                || fLayer.eventCheck(arg, TypesEvents.STEP    , null)) {
+            final InnerEvent event = (InnerEvent) arg;
+            if (   fLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.SP)
+                || fLayer.eventCheck(event, EventType.MEMORY  , fLayer.getCpuPage())
+                || fLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CPU)
+                || fLayer.eventCheck(event, EventType.STEP    , null)) {
                 repaint();
             }
         }
@@ -2298,12 +2369,13 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void update(Observable o, Object arg) {
-            if (fLayer.eventCheck(arg, TypesEvents.TRAPS, null)) {
+            final InnerEvent event = (InnerEvent) arg;
+            if (fLayer.eventCheck(event, EventType.TRAPS, null)) {
                 // Обновляем данные в таблице
                 ((AbstractTableModel) getModel()).fireTableDataChanged();
                 // Позиционируемся на добавленную ловушку
-                   int index;
-                Object detail = TYPES_EVENTS_DETAIL.get(TypesEvents.TRAPS);
+                final int index;
+                final Object detail = event.getDetail();
                 if ((detail instanceof Trap) && ((index = fLayer.getTrapIndex((Trap) detail)) != -1)) {
                     gotoTableCell(this, convertRowIndexToView(index), convertColumnIndexToView(TP_COL_PAG), false);
                 }
@@ -2343,8 +2415,9 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void update(Observable o, Object arg) {
-            if (   fLayer.eventCheck(arg, TypesEvents.PAGE, TypesMemoryPages.CPU)
-                || fLayer.eventCheck(arg, TypesEvents.STEP, null)) {
+            final InnerEvent event = (InnerEvent) arg;
+            if (   fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CPU)
+                || fLayer.eventCheck(event, EventType.STEP, null)) {
                 setText(getCpuPageInfo());
             }
         }
@@ -2376,8 +2449,9 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void update(Observable o, Object arg) {
-            if (   fLayer.eventCheck(arg, TypesEvents.PAGE, TypesMemoryPages.CODE)
-                || fLayer.eventCheck(arg, TypesEvents.STEP, null)) {
+            final InnerEvent event = (InnerEvent) arg;
+            if (   fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CODE)
+                || fLayer.eventCheck(event, EventType.STEP, null)) {
                 int index = (fLayer.getCodePage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
@@ -2412,7 +2486,8 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void update(Observable o, Object arg) {
-            if (fLayer.eventCheck(arg, TypesEvents.PAGE, TypesMemoryPages.DATA)) {
+            final InnerEvent event = (InnerEvent) arg;
+            if (fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.DATA)) {
                 int index = (fLayer.getDataPage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
@@ -2589,7 +2664,7 @@ final class DebuggerI8080 extends JDialog {
                     } finally {
                         if (fLayer.isEventsDisabled()) {
                             fLayer.enableEvents();
-                            fLayer.sendEvent(TypesEvents.MEMORY, page);
+                            fLayer.sendEvent(EventType.MEMORY, page);
                         }
                     }
                     return;
@@ -2730,9 +2805,10 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void update(Observable o, Object arg) {
-            if (   fLayer.eventCheck(arg, TypesEvents.MEMORY, fLayer.getDataPage())
-                || fLayer.eventCheck(arg, TypesEvents.PAGE  , TypesMemoryPages.DATA)
-                || fLayer.eventCheck(arg, TypesEvents.STEP  , null)) {
+            final InnerEvent event = (InnerEvent) arg;
+            if (   fLayer.eventCheck(event, EventType.MEMORY, fLayer.getDataPage())
+                || fLayer.eventCheck(event, EventType.PAGE  , MemoryPageType.DATA)
+                || fLayer.eventCheck(event, EventType.STEP  , null)) {
                 repaint();
             }
         }
@@ -3131,7 +3207,7 @@ final class DebuggerI8080 extends JDialog {
             // Уведомляем слушателей об изменениях
             fLayer.afterStep();
             // Устанавливаем курсор на позицию = PC
-            fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPairs.PC), DA_COL_ADR);
+            fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
         }
     }
 
@@ -3142,7 +3218,7 @@ final class DebuggerI8080 extends JDialog {
         // Показываем код из страницы, в которой работает CPU
         fLayer.setCodePage(fLayer.getCpuPage());
         // Получаем адрес следующей команды после команды вызова подпрограммы (CALL/RST)
-        int address = ((DisAsmTableModel) fDisAsmTable.getModel()).getAddressAfterCallCmd(fLayer.getValRegPair(DebugRegPairs.PC));
+        int address = ((DisAsmTableModel) fDisAsmTable.getModel()).getAddressAfterCallCmd(fLayer.getValRegPair(DebugRegPair.PC));
         if (address == -1) {
             step();
         } else {
@@ -3160,6 +3236,6 @@ final class DebuggerI8080 extends JDialog {
      */
     private void runToCursor() {
         fLayer.setCpuPage(fLayer.getCodePage());
-        fLayer.setValRegPair(DebugRegPairs.PC, getFocusedRowModel(fDisAsmTable));
+        fLayer.setValRegPair(DebugRegPair.PC, getFocusedRowModel(fDisAsmTable));
     }
 }
