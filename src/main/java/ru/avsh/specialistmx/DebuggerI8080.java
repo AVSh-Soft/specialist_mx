@@ -44,22 +44,22 @@ final class DebuggerI8080 extends JDialog {
     private static final String   M_NOP  = "?nop"  ;
     private static final String   M_CALL = "?call ";
     private static final String[] MNEMONICS = new String[] {
-            "NOP"      , "LXI  B,"  , "STAX B"   , "INX  B"   , "INR  B"   , "DCR  B"   , "MVI  B,"  , "RLC"      , M_NOP      , "DAD  B"   , "LDAX B"   , "DCX  B"   , "INR  C"   , "DCR  C"   , "MVI  C,"  , "RRC"      ,
-            M_NOP      , "LXI  D,"  , "STAX D"   , "INX  D"   , "INR  D"   , "DCR  D"   , "MVI  D,"  , "RAL"      , M_NOP      , "DAD  D"   , "LDAX D"   , "DCX  D"   , "INR  E"   , "DCR  E"   , "MVI  E,"  , "RAR"      ,
-            M_NOP      , "LXI  H,"  , "SHLD "    , "INX  H"   , "INR  H"   , "DCR  H"   , "MVI  H,"  , "DAA"      , M_NOP      , "DAD  H"   , "LHLD "    , "DCX  H"   , "INR  L"   , "DCR  L"   , "MVI  L,"  , "CMA"      ,
-            M_NOP      , "LXI  SP," , "STA  "    , "INX  SP"  , "INR  M"   , "DCR  M"   , "MVI  M,"  , "STC"      , M_NOP      , "DAD  SP"  , "LDA  "    , "DCX  SP"  , "INR  A"   , "DCR  A"   , "MVI  A,"  , "CMC"      ,
-            "MOV  B, B", "MOV  B, C", "MOV  B, D", "MOV  B, E", "MOV  B, H", "MOV  B, L", "MOV  B, M", "MOV  B, A", "MOV  C, B", "MOV  C, C", "MOV  C, D", "MOV  C, E", "MOV  C, H", "MOV  C, L", "MOV  C, M", "MOV  C, A",
-            "MOV  D, B", "MOV  D, C", "MOV  D, D", "MOV  D, E", "MOV  D, H", "MOV  D, L", "MOV  D, M", "MOV  D, A", "MOV  E, B", "MOV  E, C", "MOV  E, D", "MOV  E, E", "MOV  E, H", "MOV  E, L", "MOV  E, M", "MOV  E, A",
-            "MOV  H, B", "MOV  H, C", "MOV  H, D", "MOV  H, E", "MOV  H, H", "MOV  H, L", "MOV  H, M", "MOV  H, A", "MOV  L, B", "MOV  L, C", "MOV  L, D", "MOV  L, E", "MOV  L, H", "MOV  L, L", "MOV  L, M", "MOV  L, A",
-            "MOV  M, B", "MOV  M, C", "MOV  M, D", "MOV  M, E", "MOV  M, H", "MOV  M, L", "HLT"      , "MOV  M, A", "MOV  A, B", "MOV  A, C", "MOV  A, D", "MOV  A, E", "MOV  A, H", "MOV  A, L", "MOV  A, M", "MOV  A, A",
-            "ADD  B"   , "ADD  C"   , "ADD  D"   , "ADD  E"   , "ADD  H"   , "ADD  L"   , "ADD  M"   , "ADD  A"   , "ADC  B"   , "ADC  C"   , "ADC  D"   , "ADC  E"   , "ADC  H"   , "ADC  L"   , "ADC  M"   , "ADC  A"   ,
-            "SUB  B"   , "SUB  C"   , "SUB  D"   , "SUB  E"   , "SUB  H"   , "SUB  L"   , "SUB  M"   , "SUB  A"   , "SBB  B"   , "SBB  C"   , "SBB  D"   , "SBB  E"   , "SBB  H"   , "SBB  L"   , "SBB  M"   , "SBB  A"   ,
-            "ANA  B"   , "ANA  C"   , "ANA  D"   , "ANA  E"   , "ANA  H"   , "ANA  L"   , "ANA  M"   , "ANA  A"   , "XRA  B"   , "XRA  C"   , "XRA  D"   , "XRA  E"   , "XRA  H"   , "XRA  L"   , "XRA  M"   , "XRA  A"   ,
-            "ORA  B"   , "ORA  C"   , "ORA  D"   , "ORA  E"   , "ORA  H"   , "ORA  L"   , "ORA  M"   , "ORA  A"   , "CMP  B"   , "CMP  C"   , "CMP  D"   , "CMP  E"   , "CMP  H"   , "CMP  L"   , "CMP  M"   , "CMP  A"   ,
-            "RNZ"      , "POP  B"   , "JNZ  "    , "JMP  "    , "CNZ  "    , "PUSH B"   , "ADI  "    , "RST  0"   , "RZ"       , "RET"      , "JZ   "    , "?jmp "    , "CZ   "    , "CALL "    , "ACI  "    , "RST  1"   ,
-            "RNC"      , "POP  D"   , "JNC  "    , "OUT  "    , "CNC  "    , "PUSH D"   , "SUI  "    , "RST  2"   , "RC"       , "?ret"     , "JC   "    , "IN   "    , "CC   "    , M_CALL     , "SBI  "    , "RST  3"   ,
-            "RPO"      , "POP  H"   , "JPO  "    , "XTHL"     , "CPO  "    , "PUSH H"   , "ANI  "    , "RST  4"   , "RPE"      , "PCHL"     , "JPE  "    , "XCHG"     , "CPE  "    , M_CALL     , "XRI  "    , "RST  5"   ,
-            "RP"       , "POP  PSW" , "JP   "    , "DI"       , "CP   "    , "PUSH PSW" , "ORI  "    , "RST  6"   , "RM"       , "SPHL"     , "JM   "    , "EI"       , "CM   "    , M_CALL     , "CPI  "    , "RST  7"
+            "NOP"     , "LXI  B," , "STAX B"  , "INX  B"  , "INR  B"  , "DCR  B"  , "MVI  B," , "RLC"     , M_NOP     , "DAD  B"  , "LDAX B"  , "DCX  B"  , "INR  C"  , "DCR  C"  , "MVI  C," , "RRC"     ,
+            M_NOP     , "LXI  D," , "STAX D"  , "INX  D"  , "INR  D"  , "DCR  D"  , "MVI  D," , "RAL"     , M_NOP     , "DAD  D"  , "LDAX D"  , "DCX  D"  , "INR  E"  , "DCR  E"  , "MVI  E," , "RAR"     ,
+            M_NOP     , "LXI  H," , "SHLD "   , "INX  H"  , "INR  H"  , "DCR  H"  , "MVI  H," , "DAA"     , M_NOP     , "DAD  H"  , "LHLD "   , "DCX  H"  , "INR  L"  , "DCR  L"  , "MVI  L," , "CMA"     ,
+            M_NOP     , "LXI  SP,", "STA  "   , "INX  SP" , "INR  M"  , "DCR  M"  , "MVI  M," , "STC"     , M_NOP     , "DAD  SP" , "LDA  "   , "DCX  SP" , "INR  A"  , "DCR  A"  , "MVI  A," , "CMC"     ,
+            "MOV  B,B", "MOV  B,C", "MOV  B,D", "MOV  B,E", "MOV  B,H", "MOV  B,L", "MOV  B,M", "MOV  B,A", "MOV  C,B", "MOV  C,C", "MOV  C,D", "MOV  C,E", "MOV  C,H", "MOV  C,L", "MOV  C,M", "MOV  C,A",
+            "MOV  D,B", "MOV  D,C", "MOV  D,D", "MOV  D,E", "MOV  D,H", "MOV  D,L", "MOV  D,M", "MOV  D,A", "MOV  E,B", "MOV  E,C", "MOV  E,D", "MOV  E,E", "MOV  E,H", "MOV  E,L", "MOV  E,M", "MOV  E,A",
+            "MOV  H,B", "MOV  H,C", "MOV  H,D", "MOV  H,E", "MOV  H,H", "MOV  H,L", "MOV  H,M", "MOV  H,A", "MOV  L,B", "MOV  L,C", "MOV  L,D", "MOV  L,E", "MOV  L,H", "MOV  L,L", "MOV  L,M", "MOV  L,A",
+            "MOV  M,B", "MOV  M,C", "MOV  M,D", "MOV  M,E", "MOV  M,H", "MOV  M,L", "HLT"     , "MOV  M,A", "MOV  A,B", "MOV  A,C", "MOV  A,D", "MOV  A,E", "MOV  A,H", "MOV  A,L", "MOV  A,M", "MOV  A,A",
+            "ADD  B"  , "ADD  C"  , "ADD  D"  , "ADD  E"  , "ADD  H"  , "ADD  L"  , "ADD  M"  , "ADD  A"  , "ADC  B"  , "ADC  C"  , "ADC  D"  , "ADC  E"  , "ADC  H"  , "ADC  L"  , "ADC  M"  , "ADC  A"  ,
+            "SUB  B"  , "SUB  C"  , "SUB  D"  , "SUB  E"  , "SUB  H"  , "SUB  L"  , "SUB  M"  , "SUB  A"  , "SBB  B"  , "SBB  C"  , "SBB  D"  , "SBB  E"  , "SBB  H"  , "SBB  L"  , "SBB  M"  , "SBB  A"  ,
+            "ANA  B"  , "ANA  C"  , "ANA  D"  , "ANA  E"  , "ANA  H"  , "ANA  L"  , "ANA  M"  , "ANA  A"  , "XRA  B"  , "XRA  C"  , "XRA  D"  , "XRA  E"  , "XRA  H"  , "XRA  L"  , "XRA  M"  , "XRA  A"  ,
+            "ORA  B"  , "ORA  C"  , "ORA  D"  , "ORA  E"  , "ORA  H"  , "ORA  L"  , "ORA  M"  , "ORA  A"  , "CMP  B"  , "CMP  C"  , "CMP  D"  , "CMP  E"  , "CMP  H"  , "CMP  L"  , "CMP  M"  , "CMP  A"  ,
+            "RNZ"     , "POP  B"  , "JNZ  "   , "JMP  "   , "CNZ  "   , "PUSH B"  , "ADI  "   , "RST  0"  , "RZ"      , "RET"     , "JZ   "   , "?jmp "   , "CZ   "   , "CALL "   , "ACI  "   , "RST  1"  ,
+            "RNC"     , "POP  D"  , "JNC  "   , "OUT  "   , "CNC  "   , "PUSH D"  , "SUI  "   , "RST  2"  , "RC"      , "?ret"    , "JC   "   , "IN   "   , "CC   "   , M_CALL    , "SBI  "   , "RST  3"  ,
+            "RPO"     , "POP  H"  , "JPO  "   , "XTHL"    , "CPO  "   , "PUSH H"  , "ANI  "   , "RST  4"  , "RPE"     , "PCHL"    , "JPE  "   , "XCHG"    , "CPE  "   , M_CALL    , "XRI  "   , "RST  5"  ,
+            "RP"      , "POP  PSW", "JP   "   , "DI"      , "CP   "   , "PUSH PSW", "ORI  "   , "RST  6"  , "RM"      , "SPHL"    , "JM   "   , "EI"      , "CM   "   , M_CALL    , "CPI  "   , "RST  7"
     };
 
     // Массив длин команд процессора i8080 (К580ВМ80А)
@@ -1338,17 +1338,20 @@ final class DebuggerI8080 extends JDialog {
     private class DisAsmTableModel extends AbstractTableModel {
         private static final long serialVersionUID = 4535761990838509705L;
 
-        // Индекс адреса
-        private static final int IND_ADR = 0;
-        // Индекс байта 0 команды CPU (кода команды CPU)
-        private static final int IND_CMD = 1;
+        // Индекс адреса команды
+        private static final int IND_ADR  = 0;
+        // Индекс байта 0 команды CPU (код команды CPU)
+        private static final int IND_CMD  = 1;
         // Индекс байта 1 команды CPU
-        private static final int IND_BT1 = 2;
+        private static final int IND_BT1  = 2;
         // Индекс байта 2 команды CPU
-        private static final int IND_BT2 = 3;
-
-        // Длина под адрес и данные команды CPU
-        private static final int DATA_LENGTH = IND_BT2 + 1;
+        private static final int IND_BT2  = 3;
+        // Размер записи под адрес и данные команды CPU
+        private static final int REC_SIZE = IND_BT2 + 1;
+        // Пустой элемент записи   (обязательно отрицательное значение)
+        private static final int EMPTY = -1;
+        // Неверный элемент записи (обязательно отрицательное значение)
+        private static final int WRONG = -2;
 
         private final int[][] fStartBuffer;
         private final int[][] fMovedBuffer;
@@ -1358,43 +1361,44 @@ final class DebuggerI8080 extends JDialog {
          */
         DisAsmTableModel() {
             super();
-            fStartBuffer = new int[BUF_SIZE][DATA_LENGTH]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
-            fMovedBuffer = new int[BUF_SIZE][DATA_LENGTH]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
+            fStartBuffer = new int[BUF_SIZE][REC_SIZE]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
+            fMovedBuffer = new int[BUF_SIZE][REC_SIZE]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
         }
 
         /**
          * Заполняет буфер адресами и данными команд CPU.
          *
-         * @param buf          буфер
-         * @param beginAddress адрес начала (адрес точного начала кода)
+         * @param buf         буфер
+         * @param codeAddress адрес точного начала кода
          */
-        private void fillBuffer(final int[][] buf, final int beginAddress) {
+        private void fillBuffer(final int[][] buf, final int codeAddress) {
             final int page =  fLayer.getCodePage();
             final int pc   = (fLayer.getCpuPage () == page) ? fLayer.getValRegPair(DebugRegPair.PC) : 0;
 
-            int address = beginAddress;
+            int address = codeAddress;
             for (int i  = 0; i < BUF_SIZE; i++) {
                                      buf[i][IND_ADR] = address;
                 int cmdLen = CMD_LEN[buf[i][IND_CMD] = fLayer.debugReadByte(page,   address)];
-                if ((pc   <= address) || (pc  >= address + cmdLen)) {
-                    buf[i][IND_BT1] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : -1;
-                    buf[i][IND_BT2] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : -1;
-                } else { // Устраняем коллизии
+                if ((pc   <= address)   ||  (pc >= address + cmdLen)) {
+                    buf[i][IND_BT1] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : EMPTY;
+                    buf[i][IND_BT2] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : EMPTY;
+                } else {
+                    // Устраняем коллизии
                     cmdLen = pc - address;
-                    buf[i][IND_BT1] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : -2;
-                    buf[i][IND_BT2] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : -2;
+                    buf[i][IND_BT1] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : WRONG;
+                    buf[i][IND_BT2] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : WRONG;
                 }
                 address++;
             }
         }
 
         /**
-         * Возвращает массив с данными команды CPU по заданному адресу.
+         * Возвращает запись (массив) с данными команды CPU по заданному адресу.
          *
          * @param address адрес
          * @return массив с данными команды CPU
          */
-        private int[] getData(final int address) {
+        private int[] getRecord(final int address) {
             // Заполняем буфер данных из начальных адресов (таблица постоянно читает данные из начальной позиции)
             if (fStartBuffer[BUF_SIZE - 1][IND_ADR] == 0) {
                 fillBuffer(fStartBuffer, 0);
@@ -1442,11 +1446,11 @@ final class DebuggerI8080 extends JDialog {
          * @param address адрес
          * @return результат
          */
-        boolean isJmpCmd(final int     address) {
-            final int[] data = getData(address);
-            if ( data.length == DATA_LENGTH) {
-                for (int codeJmp :       JMP_CMD)  {
-                    if ( codeJmp == data[IND_CMD]) {
+        boolean isJmpCmd(final int address) {
+            final int[] record = getRecord(address);
+            if ( record.length == REC_SIZE) {
+                for (int codeJmp : JMP_CMD) {
+                    if ( codeJmp == record[IND_CMD]) {
                         return true;
                     }
                 }
@@ -1455,35 +1459,38 @@ final class DebuggerI8080 extends JDialog {
         }
 
         /**
-         * Возвращает адрес/16-битные данные из команды CPU или -1, если в команде нет адреса/16-битных данных.
+         * Возвращает адрес/16-битные данные из команды CPU или
+         * отрицательное значение, если в команде нет адреса/16-битных данных.
+         * (здесь учитывается начичие отрицательных значений EMPTY и WRONG)
          *
          * @param address адрес команды
-         * @return адрес из команды
+         * @return адрес из команды или отрицательное значение
          */
-        int getAddressFromCmd(final int address) {
-            final int[] data  = getData(address);
-            if ( data.length == DATA_LENGTH) {
-                return data[IND_BT1] | (data[IND_BT2]  << 8);
+        int getAddressFromCmd(final int    address) {
+            final int[] record = getRecord(address);
+            if ( record.length == REC_SIZE) {
+                return  record[IND_BT1] | (record[IND_BT2] << 8);
             }
-            return -1;
+            return EMPTY;
         }
 
         /**
-         * Возвращает адрес следующей команды после команды вызова подпрограммы (CALL/RST).
+         * Возвращает адрес следующей команды после команды вызова подпрограммы (CALL/RST) или
+         * отрицательное значение, если по заданному адресу нет команды вызова подпрограммы.
          *
          * @param address адрес
-         * @return результат = адрес следующей команды или -1, если по заданному адресу нет команды вызова подпрограммы
+         * @return адрес следующей команды или отрицательное значение
          */
         int getAddressAfterCallCmd(final int address) {
-            final int[] data  =      getData(address);
-            if (  data.length == DATA_LENGTH) {
+            final int[] record  =  getRecord(address);
+            if ( record.length ==   REC_SIZE) {
                 for (int codeCall : CALL_CMD) {
-                    if ( codeCall ==   data[IND_CMD]) {
-                        return CMD_LEN[data[IND_CMD]] + address;
+                    if ( codeCall ==   record[IND_CMD]) {
+                        return CMD_LEN[record[IND_CMD]] + address;
                     }
                 }
             }
-            return -1;
+            return EMPTY;
         }
 
         @Override
@@ -1536,29 +1543,29 @@ final class DebuggerI8080 extends JDialog {
         }
 
         @Override
-        public Object getValueAt(int   rowIndex, int columnIndex) {
-            final int[] data = getData(rowIndex);
-            if (data.length == DATA_LENGTH) {
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            final int[] record = getRecord(rowIndex);
+            if (record.length == REC_SIZE) {
                 switch (columnIndex) {
                     case DA_COL_TRP:
                         return fLayer.isTrap(fLayer.getCodePage(), rowIndex);
                     case DA_COL_ADR:
-                        return String.format("%04X:", data[IND_ADR]);
+                        return String.format("%04X:", record[IND_ADR]);
                     case DA_COL_BT0:
                     case DA_COL_BT1:
                     case DA_COL_BT2: {
-                        int     bt  =  data[columnIndex - DA_COL_BT0 + 1];
-                        return (bt >= 0) ? String.format("%02X", bt) : "";
+                        int     bt  = record[columnIndex - DA_COL_BT0 + 1];
+                        return (bt >= 0) ? String.format("%02X", bt)  : "";
                     }
                     case DA_COL_CMD:
                         // Вызываем рекурсивно
-                        if (data[IND_BT2] == -2) {
+                        if (record[IND_BT2] == WRONG) {
                             // Выводим только байты в случае коллизий
                             return "DB   ".concat((String) getValueAt(rowIndex, DA_COL_BT0))
-                                          .concat((data[IND_BT1] >= 0) ? ", ".concat((String) getValueAt(rowIndex, DA_COL_BT1)) : "");
+                                          .concat((record[IND_BT1] >= 0) ? ", ".concat((String) getValueAt(rowIndex, DA_COL_BT1)) : "");
                         } else {
                             // Выводим мнемоники
-                            return MNEMONICS[data[IND_CMD]].concat((String) getValueAt(rowIndex, DA_COL_BT2))
+                            return MNEMONICS[record[IND_CMD]].concat((String) getValueAt(rowIndex, DA_COL_BT2))
                                                            .concat((String) getValueAt(rowIndex, DA_COL_BT1));
                         }
                     default:
@@ -3251,7 +3258,7 @@ final class DebuggerI8080 extends JDialog {
         fLayer.setCodePage(fLayer.getCpuPage());
         // Получаем адрес следующей команды после команды вызова подпрограммы (CALL/RST)
         int address = ((DisAsmTableModel) fDisAsmTable.getModel()).getAddressAfterCallCmd(fLayer.getValRegPair(DebugRegPair.PC));
-        if (address == -1) {
+        if (address < 0) {
             step();
         } else {
             // Сохраняем регистровые пары
