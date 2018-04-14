@@ -1254,7 +1254,7 @@ final class DebuggerI8080 extends JDialog {
          * @param page номер страницы
          * @return имя страницы
          */
-        String getNamePage(final int page) {
+        String getPageName(final int page) {
             if (page == 0) {
                 return "RAM";
             } else if ((page > 0) && (page < getNumPages() - 1)) {
@@ -1349,9 +1349,9 @@ final class DebuggerI8080 extends JDialog {
         // Размер записи под адрес и данные команды CPU
         private static final int REC_SIZE = IND_BT2 + 1;
         // Пустой элемент записи   (обязательно отрицательное значение)
-        private static final int EMPTY = -1;
+        private static final int EMPTY    = -1;
         // Неверный элемент записи (обязательно отрицательное значение)
-        private static final int WRONG = -2;
+        private static final int WRONG    = -2;
 
         private final int[][] fStartBuffer;
         private final int[][] fMovedBuffer;
@@ -1469,7 +1469,7 @@ final class DebuggerI8080 extends JDialog {
         int getAddressFromCmd(final int    address) {
             final int[] record = getRecord(address);
             if ( record.length == REC_SIZE) {
-                return  record[IND_BT1] | (record[IND_BT2] << 8);
+                return record[IND_BT1] | (record[IND_BT2] << 8);
             }
             return EMPTY;
         }
@@ -1562,11 +1562,11 @@ final class DebuggerI8080 extends JDialog {
                         if (record[IND_BT2] == WRONG) {
                             // Выводим только байты в случае коллизий
                             return "DB   ".concat((String) getValueAt(rowIndex, DA_COL_BT0))
-                                          .concat((record[IND_BT1] >= 0) ? ", ".concat((String) getValueAt(rowIndex, DA_COL_BT1)) : "");
+                                          .concat((record[IND_BT1] >= 0) ? ",".concat((String) getValueAt(rowIndex, DA_COL_BT1)) : "");
                         } else {
                             // Выводим мнемоники
                             return MNEMONICS[record[IND_CMD]].concat((String) getValueAt(rowIndex, DA_COL_BT2))
-                                                           .concat((String) getValueAt(rowIndex, DA_COL_BT1));
+                                                             .concat((String) getValueAt(rowIndex, DA_COL_BT1));
                         }
                     default:
                         return "";
@@ -1827,7 +1827,7 @@ final class DebuggerI8080 extends JDialog {
          * @param address адрес
          * @param colM    колонка (в формате табличной модели), которую необходимо выделить
          */
-        void gotoAddress(final int address, final int colM) {
+        void gotoAddress(final int address,  final int colM) {
             final int colV  = convertColumnIndexToView(colM);
             if (      colV != -1) {
                 // Пытаемся найти видимую строку <= address
@@ -1870,8 +1870,8 @@ final class DebuggerI8080 extends JDialog {
                     char c;
                     int  width;
                     for (int i = 0, mask = 0b1000_0000; i < 8; i++, mask >>= 1) {
-                        c     = s.charAt(i);
-                        width = g.getFontMetrics().charWidth(c);
+                         c     = s.charAt(i);
+                         width = g.getFontMetrics().charWidth(c);
 
                         if (((pAF ^ cAF) & mask) == 0) {
                             g.setColor(l.getForeground());
@@ -1896,7 +1896,7 @@ final class DebuggerI8080 extends JDialog {
             setUI(new FlagsRegLabelUI());
             // Настариваем параметры отображения метки
             setOpaque(true);
-            setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+            setFont  (new Font(Font.MONOSPACED, Font.PLAIN, 13));
             setBorder(FOCUS_BORDER);
             setBackground(Color.white);
             setHorizontalAlignment(SwingConstants.CENTER);
@@ -1940,8 +1940,10 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            Object obj;
-            if ((columnIndex >= 0) && (columnIndex <= getColumnCount()) && ((obj = getValueAt(0, columnIndex)) != null)) {
+            final Object obj;
+            if (   (columnIndex >= 0)
+                && (columnIndex <= getColumnCount())
+                && ((obj = getValueAt(0, columnIndex)) != null)) {
                 return obj.getClass();
             }
             return super.getColumnClass(columnIndex);
@@ -1996,7 +1998,7 @@ final class DebuggerI8080 extends JDialog {
                     break;
                 case CR_COL_DAT:
                     try {
-                        DebugRegPair regPair = DebugRegPair.values()[rowIndex];
+                        final DebugRegPair regPair = DebugRegPair.values()[rowIndex];
                         // Пишем данные в регистровые пары
                         fLayer.setValRegPair(regPair, Integer.parseInt((String) aValue, 16));
                         if (DebugRegPair.PC.equals(regPair)) {
@@ -2039,12 +2041,11 @@ final class DebuggerI8080 extends JDialog {
                 @Override
                 protected void paintEnabledText(JLabel l, Graphics g, String s, int textX, int textY) {
                     if (!s.isEmpty()) {
-                        int   index = l.getDisplayedMnemonicIndex();
-                        Color color = (fCompareResult <= 0) ? l.getForeground() : Color.red;
-
+                        final int index = l.getDisplayedMnemonicIndex();
+                            Color color = (fCompareResult <= 0) ? l.getForeground() : Color.red;
                         if ((fCompareResult == 0) || (fCompareResult == 1)) {
-                            int endIndex = (fPaintColumn == CR_COL_REG) ? 1 : 2;
-                              String str = s.substring(0, endIndex);
+                            final int endIndex = (fPaintColumn == CR_COL_REG) ? 1 : 2;
+                            final String   str = s.substring(0, endIndex);
 
                             g.setColor(color);
                             drawStringUnderlineCharAt(g, str, index, textX, textY);
@@ -2074,7 +2075,7 @@ final class DebuggerI8080 extends JDialog {
                 if (table == null) {
                     return this;
                 }
-                fPaintColumn   = table.convertColumnIndexToModel(column);
+                fPaintColumn   =  table.convertColumnIndexToModel(column);
                 fCompareResult = fLayer.getChangesRegPair(DebugRegPair.values()[table.convertRowIndexToModel(row)]);
 
                 if (fCompareResult >= 0) {
@@ -2095,8 +2096,8 @@ final class DebuggerI8080 extends JDialog {
                     setBorder(NO_FOCUS_BORDER);
                 }
 
-                if ((fCompareResult >= 0) && (fPaintColumn == CR_COL_EQU)) {
-                    fCompareResult = -1;
+                if ((fCompareResult >=  0) && (fPaintColumn == CR_COL_EQU)) {
+                     fCompareResult  = -1;
                 }
 
                 setValue(value);
@@ -2159,8 +2160,10 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            Object obj;
-            if ((columnIndex >= 0) && (columnIndex <= getColumnCount()) && ((obj = getValueAt(0, columnIndex)) != null)) {
+            final Object obj;
+            if (   (columnIndex >= 0)
+                && (columnIndex <= getColumnCount())
+                && ((obj = getValueAt(0, columnIndex)) != null)) {
                 return obj.getClass();
             }
             return super.getColumnClass(columnIndex);
@@ -2177,25 +2180,26 @@ final class DebuggerI8080 extends JDialog {
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             if (columnIndex == SP_COL_DAT) {
-                int page    = fLayer.getCpuPage();
-                int address = fLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
-                return String.format("%04X", fLayer.debugReadByte(page, address) | (fLayer.debugReadByte(page, address + 1) << 8));
+                final int page    = fLayer.getCpuPage();
+                final int address = fLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
+                return String.format("%04X",
+                        fLayer.debugReadByte(page, address) | (fLayer.debugReadByte(page, address + 1) << 8));
             }
             return null;
         }
 
         @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
-            return columnIndex == SP_COL_DAT || super.isCellEditable(rowIndex, columnIndex);
+            return (columnIndex == SP_COL_DAT) || super.isCellEditable(rowIndex, columnIndex);
         }
 
         @Override
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
             if (columnIndex == SP_COL_DAT) {
-                int page    = fLayer.getCpuPage();
-                int address = fLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
+                final int page    = fLayer.getCpuPage();
+                final int address = fLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
                 try {
-                    int value = Integer.parseInt((String) aValue, 16);
+                    final int value = Integer.parseInt((String) aValue, 16);
                     fLayer.disableEvents();
                     fLayer.writeByte(page, address, value & 0xFF);
                     fLayer.writeByte(page, address + 1, value >> 8);
@@ -2309,8 +2313,10 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            Object obj;
-            if ((columnIndex >= 0) && (columnIndex <= getColumnCount()) && ((obj = getValueAt(0, columnIndex)) != null)) {
+            final Object obj;
+            if (   (columnIndex >= 0)
+                && (columnIndex <= getColumnCount())
+                && ((obj = getValueAt(0, columnIndex)) != null)) {
                 return obj.getClass();
             }
             return super.getColumnClass(columnIndex);
@@ -2330,10 +2336,10 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            Trap trap = fLayer.getTrap(rowIndex);
+            final Trap trap = fLayer.getTrap(rowIndex);
             switch (columnIndex) {
                 case TP_COL_PAG:
-                    return fLayer.getNamePage(trap.getPage());
+                    return fLayer.getPageName(trap.getPage());
                 case TP_COL_ADR:
                     return String.format("%04X",trap.getAddress());
                 default:
@@ -2449,7 +2455,7 @@ final class DebuggerI8080 extends JDialog {
          * @return строка с информацией
          */
         private String getCpuPageInfo() {
-            return "CPU работает в: ".concat(fLayer.getNamePage(fLayer.getCpuPage()));
+            return "CPU работает в: ".concat(fLayer.getPageName(fLayer.getCpuPage()));
         }
 
         @Override
@@ -2478,7 +2484,7 @@ final class DebuggerI8080 extends JDialog {
             setMinimumSize(new Dimension(50, 17));
             // Добавляем элементы списка
             for (int i = 0, j = fLayer.getNumPages(); i < j; i++) {
-                addItem("← ".concat(fLayer.getNamePage(i)));
+                addItem("← ".concat(fLayer.getPageName(i)));
             }
             // Выделяем элемент, соответствующий странице памяти Data RAM
             setSelectedIndex((fLayer.getCodePage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage());
@@ -2491,7 +2497,7 @@ final class DebuggerI8080 extends JDialog {
             final InnerEvent event = (InnerEvent) arg;
             if (   fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CODE)
                 || fLayer.eventCheck(event, EventType.STEP, null)) {
-                int index = (fLayer.getCodePage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage();
+                final int index = (fLayer.getCodePage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
                 }
@@ -2515,7 +2521,7 @@ final class DebuggerI8080 extends JDialog {
             setMinimumSize(new Dimension(50, 17));
             // Добавляем элементы списка
             for (int i = 0, j = fLayer.getNumPages(); i < j; i++) {
-                addItem("↓ ".concat(fLayer.getNamePage(i)));
+                addItem("↓ ".concat(fLayer.getPageName(i)));
             }
             // Выделяем элемент, соответствующий странице памяти Data RAM
             setSelectedIndex((fLayer.getDataPage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage());
@@ -2527,7 +2533,7 @@ final class DebuggerI8080 extends JDialog {
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.DATA)) {
-                int index = (fLayer.getDataPage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage();
+                final int index = (fLayer.getDataPage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
                 }
@@ -2560,8 +2566,10 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public Class<?> getColumnClass(int columnIndex) {
-            Object obj;
-            if ((columnIndex >= 0) && (columnIndex <= getColumnCount()) && ((obj = getValueAt(0, columnIndex)) != null)) {
+            final Object obj;
+            if (   (columnIndex >= 0)
+                && (columnIndex <= getColumnCount())
+                && ((obj = getValueAt(0, columnIndex)) != null)) {
                 return obj.getClass();
             }
             return super.getColumnClass(columnIndex);
@@ -2598,7 +2606,7 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            int page = fLayer.getDataPage();
+            final int page = fLayer.getDataPage();
             switch (columnIndex) {
                 case MD_COL_ADR:
                     return String.format("%04X:", rowIndex << 4);
@@ -2620,7 +2628,7 @@ final class DebuggerI8080 extends JDialog {
                 case MD_COL_B15:
                     return String.format("%02X", fLayer.debugReadByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00));
                 case MD_COL_STR: {
-                    char[] str  = new char[16];
+                    final char[] str   = new char[16];
                     for (int i  = 0, j = rowIndex << 4; i < 16; i++, j++) {
                          str[i] = KOI8.charAt(fLayer.debugReadByte(page, j));
                     }
@@ -2661,7 +2669,7 @@ final class DebuggerI8080 extends JDialog {
 
         @Override
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-            int page = fLayer.getDataPage();
+            final int page = fLayer.getDataPage();
             switch (columnIndex) {
                 case MD_COL_ADR:
                     break;
@@ -2688,16 +2696,17 @@ final class DebuggerI8080 extends JDialog {
                     }
                     return;
                 case MD_COL_STR: {
-                    String str = (String) aValue;
-                       int len = Math.min(str.length(), 16);
+                    final String str = (String) aValue;
+                    final    int len = Math.min(str.length(), 16);
 
                     try {
                         fLayer.disableEvents();
-                        for (int i = 0, adr = rowIndex << 4, val; i < len; i++, adr++) {
-                            if ((      ( val  =        str.charAt(i)) != SKIP_CHAR)
-                                    && ((val  =    KOI8.indexOf(val)) != -1)
-                                    && ( val != fLayer.readByte(page, adr))) {
-                                fLayer.writeByte(page, adr, val);
+                        for (int index = 0, address = rowIndex << 4; index < len; index++, address++) {
+                             int value;
+                            if (   ((value  =   str.charAt(index)) != SKIP_CHAR)
+                                && ((value  = KOI8.indexOf(value)) != -1)
+                                && ( value != fLayer.readByte(page, address))) {
+                                fLayer.writeByte(page, address, value);
                             }
                         }
                     } finally {
@@ -2742,8 +2751,8 @@ final class DebuggerI8080 extends JDialog {
                 @Override
                 protected void paintEnabledText(JLabel l, Graphics g, String s, int textX, int textY) {
                     if (!s.isEmpty()) {
-                        Color foreground = l.getForeground();
-                        int   index      = l.getDisplayedMnemonicIndex();
+                        final Color foreground = l.getForeground();
+                        final int   index      = l.getDisplayedMnemonicIndex();
 
                         if (   (fPaintRow      == fFocusedRow)
                             && (fPaintColumn   == MD_COL_STR )
@@ -3217,7 +3226,7 @@ final class DebuggerI8080 extends JDialog {
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         InputDataPanel inputDataPanel = new InputDataPanel();
         int result = showConfirmDialog(DebuggerI8080.this, inputDataPanel,
-                String.format("Поиск в странице: [%s]", fLayer.getNamePage(fLayer.getDataPage())), OK_CANCEL_OPTION, QUESTION_MESSAGE);
+                String.format("Поиск в странице: [%s]", fLayer.getPageName(fLayer.getDataPage())), OK_CANCEL_OPTION, QUESTION_MESSAGE);
 
         if (result == OK_OPTION) {
             int  start   = (fMemDatTable.getAddress() + 1) & 0xFFFF;
