@@ -8,10 +8,7 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
+import javax.swing.event.*;
 import javax.swing.plaf.basic.BasicLabelUI;
 import javax.swing.table.*;
 import javax.swing.text.AttributeSet;
@@ -2541,6 +2538,182 @@ final class DebuggerI8080 extends JDialog {
         }
     }
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    private class SelectionModelsContainer {
+        private static final int IND_TOP      = 0;
+        private static final int IND_MIDDLE   = 1;
+        private static final int IND_BOTTOM   = 2;
+        private static final int TOTAL_MODELS = IND_BOTTOM + 1;
+
+        private final ListSelectionModel      rowSelectionModel ;
+        private final ListSelectionModel   columnSelectionModel ;
+        private final ListSelectionModel[] columnSelectionModels;
+
+        private ListSelectionModel currentColumnSelectionModel;
+        //private
+
+        SelectionModelsContainer() {
+               this.rowSelectionModel = new    RowSelectionModel();
+            this.columnSelectionModel = new ColumnSelectionModel();
+
+            this.rowSelectionModel.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+/*
+            this.rowSelectionModel.addListSelectionListener(selectionEvent -> {
+                selectionEvent.getFirstIndex()
+
+            });
+*/
+
+            this.columnSelectionModels = new ListSelectionModel[TOTAL_MODELS];
+            for (int i = 0; i < this.columnSelectionModels.length; i++) {
+                this.columnSelectionModels[i] = new DefaultListSelectionModel();
+                this.columnSelectionModels[i].setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+            }
+
+            //this.columnSelectionModels[IND_MIDDLE].set
+
+            this.currentColumnSelectionModel = this.columnSelectionModels[IND_TOP];
+        }
+
+        ListSelectionModel getRowSelectionModel() {
+            return rowSelectionModel;
+        }
+
+        ListSelectionModel getColumnSelectionModel() {
+            return columnSelectionModel;
+        }
+
+        private class RowSelectionModel extends DefaultListSelectionModel {
+            @Override
+            public boolean isSelectedIndex(int index) {
+                boolean result = super.isSelectedIndex(index);
+                if (result) {
+                    int min = this.getMinSelectionIndex();
+                    int max = this.getMaxSelectionIndex();
+
+                    if (index == min) {
+                        currentColumnSelectionModel = columnSelectionModels[IND_TOP];
+                    } else if (index == max) {
+                        currentColumnSelectionModel = columnSelectionModels[IND_BOTTOM];
+                    } else if ((index > min) && (index < max)) {
+                        currentColumnSelectionModel = columnSelectionModels[IND_MIDDLE];
+                        currentColumnSelectionModel.setSelectionInterval(MD_COL_B00, MD_COL_B15);
+                    }
+
+                }
+                return result;
+            }
+        }
+
+        private class ColumnSelectionModel implements ListSelectionModel {
+            @Override
+            public void setSelectionInterval(int index0, int index1) {
+                currentColumnSelectionModel.setSelectionInterval(index0, index1);
+            }
+
+            @Override
+            public void addSelectionInterval(int index0, int index1) {
+                currentColumnSelectionModel.addSelectionInterval(index0, index1);
+            }
+
+            @Override
+            public void removeSelectionInterval(int index0, int index1) {
+                currentColumnSelectionModel.removeSelectionInterval(index0, index1);
+            }
+
+            @Override
+            public int getMinSelectionIndex() {
+                return currentColumnSelectionModel.getMinSelectionIndex();
+            }
+
+            @Override
+            public int getMaxSelectionIndex() {
+                return currentColumnSelectionModel.getMaxSelectionIndex();
+            }
+
+            @Override
+            public boolean isSelectedIndex(int index) {
+                return currentColumnSelectionModel.isSelectedIndex(index);
+            }
+
+            @Override
+            public int getAnchorSelectionIndex() {
+                return currentColumnSelectionModel.getAnchorSelectionIndex();
+            }
+
+            @Override
+            public void setAnchorSelectionIndex(int index) {
+                currentColumnSelectionModel.setAnchorSelectionIndex(index);
+            }
+
+            @Override
+            public int getLeadSelectionIndex() {
+                return currentColumnSelectionModel.getLeadSelectionIndex();
+            }
+
+            @Override
+            public void setLeadSelectionIndex(int index) {
+                currentColumnSelectionModel.setLeadSelectionIndex(index);
+            }
+
+            @Override
+            public void clearSelection() {
+                for (ListSelectionModel selectionModel : columnSelectionModels) {
+                    selectionModel.clearSelection();
+                }
+                //currentColumnSelectionModel.clearSelection();
+            }
+
+            @Override
+            public boolean isSelectionEmpty() {
+                return currentColumnSelectionModel.isSelectionEmpty();
+            }
+
+            @Override
+            public void insertIndexInterval(int index, int length, boolean before) {
+                currentColumnSelectionModel.insertIndexInterval(index, length, before);
+            }
+
+            @Override
+            public void removeIndexInterval(int index0, int index1) {
+                currentColumnSelectionModel.removeIndexInterval(index0, index1);
+            }
+
+            @Override
+            public void setValueIsAdjusting(boolean valueIsAdjusting) {
+                currentColumnSelectionModel.setValueIsAdjusting(valueIsAdjusting);
+            }
+
+            @Override
+            public boolean getValueIsAdjusting() {
+                return currentColumnSelectionModel.getValueIsAdjusting();
+            }
+
+            @Override
+            public void setSelectionMode(int selectionMode) {
+                currentColumnSelectionModel.setSelectionMode(selectionMode);
+            }
+
+            @Override
+            public int getSelectionMode() {
+                return currentColumnSelectionModel.getSelectionMode();
+            }
+
+            @Override
+            public void addListSelectionListener(ListSelectionListener x) {
+                for (ListSelectionModel selectionModel : columnSelectionModels) {
+                    selectionModel.addListSelectionListener(x);
+                }
+            }
+
+            @Override
+            public void removeListSelectionListener(ListSelectionListener x) {
+                for (ListSelectionModel selectionModel : columnSelectionModels) {
+                    selectionModel.removeListSelectionListener(x);
+                }
+            }
+        }
+    }
+    //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Класс "Модель данных для данных оперативной памяти".
      */
@@ -2840,11 +3013,14 @@ final class DebuggerI8080 extends JDialog {
             }
             getColumnModel().getColumn(MD_COL_STR).setMaxWidth(130);
             // Устанавливаем режим выделения для строк
-            setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+            //setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+            SelectionModelsContainer selectionModelsContainer = new SelectionModelsContainer();
+            setSelectionModel(selectionModelsContainer.getRowSelectionModel());
             // Устанавливаем режим выделения для столбцов (с установкой разрешения выделения)
             TableColumnModel columnModel = getColumnModel();
             columnModel.setColumnSelectionAllowed(true);
-            columnModel.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+            //columnModel.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+            columnModel.setSelectionModel(selectionModelsContainer.getColumnSelectionModel());
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new MemDatStringRenderer());
             // Подключаемся к fLayer для прослушивания
