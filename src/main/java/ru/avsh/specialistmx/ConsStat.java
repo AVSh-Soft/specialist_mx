@@ -30,14 +30,14 @@ final class ConsStat {
     // Путь к каталогу с MON-файлами эмулятора "Специалист MX"
     static final String PATH_MON_FILES = APP_DIR.concat(File.separator).concat("mon");
 
-    // Папка с главными ресурсами эмулятора
-    static final String RESOURCES      = "data/";
+    // Папка с ресурсами эмулятора
+    private static final String RESOURCES      = "data/";
     // Главный properties-файл эмулятора
-    static final String SPMX_PROP_FILE = "specialist_mx.properties";
+            static final String SPMX_PROP_FILE = "specialist_mx.properties";
     // Встроенный ROM-файл эмулятора "Специалист MX"
-    static final String SPMX_ROM_FILE  = "spmx.rom";
+            static final String SPMX_ROM_FILE  = "spmx.rom";
     // Иконка эмулятора "Специалист MX"
-    static final String SPMX_ICON_FILE = "specialist_mx.png";
+            static final String SPMX_ICON_FILE = "specialist_mx.png";
 
     // Строковые константы
     static final String STR_ERROR     = "Ошибка";

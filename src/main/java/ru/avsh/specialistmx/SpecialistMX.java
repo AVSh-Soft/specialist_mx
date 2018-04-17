@@ -361,8 +361,8 @@ final class SpecialistMX {
      * @return путь
      */
     String getShortPath(File file) {
-        String p0 = file.getPath();
-        String p1 = APP_PATH.relativize(file.toPath()).toString();
+        final String p0 = file.getPath();
+        final String p1 = APP_PATH.relativize(file.toPath()).toString();
         return (p0.length() < p1.length()) ? p0 : p1;
     }
 
@@ -371,14 +371,22 @@ final class SpecialistMX {
      * @return название эмулятора и номер его версии
      */
     private String readProductName() {
-        String ver  = "x.x.x.x";
-        try (InputStreamReader isr = new InputStreamReader(getClass().getClassLoader().getResourceAsStream(RESOURCES.concat(SPMX_PROP_FILE)),"UTF-8")) {
-            Properties property    = new Properties();
-            property.load(isr);
-            return String.format(" - \"%s\" v%s", property.getProperty("appName", SPMX_NAME), property.getProperty("versionNumber", ver));
-        } catch (IOException e) {
-            return String.format(" - \"%s\" v%s", SPMX_NAME, ver);
+        String appName = SPMX_NAME;
+        String version = "x.x.x.x";
+
+        final InputStream is = getResourceAsStream(SPMX_PROP_FILE);
+        if (is != null) {
+            try (InputStreamReader isr = new InputStreamReader(is, "UTF-8")) {
+                final Properties property = new Properties();
+                property.load(isr);
+
+                appName = property.getProperty("appName"      , appName);
+                version = property.getProperty("versionNumber", version);
+            } catch (IOException e) {
+                //
+            }
         }
+        return String.format(" - \"%s\" v%s", appName, version);
     }
 
     /**
