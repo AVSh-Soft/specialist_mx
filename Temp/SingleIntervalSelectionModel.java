@@ -12,12 +12,16 @@ import java.util.EventListener;
 public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneable, Serializable {
     private static final int MIN = -1;
     private static final int MAX = Integer.MAX_VALUE;
+
     private int minIndex = MAX;
     private int maxIndex = MIN;
+
     private int anchorIndex = -1;
     private int leadIndex = -1;
+
     private int firstAdjustedIndex = MAX;
     private int lastAdjustedIndex = MIN;
+
     private boolean isAdjusting = false;
 
     private int firstChangedIndex = MAX;
@@ -33,6 +37,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     public int getMinSelectionIndex() {
         return isSelectionEmpty() ? -1 : minIndex;
     }
@@ -40,6 +45,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     public int getMaxSelectionIndex() {
         return maxIndex;
     }
@@ -47,6 +53,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean getValueIsAdjusting() {
         return isAdjusting;
     }
@@ -54,6 +61,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     public int getSelectionMode() {
         return SINGLE_INTERVAL_SELECTION;
     }
@@ -63,13 +71,15 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
      *
      * @throws IllegalArgumentException {@inheritDoc}
      */
+    @Override
     public void setSelectionMode(int selectionMode) {
-        // Режим не меняется - всегда SINGLE_INTERVAL_SELECTION
+        // Режим не меняется - всегда будет SINGLE_INTERVAL_SELECTION
     }
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean isSelectedIndex(int index) {
         return (index >= minIndex) && (index <= maxIndex);
     }
@@ -77,6 +87,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean isSelectionEmpty() {
         return (minIndex > maxIndex);
     }
@@ -84,6 +95,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     public void addListSelectionListener(ListSelectionListener l) {
         listenerList.add(ListSelectionListener.class, l);
     }
@@ -91,6 +103,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     public void removeListSelectionListener(ListSelectionListener l) {
         listenerList.remove(ListSelectionListener.class, l);
     }
@@ -340,8 +353,6 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     private void changeSelection(int clearMin, int clearMax, int setMin, int setMax, boolean clearFirst) {
 
 
-
-
         for (int i = Math.min(setMin, clearMin); i <= Math.max(setMax, clearMax); i++) {
 
             boolean shouldClear = contains(clearMin, clearMax, i);
@@ -380,6 +391,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     public void clearSelection() {
         removeSelectionIntervalImpl(minIndex, maxIndex, false);
     }
@@ -405,6 +417,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
      *                                   (and neither index is {@code -1})
      * @see #addListSelectionListener
      */
+    @Override
     public void setSelectionInterval(int index0, int index1) {
         if (index0 == -1 || index1 == -1) {
             return;
@@ -445,6 +458,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
      * @see #addListSelectionListener
      * @see #setSelectionInterval
      */
+    @Override
     public void addSelectionInterval(int index0, int index1) {
         if (index0 == -1 || index1 == -1) {
             return;
@@ -493,6 +507,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
      *                                   (and neither index is {@code -1})
      * @see #addListSelectionListener
      */
+    @Override
     public void removeSelectionInterval(int index0, int index1) {
         removeSelectionIntervalImpl(index0, index1, true);
     }
@@ -542,6 +557,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
      * called to sync the selection model with a corresponding change
      * in the data model.
      */
+    @Override
     public void insertIndexInterval(int index, int length, boolean before) {
         /* The first new index will appear at insMinIndex and the last
          * one will appear at insMaxIndex
@@ -586,6 +602,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
      * model width a corresponding change in the data model.  Note
      * that (as always) index0 need not be &lt;= index1.
      */
+    @Override
     public void removeIndexInterval(int index0, int index1) {
         int rmMinIndex = Math.min(index0, index1);
         int rmMaxIndex = Math.max(index0, index1);
@@ -627,6 +644,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     public void setValueIsAdjusting(boolean isAdjusting) {
         if (isAdjusting != this.isAdjusting) {
             this.isAdjusting = isAdjusting;
@@ -634,13 +652,13 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
         }
     }
 
-
     /**
      * Returns a string that displays and identifies this
      * object's properties.
      *
      * @return a <code>String</code> representation of this object
      */
+    @Override
     public String toString() {
         String s = ((getValueIsAdjusting()) ? "~" : "=") + value.toString();
         return getClass().getName() + " " + Integer.toString(hashCode()) + " " + s;
@@ -654,6 +672,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
      *                                    both (a) implement the Cloneable interface and (b) define a
      *                                    <code>clone</code> method.
      */
+    @Override
     public Object clone() throws CloneNotSupportedException {
         SingleIntervalSelectionModel clone = (SingleIntervalSelectionModel) super.clone();
         clone.value = (BitSet) value.clone();
@@ -664,6 +683,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     @Transient
     public int getAnchorSelectionIndex() {
         return anchorIndex;
@@ -672,6 +692,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
     /**
      * {@inheritDoc}
      */
+    @Override
     @Transient
     public int getLeadSelectionIndex() {
         return leadIndex;
@@ -685,6 +706,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
      * @see #getAnchorSelectionIndex
      * @see #setLeadSelectionIndex
      */
+    @Override
     public void setAnchorSelectionIndex(int anchorIndex) {
         updateLeadAnchorIndices(anchorIndex, this.leadIndex);
         fireValueChanged();
@@ -755,6 +777,7 @@ public class SingleIntervalSelectionModel implements ListSelectionModel, Cloneab
      * @see #getLeadSelectionIndex
      * @see #setAnchorSelectionIndex
      */
+    @Override
     public void setLeadSelectionIndex(int leadIndex) {
         int anchorIndex = this.anchorIndex;
 

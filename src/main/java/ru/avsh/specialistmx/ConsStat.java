@@ -1,6 +1,8 @@
 package ru.avsh.specialistmx;
 
 import java.io.File;
+import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -28,8 +30,8 @@ final class ConsStat {
     // Путь к каталогу с MON-файлами эмулятора "Специалист MX"
     static final String PATH_MON_FILES = APP_DIR.concat(File.separator).concat("mon");
 
-    // Папка с ресурсами (отностительно классов)
-    static final String RESOURCES      = "resources/";
+    // Папка с главными ресурсами эмулятора
+    static final String RESOURCES      = "data/";
     // Главный properties-файл эмулятора
     static final String SPMX_PROP_FILE = "specialist_mx.properties";
     // Встроенный ROM-файл эмулятора "Специалист MX"
@@ -70,5 +72,25 @@ final class ConsStat {
      */
     static void setCurPath(String fCurPath) {
         ConsStat.fCurPath = fCurPath;
+    }
+
+    /**
+     * Ищет ресурс и возвращает URL-объект для чтения ресурса.
+     *
+     * @param name имя ресурса
+     * @return URL-объект для чтения ресурса
+     */
+    static URL getURL(final String name) {
+        return ConsStat.class.getClassLoader().getResource(RESOURCES.concat(name));
+    }
+
+    /**
+     * Возвращает InputStream для чтения ресурса.
+     *
+     * @param name имя ресурса
+     * @return InputStream для чтения ресурса
+     */
+    static InputStream getResourceAsStream(final String name) {
+        return ConsStat.class.getClassLoader().getResourceAsStream(RESOURCES.concat(name));
     }
 }

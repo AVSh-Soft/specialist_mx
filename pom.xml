@@ -15,12 +15,13 @@
     <properties>
         <jdkVersion>1.8</jdkVersion>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- Мои свойства -->
+        <!-- Название -->
         <product.name>The emulator "${project.name}"</product.name>
         <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
         <copyright>Copyright © 2018 ${company.name}</copyright>
+        <!-- Прочее -->
         <lib.dir>lib</lib.dir>
-        <resources.dir>ru/avsh/specialistmx/resources</resources.dir>
+        <resources.dir>resources</resources.dir>
         <GitHub.username>AVSh-Soft</GitHub.username>
     </properties>
 
@@ -80,6 +81,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.7.0</version>
                 <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
                     <source>${jdkVersion}</source>
                     <target>${jdkVersion}</target>
                 </configuration>
@@ -200,18 +202,16 @@
 
         <resources>
             <resource>
-                <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
                 <filtering>false</filtering>
-                <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
+                <directory>${project.build.sourceDirectory}/../${resources.dir}</directory>
                 <includes>
                     <include>**/*.rom</include>
                     <include>**/*.png</include>
                 </includes>
             </resource>
             <resource>
-                <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
                 <filtering>true</filtering>
-                <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
+                <directory>${project.build.sourceDirectory}/../${resources.dir}</directory>
                 <includes>
                     <include>**/*.properties</include>
                 </includes>

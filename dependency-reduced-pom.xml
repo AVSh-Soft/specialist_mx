@@ -14,17 +14,15 @@
   <build>
     <resources>
       <resource>
-        <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
-        <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
+        <directory>${project.build.sourceDirectory}/../${resources.dir}</directory>
         <includes>
           <include>**/*.rom</include>
           <include>**/*.png</include>
         </includes>
       </resource>
       <resource>
-        <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
         <filtering>true</filtering>
-        <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
+        <directory>${project.build.sourceDirectory}/../${resources.dir}</directory>
         <includes>
           <include>**/*.properties</include>
         </includes>
@@ -61,6 +59,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.7.0</version>
         <configuration>
+          <encoding>${project.build.sourceEncoding}</encoding>
           <source>${jdkVersion}</source>
           <target>${jdkVersion}</target>
         </configuration>
@@ -169,7 +168,7 @@
     </plugins>
   </build>
   <properties>
-    <resources.dir>ru/avsh/specialistmx/resources</resources.dir>
+    <resources.dir>resources</resources.dir>
     <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
     <copyright>Copyright © 2018 ${company.name}</copyright>
     <lib.dir>lib</lib.dir>

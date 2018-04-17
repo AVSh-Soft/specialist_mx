@@ -8,7 +8,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.Properties;
 
 import static ru.avsh.specialistmx.ConsStat.*;
@@ -36,10 +38,13 @@ final class MainFrame extends JFrame {
      * @param spMX ссылка на объект класса SpecialistMX - "Компьютер 'Специалист MX'"
      */
     MainFrame(@NotNull SpecialistMX spMX) {
-        fSpMX = spMX ;
+        fSpMX = spMX;
 
-        setIconImage(new ImageIcon(getClass().getResource(RESOURCES.concat(SPMX_ICON_FILE))).getImage());
-        setTitle    ("");
+        final URL iconURL = getURL(SPMX_ICON_FILE);
+        if (iconURL != null) {
+            setIconImage(new ImageIcon(iconURL).getImage());
+        }
+        setTitle("");
 
         final JMenuBar menuBar = new JMenuBar();
         setJMenuBar(menuBar);
@@ -287,14 +292,18 @@ final class MainFrame extends JFrame {
             String name      = "Эмулятор \"".concat(SPMX_NAME).concat("\"");
             String version   = "x.x.x.x";
             String copyright = "Copyright © 2018 \"AVSh Software\" (Александр Шевцов)";
-            try (InputStreamReader isr = new InputStreamReader(getClass().getResourceAsStream(RESOURCES.concat(SPMX_PROP_FILE)), "UTF-8")) {
-                Properties  property   = new Properties();
-                property.load(isr);
-                name      = property.getProperty("productName"  , name     );
-                version   = property.getProperty("versionNumber", version  );
-                copyright = property.getProperty("copyright"    , copyright);
-            } catch (IOException ex) {
-                //
+
+            final InputStream is = getResourceAsStream(SPMX_PROP_FILE);
+            if (is != null) {
+                try (InputStreamReader isr = new InputStreamReader(is, "UTF-8")) {
+                    final Properties property = new Properties();
+                    property.load(isr);
+                    name      = property.getProperty("productName"  , name     );
+                    version   = property.getProperty("versionNumber", version  );
+                    copyright = property.getProperty("copyright"    , copyright);
+                } catch (IOException ex) {
+                    //
+                }
             }
             JOptionPane.showMessageDialog(this, String.format("%s v%s%n%n%s", name, version, copyright), "Информация", JOptionPane.INFORMATION_MESSAGE);
         });

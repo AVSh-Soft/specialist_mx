@@ -372,7 +372,7 @@ final class SpecialistMX {
      */
     private String readProductName() {
         String ver  = "x.x.x.x";
-        try (InputStreamReader isr = new InputStreamReader(getClass().getResourceAsStream(RESOURCES.concat(SPMX_PROP_FILE)),"UTF-8")) {
+        try (InputStreamReader isr = new InputStreamReader(getClass().getClassLoader().getResourceAsStream(RESOURCES.concat(SPMX_PROP_FILE)),"UTF-8")) {
             Properties property    = new Properties();
             property.load(isr);
             return String.format(" - \"%s\" v%s", property.getProperty("appName", SPMX_NAME), property.getProperty("versionNumber", ver));
@@ -447,10 +447,10 @@ final class SpecialistMX {
      */
     private void loadROM() throws IOException {
         // Если ROM-файл прописан в ini-файле и он имеется на диске, то загружаем внешний ROM-файл
-        String romPath   = getIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, String.class);
-        if ((  romPath  != null) && !romPath.equals("")) {
-            File romFile =  new File(romPath);
-            if ( romFile.exists() && romFile.isFile()) {
+        final String romPath = getIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, String.class);
+        if ((romPath != null) && (romPath.length() > 0)) {
+            final File romFile = new File(romPath);
+            if (romFile.exists() && romFile.isFile()) {
                 try {
                     loadFile(romFile, 0x0000, 0, 0, -1);
                     // Запоминаем ROM-файл
@@ -461,9 +461,14 @@ final class SpecialistMX {
                 }
             }
         }
+
         // Иначе загружаем встроенный ROM-файл
         fCurRomFile = null;
-        try (BufferedInputStream bis = new BufferedInputStream(getClass().getResourceAsStream(RESOURCES.concat(SPMX_ROM_FILE)))) {
+        final InputStream is = getResourceAsStream(SPMX_ROM_FILE);
+        if (is == null) {
+            throw new IOException("ROM-файл эмулятора не найден в ресурсах программы!");
+        }
+        try (BufferedInputStream bis = new BufferedInputStream(is)) {
             int length = bis.available();
             if (length < 0x10000) {
                 byte[] buf = new byte[length];
