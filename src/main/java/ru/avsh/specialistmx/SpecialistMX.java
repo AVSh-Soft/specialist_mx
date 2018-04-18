@@ -769,10 +769,11 @@ final class SpecialistMX {
 
     /**
      * Загружает и запускает CPU(I80)-файл.
+     *
      * @param file CPU-файл
      * @return false = загрузка не удалась
      */
-    boolean loadFileCPU(File file) {
+    boolean loadFileCPU(final File file) {
         try {
             int  loadAdr = 0;
             int startAdr = 0;
@@ -789,7 +790,7 @@ final class SpecialistMX {
                         case 1: // Читаем стартовый адрес
                             startAdr = Integer.parseInt(line, 16);
                             // Выводим диалог загрузки
-                            Object[] options = {"Загрузить и запустить", "Только загрузить"};
+                            final Object[] options = {"Загрузить и запустить", "Только загрузить"};
                             selected = showOptionDialog(fMainFrame,
                                     String.format("Файл: \"%s\"%n" +
                                                   "Адрес  начала: [%04X]%n" +
@@ -802,7 +803,7 @@ final class SpecialistMX {
                             break;
                         case 2: // Проверяем соответствие монитора
                             if ((selected == YES_OPTION) && (line.length() > 0) && !fCurMonName.equals(line)) {
-                                boolean result;
+                                final boolean result;
                                 if (SPMX_ROM_FILE.toLowerCase().endsWith(line)) {
                                     // Запускаем стандартный BIOS
                                     result = restart(false, false);
