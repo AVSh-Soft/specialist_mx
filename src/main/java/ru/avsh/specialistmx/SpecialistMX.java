@@ -8,6 +8,7 @@ import javax.swing.*;
 import java.io.*;
 import java.util.List;
 import java.util.Properties;
+import java.util.function.Consumer;
 
 import static javax.swing.JOptionPane.*;
 import static ru.avsh.specialistmx.ConsStat.*;
@@ -74,12 +75,12 @@ final class SpecialistMX {
         fKey = new MemDevKeyboardPort(fSpc);
         fFDC = new MemDevFloppyDiskController(fGen, fCPU);
 
-        MemDevTimer                    timer   = new MemDevTimer                   (fSpc );
-        MemDevSimpleMemory             excRAM  = new MemDevSimpleMemory            (0x20 );
-        MemDevProgrammerPort           prgPort = new MemDevProgrammerPort          (timer);
-        MemDevMainMemoryPort           ramPort = new MemDevMainMemoryPort          (fRAM );
-        MemDevScreenColorPort          colPort = new MemDevScreenColorPort         (fScr );
-        MemDevFloppyDiskControllerPort fdcPort = new MemDevFloppyDiskControllerPort(fFDC );
+        final MemDevTimer                    timer   = new MemDevTimer                   (fSpc );
+        final MemDevSimpleMemory             excRAM  = new MemDevSimpleMemory            (0x20 );
+        final MemDevProgrammerPort           prgPort = new MemDevProgrammerPort          (timer);
+        final MemDevMainMemoryPort           ramPort = new MemDevMainMemoryPort          (fRAM );
+        final MemDevScreenColorPort          colPort = new MemDevScreenColorPort         (fScr );
+        final MemDevFloppyDiskControllerPort fdcPort = new MemDevFloppyDiskControllerPort(fFDC );
 
         // Добавляем тактируемые устройства в тактововый генератор
         fGen.addClockedDevice(fCPU );
@@ -146,14 +147,16 @@ final class SpecialistMX {
     // Методы для связи между объектами
     /**
      * Запоминает ссылку на главный фрейм приложения.
+     *
      * @param frame ссылка на главный фрейм
      */
-    void setMainFrame(JFrame frame) {
+    void setMainFrame(final JFrame frame) {
         fMainFrame = frame;
     }
 
     /**
      * Возвращает ссылку на главный фрейм приложения.
+     *
      * @return ссылка на главный фрейм
      */
     JFrame getMainFrame() {
@@ -162,6 +165,7 @@ final class SpecialistMX {
 
     /**
      * Возвращает ссылку на тактовый генератор.
+     *
      * @return ссылка на тактовый генератор
      */
     ClockGenerator getGen() {
@@ -170,6 +174,7 @@ final class SpecialistMX {
 
     /**
      * Возвращает ссылку на диспетчер устройств памяти.
+     *
      * @return ссылка на диспетчер устройств памяти
      */
     MemoryDevicesManager getMemDevMng() {
@@ -178,6 +183,7 @@ final class SpecialistMX {
 
     /**
      * Возвращает ссылку на CPU.
+     *
      * @return ссылка на CPU
      */
     ProcessorI8080 getCPU() {
@@ -186,6 +192,7 @@ final class SpecialistMX {
 
     /**
      * Возвращает ссылку на память.
+     *
      * @return ссылка на память
      */
     MemDevMainMemory getRAM() {
@@ -194,6 +201,7 @@ final class SpecialistMX {
 
     /**
      * Возвращает ссылку на экран.
+     *
      * @return ссылка на экран
      */
     MemDevScreen getScreen() {
@@ -203,6 +211,7 @@ final class SpecialistMX {
     // Делегированные методы
     /**
      * Показывает приостановлен тактовый генератор или нет.
+     *
      * @return - true = CPU приостановлен
      */
     boolean isPaused() {
@@ -211,15 +220,17 @@ final class SpecialistMX {
 
     /**
      * Переводит тактовый генератор в режим "Пауза".
+     *
      * @param mode true/false = установить/снять режим "Пауза"
-     * @param dev true = устанавливать/снимать режим "Пауза" и для устройств памяти
+     * @param dev  true = устанавливать/снимать режим "Пауза" и для устройств памяти
      */
-    void pause(boolean mode, boolean dev) {
+    void pause(final boolean mode, final boolean dev) {
         fGen.pause(mode, dev);
     }
 
     /**
      * Возвращает номер текущей страницы памяти.
+     *
      * @return номер страницы
      */
     int getPage() {
@@ -228,9 +239,10 @@ final class SpecialistMX {
 
     /**
      * Устанавливает заданную страницу памяти.
+     *
      * @param pageNumber от 0-8 - страницы RAM, 9 или больше - страница ROM
      */
-    void setPage(int pageNumber) {
+    void setPage(final int pageNumber) {
         fRAM.setPage(pageNumber);
     }
 
@@ -238,10 +250,11 @@ final class SpecialistMX {
      * Читает байт по заданному адресу из устройства памяти.
      * Чтение осуществляется из первого встречного устройства типа R/W,
      * остальные устройства игнорируются.
+     *
      * @param address заданный адрес
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
-    int readByte(int address) {
+    int readByte(final int address) {
         return fMemDevMng.readByte(address);
     }
 
@@ -250,42 +263,47 @@ final class SpecialistMX {
      * Чтение осуществляется из первого встречного устройства типа R/W,
      * остальные устройства игнорируются.
      * (Метод для вызова из отладчика - минимизирует влияние отладчика на работу устройств памяти)
+     *
      * @param address заданный адрес
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
-    int debugReadByte(int address) {
+    int debugReadByte(final int address) {
         return fMemDevMng.debugReadByte(address);
     }
 
     /**
      * Записывает байт по заданному адресу в устройство/устройства памяти.
+     *
      * @param address заданный адрес
-     * @param value записываемый байт (байт представлен как int)
+     * @param value   записываемый байт (байт представлен как int)
      */
-    void writeByte(int address, int value) {
+    void writeByte(final int address, final int value) {
         fMemDevMng.writeByte(address, value);
     }
 
     /**
      * Вставляет диск в заданный дисковод.
-     * @param fdd false = "A" / true = "B"
+     *
+     * @param fdd  false = "A" / true = "B"
      * @param file файл с образом диска
      * @throws IOException исключение, возникающее при вставке диска
      */
-    void insertDisk(boolean fdd, File file) throws IOException {
+    void insertDisk(final boolean fdd, final File file) throws IOException {
         fFDC.insertDisk(fdd, file);
     }
 
     /**
      * Извлекает диск из заданного дисковода.
+     *
      * @param fdd false = "A" / true = "B"
      */
-    void ejectDisk(boolean fdd) {
+    void ejectDisk(final boolean fdd) {
         fFDC.ejectDisk(fdd);
     }
 
     /**
      * Возвращает режим работы клавиатуры.
+     *
      * @return false = "Специалист MX" / true = стандартный "Специалист"
      */
     boolean isKeyboardMode() {
@@ -294,9 +312,10 @@ final class SpecialistMX {
 
     /**
      * Устанавливает режим работы клавиатуры.
+     *
      * @param keyboardMode false = "Специалист MX" / true = стандартный "Специалист"
      */
-    void setKeyboardMode(boolean keyboardMode) {
+    void setKeyboardMode(final boolean keyboardMode) {
         fKey.setKeyboardMode(keyboardMode);
     }
 
@@ -309,23 +328,25 @@ final class SpecialistMX {
 
     /**
      * Принимает коды клавиш.
+     *
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
-     * @param keyCode код клавиши
+     * @param keyCode        код клавиши
      */
-    void keyCodeReceiver(boolean flagKeyPressed, int keyCode) {
+    void keyCodeReceiver(final boolean flagKeyPressed, final int keyCode) {
         fKey.keyCodeReceiver(flagKeyPressed, keyCode);
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
     /**
      * Читает значение из ini-файла.
+     *
      * @param sectionName имя секции
-     * @param optionName имя опции
-     * @param clazz класс
-     * @param <T> тип
+     * @param optionName  имя опции
+     * @param clazz       класс
+     * @param <T>         тип
      * @return полученное значение
      */
-    <T> T getIni(Object sectionName, Object optionName, Class<T> clazz) {
+    <T> T getIni(final Object sectionName, final Object optionName, final Class<T> clazz) {
         if (fIni != null) {
             return fIni.get(sectionName, optionName, clazz);
         }
@@ -334,11 +355,12 @@ final class SpecialistMX {
 
     /**
      * Записывает значение в ini-файл.
+     *
      * @param sectionName имя секции
-     * @param optionName имя опции
-     * @param value значение
+     * @param optionName  имя опции
+     * @param value       значение
      */
-    void putIni(String sectionName, String optionName, Object value) {
+    void putIni(final String sectionName, final String optionName, final Object value) {
         if (fIni != null) {
             fIni.put(sectionName, optionName, value);
         }
@@ -357,10 +379,11 @@ final class SpecialistMX {
 
     /**
      * Возвращает наиболее короткий путь к файлу (полный или относительный).
+     *
      * @param file файл
      * @return путь
      */
-    String getShortPath(File file) {
+    String getShortPath(final File file) {
         final String p0 = file.getPath();
         final String p1 = APP_PATH.relativize(file.toPath()).toString();
         return (p0.length() < p1.length()) ? p0 : p1;
@@ -368,6 +391,7 @@ final class SpecialistMX {
 
     /**
      * Читает название эмулятора и номер его версии из properties-файла.
+     *
      * @return название эмулятора и номер его версии
      */
     private String readProductName() {
@@ -391,9 +415,10 @@ final class SpecialistMX {
 
     /**
      * Выполняет запуск с заданного адреса.
+     *
      * @param address адрес запуска
      */
-    private void run(int address) {
+    private void run(final int address) {
         pause(true, true);
         fCPU.run(address);
         // Проверям ловушки (стартовые ловушки не отслеживаются в классе ProcessorI8080)
@@ -406,10 +431,11 @@ final class SpecialistMX {
 
     /**
      * Выполняет сброс компьютера.
-     * @param address адрес запуска
+     *
+     * @param address            адрес запуска
      * @param resetMemoryDevices true = выполняет сброс устройств памяти
      */
-    private void reset(int address, boolean resetMemoryDevices) {
+    private void reset(final int address, final boolean resetMemoryDevices) {
         pause(true, true);
         fCPU.reset(address, resetMemoryDevices);
         // Проверям ловушки (стартовые ловушки не отслеживаются в классе ProcessorI8080)
@@ -422,12 +448,13 @@ final class SpecialistMX {
 
     /**
      * Вычисляет контрольную сумму по алгоритму RAMFOS (подпрограмма 0xC82A).
-     * @param buf буфер
-     * @param start начало блока данных в буфере
+     *
+     * @param buf    буфер
+     * @param start  начало блока данных в буфере
      * @param length длина блока данных
      * @return контрольная сумма
      */
-    private int getChecksum(byte[] buf, int start, int length) {
+    private int getChecksum(final byte[] buf, int start, int length) {
         length += start - 1; // вычисляем конец блока в буфере
         if (length < buf.length) {
             int cur;
@@ -451,6 +478,7 @@ final class SpecialistMX {
 
     /**
      * Загружает в память OS/BIOS (ROM-файл из ресурсов) эмулятора "Специалист MX".
+     *
      * @throws IOException исключение
      */
     private void loadROM() throws IOException {
@@ -477,9 +505,9 @@ final class SpecialistMX {
             throw new IOException("ROM-файл эмулятора не найден в ресурсах программы!");
         }
         try (BufferedInputStream bis = new BufferedInputStream(is)) {
-            int length = bis.available();
+            final int length = bis.available();
             if (length < 0x10000) {
-                byte[] buf = new byte[length];
+                final byte[] buf = new byte[length];
                 if (bis.read(buf, 0, length) < length) {
                     throw new IOException("Не удалось полностью прочитать ROM-файл эмулятора из ресурсов!");
                 }
@@ -500,17 +528,18 @@ final class SpecialistMX {
 
     /**
      * Загружает данные с заданным смещением и длиной из файла в память по заданному адресу.
-     * @param file файл
-     * @param address адрес
-     * @param offset смещение в файле (игнорируется если <= 0)
-     * @param length необходимая длина (игнорируется если <= 0)
+     *
+     * @param file     файл
+     * @param address  адрес
+     * @param offset   смещение в файле (игнорируется если <= 0)
+     * @param length   необходимая длина (игнорируется если <= 0)
      * @param checksum контрольная сумма для проверки (проверка игнорируется, если контрольная сумма < 0)
      * @throws IOException исключение
      */
-    private void loadFile(File file, int address, int offset, int length, int checksum) throws IOException {
+    private void loadFile(final File file, int address, int offset, int length, int checksum) throws IOException {
         if ((address >= 0) && (address <= 0xFFFF)) {
             try (FileInputStream fis = new FileInputStream(file)) {
-                String fileName = "\"".concat(file.getName()).concat("\"");
+                final String fileName = "\"".concat(file.getName()).concat("\"");
                 if (offset > 0 && fis.skip(offset) != offset) {
                     throw new IOException(String.format("Не удалось выполнить смещение на %d байт(а/ов) в файле: %s", offset, fileName));
                 }
@@ -521,13 +550,13 @@ final class SpecialistMX {
                     length = fis.available();
                 }
                 if (length + address <= 0x10000) {
-                    byte[] buf = new byte[length];
+                    final byte[] buf = new byte[length];
                     if (fis.read(buf, 0, length) < length) {
                         throw new IOException("Не удалось полностью прочитать файл: ".concat(fileName));
                     }
                     // Проверим контрольную сумму данных
                     if (checksum >= 0) {
-                        int  curChecksum  = getChecksum(buf, 0, length);
+                        final int curChecksum = getChecksum(buf, 0, length);
                         if ((curChecksum != checksum) &&
                                 (showConfirmDialog(fMainFrame,
                                         String.format("В файле: %s%n" +
@@ -555,16 +584,31 @@ final class SpecialistMX {
         }
     }
 
+    private void loadFile(final File file,
+                          final int address,
+                          final int offset,
+                          final int length,
+                          final int checksum,
+                          final Consumer<IOException> exceptionAction) throws IOException {
+        try {
+            loadFile(file, address, offset, length, checksum);
+        } catch (IOException e) {
+            exceptionAction.accept(e);
+            throw e;
+        }
+    }
+
     /**
      * Перезапускает компьютер "Специалист MX".
+     *
      * @param clearDialog true = выводится диалог очистки памяти
-     * @param clear true = выполняется очистка памяти (перекрывается параметром clearDialog)
+     * @param clear       true = выполняется очистка памяти (перекрывается параметром clearDialog)
      * @return false = перезапуск не удался
      */
     boolean restart(boolean clearDialog, boolean clear) {
         try {
             if (clearDialog) {
-                Object[] options = {"Да", "Нет"};
+                final Object[] options = {"Да", "Нет"};
                 int selected = showOptionDialog(fMainFrame, "Очистить память?", "Очистить?", YES_NO_OPTION, QUESTION_MESSAGE, null, options, options[1]);
                 // Если диалог закрыт крестом - отменяем перезапуск
                 if (selected == CLOSED_OPTION) {
@@ -603,12 +647,13 @@ final class SpecialistMX {
 
     /**
      * Загружает и запускает ROM-файл.
+     *
      * @param file ROM-файл
      * @return false = загрузка не удалась
      */
     boolean loadFileROM(File file) {
         // Получаем имя ROM-файла
-        String fileName = file.getName();
+        final String fileName = file.getName();
         try {
             // Приостанавливаем компьютер
             pause(true, true);
@@ -616,16 +661,10 @@ final class SpecialistMX {
             fMemDevMng.resetMemoryDevices(false);
             // Включаем ROM-диск
             setPage(MemDevMainMemory.ROM_DISK);
-            try {
-                // Загружаем ROM-файл в страницу ROM-диска
-                loadFile(file, 0x0000, 0, 0, -1);
-                // Запоминаем ROM-файл
-                fCurRomFile = file;
-            } catch (IOException e) {
-                // В случае ошибки выполняем сброс
-                restart(false, false);
-                throw e;
-            }
+            // Загружаем ROM-файл в страницу ROM-диска (в случае ошибки загрузки выполняем сброс)
+            loadFile(file, 0x0000, 0, 0, -1, e -> restart(false, false));
+            // Запоминаем ROM-файл
+            fCurRomFile = file;
             // Сбрасываем CPU с адреса 0x0000 (сброс устройств памяти устанавливает страницу памяти 0, что здесь не подходит)
             reset(0x0000, false);
             return true;
@@ -638,32 +677,30 @@ final class SpecialistMX {
     /**
      * Загружает и запускает MON-файл.
      * Формат MON-файла: "nm_addr.MON" - nm = имя, addr = адрес.
+     *
      * @param file MON-файл
      * @return false = загрузка не удалась
      */
-    boolean loadFileMON(File file) {
+    boolean loadFileMON(final File file) {
         // Получаем имя MON-файла
-        String fileName = file.getName();
+        final String fileName = file.getName();
         // Проверяем длину имени MON-файла
         if (fileName.length() == 11) {
             try {
                 // Получаем адрес из имени MON-файла
-                int address = Integer.parseInt(fileName.substring(3, 7), 16);
+                final int address = Integer.parseInt(fileName.substring(3, 7), 16);
                 // Приостанавливаем компьютер
                 pause(true, true);
                 // Запоминаем текущую страницу памяти
-                int curPage = getPage();
+                final int curPage = getPage();
                 // Включаем основную страницу памяти
                 setPage(0);
-                try {
-                    // Загружаем MON-файл в основную страницу памяти
-                    loadFile(file, address, 0, 0, -1);
-                } catch (IOException e){
+                // Загружаем MON-файл в основную страницу памяти
+                loadFile(file, address, 0, 0, -1, e -> {
                     // В случае ошибки продолжим выполнять предыдущий код
                     setPage(curPage);
                     pause(false, true);
-                    throw e;
-                }
+                });
                 // Запоминаем имя MON-файла
                 fCurMonName = fileName.toLowerCase();
                 // Сбрасываем CPU с заданного адреса
@@ -671,7 +708,6 @@ final class SpecialistMX {
                 return true;
             } catch (NumberFormatException | IOException e) {
                 showMessageDialog(fMainFrame, String.format("Ошибка загрузки MON-файла: \"%s\"%n%s", fileName, e.toString()), STR_ERROR, ERROR_MESSAGE);
-                return false;
             }
         }
         return false;
@@ -679,31 +715,29 @@ final class SpecialistMX {
 
     /**
      * Загружает и запускает (если runFlag = true) файл.
-     * @param file файл
-     * @param loadAdr адрес загрузки
+     *
+     * @param file     файл
+     * @param loadAdr  адрес загрузки
      * @param startAdr адрес запуска
-     * @param offset смещение в файле (игнорируется если <= 0)
-     * @param length необходимая длина (игнорируется если <= 0)
+     * @param offset   смещение в файле (игнорируется если <= 0)
+     * @param length   необходимая длина (игнорируется если <= 0)
      * @param checksum контрольная сумма для проверки (проверка игнорируется, если контрольная сумма < 0)
-     * @param runFlag true = выполнить запуск после загрузки
+     * @param runFlag  true = выполнить запуск после загрузки
      * @throws IOException исключение
      */
     private void loadHelper(File file, int loadAdr, int startAdr, int offset, int length, int checksum, boolean runFlag) throws IOException {
         // Приостанавливаем компьютер
         pause(true, true);
         // Запоминаем текущую страницу памяти
-        int curPage = getPage();
+        final int curPage = getPage();
         // Устанавливам основную страницу памяти
         setPage(0);
-        try {
-            // Загружаем файл в основную страницу памяти
-            loadFile(file, loadAdr, offset, length, checksum);
-        } catch (IOException e){
+        // Загружаем файл в основную страницу памяти
+        loadFile(file, loadAdr, offset, length, checksum, e -> {
             // В случае ошибки продолжим выполнять предыдущий код
             setPage(curPage);
             pause(false, true);
-            throw e;
-        }
+        });
         if (runFlag) {
             // Если выбрана загрузка с запуском, то устанавливаем цвет по умолчанию
             fScr.setColor(MemDevScreen.DEFAULT_COLOR);
