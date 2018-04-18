@@ -584,6 +584,17 @@ final class SpecialistMX {
         }
     }
 
+    /**
+     * Загружает данные с заданным смещением и длиной из файла в память по заданному адресу.
+     *
+     * @param file            файл
+     * @param address         адрес
+     * @param offset          смещение в файле (игнорируется если <= 0)
+     * @param length          необходимая длина (игнорируется если <= 0)
+     * @param checksum        контрольная сумма для проверки (проверка игнорируется, если контрольная сумма < 0)
+     * @param exceptionAction действие в случае исключения
+     * @throws IOException исключение
+     */
     private void loadFile(final File file,
                           final int address,
                           final int offset,
