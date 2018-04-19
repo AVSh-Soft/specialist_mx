@@ -652,8 +652,8 @@ final class SpecialistMX {
             return true;
         } catch (IOException e) {
             showMessageDialog(fMainFrame, e.toString(), STR_ERROR, ERROR_MESSAGE);
-            return false;
         }
+        return false;
     }
 
     /**
@@ -662,7 +662,7 @@ final class SpecialistMX {
      * @param file ROM-файл
      * @return false = загрузка не удалась
      */
-    boolean loadFileROM(File file) {
+    boolean loadFileROM(final File file) {
         // Получаем имя ROM-файла
         final String fileName = file.getName();
         try {
@@ -736,7 +736,13 @@ final class SpecialistMX {
      * @param runFlag  true = выполнить запуск после загрузки
      * @throws IOException исключение
      */
-    private void loadHelper(File file, int loadAdr, int startAdr, int offset, int length, int checksum, boolean runFlag) throws IOException {
+    private void loadHelper(final File file   ,
+                            final int loadAdr ,
+                            final int startAdr,
+                            final int offset  ,
+                            final int length  ,
+                            final int checksum,
+                            final boolean runFlag) throws IOException {
         // Приостанавливаем компьютер
         pause(true, true);
         // Запоминаем текущую страницу памяти
@@ -768,6 +774,19 @@ final class SpecialistMX {
     }
 
     /**
+     * Приостанавливает текущий поток на заданное количество миллисекунд.
+     *
+     * @param millis миллисекунды
+     */
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
      * Загружает и запускает CPU(I80)-файл.
      *
      * @param file CPU-файл
@@ -780,9 +799,10 @@ final class SpecialistMX {
             int selected = 0;
             // Читаем CPU-файл
             try (BufferedReader cpuFile = new BufferedReader(new FileReader(file))) {
+                String line;
                 int index = 0;
-                for (String line; (index <= 2) && ((line = cpuFile.readLine()) != null); index++) {
-                    line  = line.trim().toLowerCase();
+                for (; (index <= 2) && ((line = cpuFile.readLine()) != null); index++) {
+                    line = line.trim().toLowerCase();
                     switch (index) {
                         case 0: // Читаем начальный адрес
                              loadAdr = Integer.parseInt(line, 16);
@@ -809,7 +829,7 @@ final class SpecialistMX {
                                     result = restart(false, false);
                                 } else {
                                     // Ищем, загружаем и запускаем необходимый монитор
-                                    FileFinder fileFinder = new FileFinder();
+                                    final FileFinder fileFinder = new FileFinder();
                                     List<File> listFiles = fileFinder.findFiles(file.getParent(), line);
                                     if (!listFiles.isEmpty()) {
                                         result = loadFileMON(listFiles.get(0));
@@ -826,12 +846,8 @@ final class SpecialistMX {
                                     // Увеличиваем тактовую частоту в 4 раза
                                     fGen.setClockSpeed(fGen.getClockSpeed() << 2);
                                     // Приостановим GUI на 0.5 секунды для инициализации BIOSа/монитора
-                                    try {
-                                        Thread.sleep(500L);
-                                    } catch (InterruptedException e) {
-                                        Thread.currentThread().interrupt();
-                                    }
-                                    // Устанавливаем тктовую частоту по умолчанию
+                                    sleep(500L);
+                                    // Устанавливаем тактовую частоту по умолчанию
                                     fGen.setClockSpeed(ClockGenerator.CLOCK_SPEED);
                                 } else {
                                     // Были ошибки при загрузке BIOSа/монитора
@@ -853,24 +869,25 @@ final class SpecialistMX {
             return true;
         } catch (NumberFormatException | IOException e) {
             showMessageDialog(fMainFrame, String.format("Ошибка загрузки файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, ERROR_MESSAGE);
-            return false;
         }
+        return false;
     }
 
     /**
      * Загружает и запускает RKS-файл.
+     *
      * @param file RKS-файл
      * @return false = загрузка не удалась
      */
-    boolean loadFileRKS(File file) {
-        String fileName = "\"".concat(file.getName()).concat("\"");
+    boolean loadFileRKS(final File file) {
+        final String fileName = "\"".concat(file.getName()).concat("\"");
         try {
-            int begAdr;
-            int endAdr;
-            int length;
-            int checksum;
+            final int begAdr;
+            final int endAdr;
+            final int length;
+            final int checksum;
             // Выделяем буфер под служебные поля RKS-файла
-            byte[] buf = new byte[6];
+            final byte[] buf = new byte[6];
             // Открываем файл на чтение
             try (FileInputStream fis = new FileInputStream(file)) {
                 // Читаем заголовок RKS-файла в буфер
@@ -896,8 +913,8 @@ final class SpecialistMX {
                 checksum = (buf[4] & 0xFF) | ((buf[5] & 0xFF) << 8);
             }
             // Выводим диалог загрузки
-            Object[] options = {"Загрузить и запустить", "Только загрузить"};
-            int selected = showOptionDialog(fMainFrame,
+            final Object[] options = {"Загрузить и запустить", "Только загрузить"};
+            final int selected = showOptionDialog(fMainFrame,
                     String.format("Файл: %s%n" +
                                   "Адреса загрузки: [%04X..%04X]%n", fileName, begAdr, endAdr),
                     "Что делать?", YES_NO_OPTION, QUESTION_MESSAGE, null, options, options[0]);
@@ -910,24 +927,25 @@ final class SpecialistMX {
             return true;
         } catch (IOException e) {
             showMessageDialog(fMainFrame, String.format("Ошибка загрузки файла: %s%n%s", fileName, e.toString()), STR_ERROR, ERROR_MESSAGE);
-            return false;
         }
+        return false;
     }
 
     /**
      * Сохраняет CPU-файл.
-     * @param file CPU-файл
+     *
+     * @param file         CPU-файл
      * @param beginAddress начальный адрес
-     * @param endAddress конечный адрес
+     * @param endAddress   конечный адрес
      * @param startAddress стартовый адрес
      * @return false = сохранение не удалось
      */
     boolean saveFileCPU(File file, int beginAddress, int endAddress, int startAddress) {
         // Проверяем корректность переданных параметров
-        if (    (file   ==   null) ||
-                (beginAddress < 0) || (beginAddress > 0xFFFF) ||
-                (endAddress   < 0) || (endAddress   > 0xFFFF) ||
-                (startAddress < 0) || (startAddress > 0xFFFF)   ) {
+        if ((file   ==   null) ||
+            (beginAddress < 0) || (beginAddress > 0xFFFF) ||
+            (endAddress   < 0) || (endAddress   > 0xFFFF) ||
+            (startAddress < 0) || (startAddress > 0xFFFF)   ) {
             showMessageDialog(fMainFrame, "Некоторые параметры переданы неверно - сохранение невозможно!", STR_ERROR, ERROR_MESSAGE);
             return false;
         }
@@ -940,12 +958,13 @@ final class SpecialistMX {
                 cpuFile.newLine();
                 cpuFile.write(fCurMonName);
                 cpuFile.newLine();
+                cpuFile.flush  ();
             }
             // Определяем I80-файл
             file = new File(file.getPath().substring(0, file.getPath().length() - 3).concat("i80"));
             // Вычисляем размер данных и формируем буфер
-            int length = endAddress - beginAddress + 1;
-            byte[] buf = new byte[length];
+            final int length = endAddress - beginAddress + 1;
+            final byte[] buf = new byte[length];
             // Перемещаем данные из памяти в буфер через менеджер устройств памяти
             pause(true , true);
             for (int i = 0; i < length; i++) {
@@ -959,22 +978,23 @@ final class SpecialistMX {
             return true;
         } catch (IOException e) {
             showMessageDialog(fMainFrame, String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, ERROR_MESSAGE);
-            return false;
         }
+        return false;
     }
 
     /**
      * Сохраняет RKS-файл.
-     * @param file RKS-файл
+     *
+     * @param file         RKS-файл
      * @param beginAddress начальный адрес
-     * @param endAddress конечный адрес
+     * @param endAddress   конечный адрес
      * @return false = сохранение не удалось
      */
     boolean saveFileRKS(File file, int beginAddress, int endAddress) {
         // Проверяем корректность переданных параметров
-        if (    (file   ==   null) ||
-                (beginAddress < 0) || (beginAddress > 0xFFFF) ||
-                (endAddress   < 0) || (endAddress   > 0xFFFF)   ) {
+        if ((file   ==   null) ||
+            (beginAddress < 0) || (beginAddress > 0xFFFF) ||
+            (endAddress   < 0) || (endAddress   > 0xFFFF)   ) {
             showMessageDialog(fMainFrame, "Некоторые параметры переданы неверно - сохранение невозможно!", STR_ERROR, ERROR_MESSAGE);
             return false;
         }
@@ -982,7 +1002,7 @@ final class SpecialistMX {
             // Вычисляем размер данных
             int length = endAddress - beginAddress + 1;
             // Формируем буфер размером на 6 байт больше размера данных (дополнительные байты выделены под данные RKS-файла)
-            byte[] buf = new byte[length + 6];
+            final byte[] buf = new byte[length + 6];
             // Записываем стартовый и конечный адреса данных
             buf[0] = (byte) ( beginAddress       & 0xFF);
             buf[1] = (byte) ((beginAddress >> 8) & 0xFF);
@@ -995,7 +1015,7 @@ final class SpecialistMX {
             }
             pause(false, true);
             // Рассчитаем контрольную сумму данных
-            int checkSum = getChecksum(buf, 4, length);
+            final int checkSum = getChecksum(buf, 4, length);
             buf[length + 4] = (byte) ( checkSum       & 0xFF);
             buf[length + 5] = (byte) ((checkSum >> 8) & 0xFF);
             // Сохраняем RKS-файл
@@ -1005,8 +1025,8 @@ final class SpecialistMX {
             return true;
         } catch (IOException e) {
             showMessageDialog(fMainFrame, String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, ERROR_MESSAGE);
-            return false;
         }
+        return false;
     }
 
     /**
