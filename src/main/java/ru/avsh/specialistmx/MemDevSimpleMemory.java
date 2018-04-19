@@ -5,6 +5,7 @@ import java.util.Objects;
 
 /**
  * Устройство памяти "Простая память".
+ *
  * @author -=AVSh=-
  */
 final class MemDevSimpleMemory implements IMemoryDevice {
@@ -13,6 +14,7 @@ final class MemDevSimpleMemory implements IMemoryDevice {
 
     /**
      * Конструктор.
+     *
      * @param length длина
      */
     MemDevSimpleMemory(int length) {

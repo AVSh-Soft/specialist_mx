@@ -6,6 +6,7 @@ import java.util.Objects;
  * Устройство памяти "Программируемый таймер КР580ВИ53 (i8253)".
  * Реализация с учетом особенностей подключения таймера на ПК "Специалист MX"
  * (на входы GATE всех таймеров подается логическая 1, Counter #1 соединен каскадно с Counter #2).
+ *
  * @author -=AVSh=-
  */
 final class MemDevTimer implements IMemoryDevice, IClockedDevice {
@@ -78,6 +79,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
         /**
          * Возвращает состояние выхода OUT счетчика.
+         *
          * @return значение состояния выхода OUT.
          */
         boolean isOut() {
@@ -86,6 +88,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
         /**
          * Показывает было ли изменение состояния на выходе OUT счетчика в текущем цикле.
+         *
          * @return true - состояние выхода OUT изменилось.
          */
         boolean isChange() {
@@ -94,6 +97,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
         /**
          * Устанавливает значение на выходе OUT счетчика.
+         *
          * @param value значение
          */
         private void setOut(boolean value) {
@@ -103,32 +107,35 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
         /**
          * Переводит двоичное число в двоично-десятичное.
+         *
          * @param value двоичное число
          * @return двоично-десятичное число
          */
         private int binToDec(int value) {
             int result = 0;
-            for (int i = 0; value > 0; value /= 10, i += 4) {
-                result |= (value % 10) << i;
+            for (int i = 0; value >  0; value /= 10, i += 4) {
+                result |= ( value % 10) << i;
             }
             return result;
         }
 
         /**
          * Переводит двоично-десятичное число в двоичное.
+         *
          * @param value двоично-десятичное число
          * @return двоичное число
          */
         private int decToBin(int value) {
             int result = 0;
             for (int i = 1; value > 0; value >>= 4, i *= 10) {
-                result += (value & 0b1111) * i;
+                result += ( value & 0b1111) * i;
             }
             return result;
         }
 
         /**
          * Устанавливает режимы работы счетчика.
+         *
          * @param cmd команда установки режимов счетчика
          */
         void setup(int cmd) {
@@ -177,6 +184,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
         /**
          * Читает данные (байт) из счетчика.
+         *
          * @return байт, прочитанный из счетчика
          */
         int read() {
@@ -219,6 +227,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
         /**
          * Читает данные (байт) из счетчика.
          * (Метод для вызова из отладчика - не вносит изменения в счетчик при чтении)
+         *
          * @return байт, прочитанный из счетчика
          */
         int debugRead() {
@@ -257,6 +266,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
         /**
          * Загружает новое значение счетчика.
+         *
          * @param initValue новое значение
          */
         private void loadInitValue(int initValue) {
@@ -283,6 +293,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
         /**
          * Загружает данные (байт) в счетчик.
+         *
          * @param data байт для загрузки в счетчик
          */
         void load(int data) {
@@ -499,6 +510,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Конструктор.
+     *
      * @param speaker ссылка на объект класса Speaker - "Speaker (динамик)"
      */
     MemDevTimer(Speaker speaker) {
@@ -510,6 +522,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
     /**
      * Возвращает состояние выхода OUT счетчика 2.
+     *
      * @return значение состояния выхода OUT счетчика 2.
      */
     boolean getCounter2Out() {

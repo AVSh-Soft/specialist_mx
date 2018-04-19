@@ -5,13 +5,14 @@ import java.util.Objects;
 
 /**
  * Устройство памяти "Оперативная память 'Специалист MX'".
+ *
  * @author -=AVSh=-
  */
 final class MemDevMainMemory implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 0xFFC0;
     private static final int ROM_DISK_LENGTH      = 0xC000;
-    private static final int MIN_NUMBER_PAGES     =      2; // Минимальное  число страниц памяти: 0 - основная, 1   - RAM-диск (не считая ROM-диск);
-    private static final int MAX_NUMBER_PAGES     =      9; // Максимальное число страниц памяти: 0 - основная, 1-8 - RAM-диск (не считая ROM-диск);
+    private static final int MIN_NUMBER_PAGES     =      2; // Минимальное  число страниц памяти: 0 - основная, 1   - RAM-диск (не считая ROM-диск)
+    private static final int MAX_NUMBER_PAGES     =      9; // Максимальное число страниц памяти: 0 - основная, 1-8 - RAM-диск (не считая ROM-диск)
 
     // Номер ROM-диска для использования в методах getPage()/setPage()
     static final int ROM_DISK = MAX_NUMBER_PAGES;
@@ -24,8 +25,9 @@ final class MemDevMainMemory implements IMemoryDevice {
 
     /**
      * Конструктор.
+     *
      * @param numberPages количество страниц памяти (не считая ROM-диск)
-     * @param screen ссылка на объект класса MemDevScreen - "Экран 'Специалиста MX'"
+     * @param screen      ссылка на объект класса MemDevScreen - "Экран 'Специалиста MX'"
      */
     MemDevMainMemory(int numberPages, MemDevScreen screen) {
          numberPages = Math.min(Math.max(numberPages, MIN_NUMBER_PAGES), MAX_NUMBER_PAGES);
@@ -94,6 +96,7 @@ final class MemDevMainMemory implements IMemoryDevice {
 
     /**
      * Устанавливает заданную страницу памяти.
+     *
      * @param pageNumber от 0-8 - страницы RAM, 9 или больше - страница ROM
      */
     void setPage(int pageNumber) {
@@ -115,6 +118,7 @@ final class MemDevMainMemory implements IMemoryDevice {
 
     /**
      * Возвращает номер текущей страницы памяти.
+     *
      * @return номер страницы
      */
     int getPage() {

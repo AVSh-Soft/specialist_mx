@@ -6,6 +6,7 @@ import java.util.Objects;
 
 /**
  * Устройство памяти "Порт для управления страницами памяти 'Специалист MX'".
+ *
  * @author -=AVSh=-
  */
 final class MemDevMainMemoryPort implements IMemoryDevice {
@@ -15,6 +16,7 @@ final class MemDevMainMemoryPort implements IMemoryDevice {
 
     /**
      * Конструктор.
+     *
      * @param ram ссылка на объект класса MemDevMainMemory - "Оперативная память 'Специалист MX'"
      */
     MemDevMainMemoryPort(@NotNull MemDevMainMemory ram) {

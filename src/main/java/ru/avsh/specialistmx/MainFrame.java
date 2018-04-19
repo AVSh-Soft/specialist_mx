@@ -119,7 +119,7 @@ final class MainFrame extends JFrame {
 
         // -=-=-=-=- Обработчики событий -=-=-=-=-
         // -= Обработка событий клавиатуры =-
-        KeyEventDispatcher keyEventDispatcher = e -> {
+        final KeyEventDispatcher keyEventDispatcher = e -> {
             final int id      = e.getID();
             final int keyCode = e.getKeyCode();
             if (this.isActive() && ((id == KeyEvent.KEY_PRESSED) || (id == KeyEvent.KEY_RELEASED))) {
@@ -376,11 +376,12 @@ final class MainFrame extends JFrame {
 
     /**
      * Вставляет или извлекает диск в/из дисковод(а).
-     * @param fdd false = "A" / true = "B"
-     * @param file файл с образом диска, если null, то запускается диалог выбора файла
+     *
+     * @param fdd            false = "A" / true = "B"
+     * @param file           файл с образом диска, если null, то запускается диалог выбора файла
      * @param targetMenuItem целевой пункт меню, отображающий состояние диска
      */
-    private void diskInsertEject(boolean fdd, File file, @NotNull JMenuItem targetMenuItem) {
+    private void diskInsertEject(boolean fdd, File file, @NotNull final JMenuItem targetMenuItem) {
         boolean insert = true; // По умолчанию вставка диска
 
         if (file == null) {
@@ -417,7 +418,7 @@ final class MainFrame extends JFrame {
     /**
      * Устанавливает параметры пункта меню для отображения/управления ROM-файл(а/ом) эмулятора.
      */
-    private void setRomItem(@NotNull JCheckBoxMenuItem romItem) {
+    private void setRomItem(@NotNull final JCheckBoxMenuItem romItem) {
         final File romFile = fSpMX.getCurRomFile();
         if ( romFile == null) {
              romItem.setSelected(false);

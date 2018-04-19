@@ -7,6 +7,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Устройство памяти "Порт клавиатуры Specialist_MX на базе КР580ВВ55А (i8255A)".
+ *
  * @author -=AVSh=-
  */
 final class MemDevKeyboardPort implements IMemoryDevice {
@@ -107,6 +108,7 @@ final class MemDevKeyboardPort implements IMemoryDevice {
 
     /**
      * Конструктор.
+     *
      * @param speaker ссылка на объект класса Speaker - "Speaker (динамик)"
      */
     MemDevKeyboardPort(Speaker speaker) {
@@ -300,6 +302,7 @@ final class MemDevKeyboardPort implements IMemoryDevice {
 
     /**
      * Возвращает режим работы клавиатуры.
+     *
      * @return false = "Специалист MX" / true = стандартный "Специалист"
      */
     boolean isKeyboardMode() {
@@ -308,6 +311,7 @@ final class MemDevKeyboardPort implements IMemoryDevice {
 
     /**
      * Устанавливает режим работы клавиатуры.
+     *
      * @param keyboardMode false = "Специалист MX" / true = стандартный "Специалист"
      */
     void setKeyboardMode(boolean keyboardMode) {
@@ -325,8 +329,9 @@ final class MemDevKeyboardPort implements IMemoryDevice {
 
     /**
      * Принимает коды клавиш.
+     *
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
-     * @param keyCode код клавиши
+     * @param keyCode        код клавиши
      */
     void keyCodeReceiver(boolean flagKeyPressed, int keyCode) {
         if (keyCode <= 0xFF) {

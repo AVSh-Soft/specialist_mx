@@ -6,6 +6,7 @@ import java.util.Objects;
 
 /**
  * Устройство памяти "Порт программатора 'Специалист MX' на базе КР580ВВ55А (i8255A)".
+ *
  * @author -=AVSh=-
  */
 final class MemDevProgrammerPort implements IMemoryDevice {
@@ -19,6 +20,7 @@ final class MemDevProgrammerPort implements IMemoryDevice {
 
     /**
      * Конструктор.
+     *
      * @param timer ссылка на объект MemDevTimer - "Программируемый таймер КР580ВИ53 (i8253)"
      */
     MemDevProgrammerPort(@NotNull MemDevTimer timer) {

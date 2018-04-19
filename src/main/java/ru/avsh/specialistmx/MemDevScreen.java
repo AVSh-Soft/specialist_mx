@@ -8,6 +8,7 @@ import java.util.Objects;
 
 /**
  * Класс "Экран 'Специалиста MX'".
+ *
  * @author -=AVSh=-
  */
 final class MemDevScreen extends JPanel implements IMemoryDevice {
@@ -148,6 +149,7 @@ final class MemDevScreen extends JPanel implements IMemoryDevice {
 
     /**
      * Устанавливает цвет изображения/фона.
+     *
      * @param color старший полубайт - цвет изображения, младший полубайт - цвет фона
      */
     void setColor(int color) {
@@ -157,6 +159,7 @@ final class MemDevScreen extends JPanel implements IMemoryDevice {
 
     /**
      * Отключает/включает вывод на экран.
+     *
      * @param enable true - включает, false - отключает
      */
     void setEnable(boolean enable) {

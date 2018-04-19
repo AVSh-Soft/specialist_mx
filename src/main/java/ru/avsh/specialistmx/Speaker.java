@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Класс "Speaker (динамик)".
+ *
  * @author -=AVSh=-
  */
 final class Speaker {
@@ -52,26 +53,34 @@ final class Speaker {
         // Счетчик времени всех полупериодов в очереди
         private final AtomicInteger fTime = new AtomicInteger();
 
-        @Override
-        public boolean offer(Integer e) {
-            boolean result = super.offer(e);
-            if     (result) {
-                fTime.getAndAdd(e);
+        /**
+         * Вставляет звуковой полупериод в очередь.
+         *
+         * @param halfCycle полупериод
+         */
+        void offerInt(int halfCycle) {
+            if (super.offer(halfCycle)) {
+                fTime.getAndAdd(halfCycle);
             }
-            return result;
         }
 
-        @Override
-        public Integer poll() {
-            Integer item  = super.poll();
-            if     (item != null) {
-                fTime.getAndAdd(-item);
+        /**
+         * Извлекает звуковой полупериод из очереди.
+         *
+         * @return полупериод
+         */
+        int pollInt() {
+            final Integer halfCycle = super.poll();
+            if (halfCycle != null) {
+                fTime.getAndAdd(-halfCycle);
+                return halfCycle;
             }
-            return item;
+            return 0;
         }
 
         /**
          * Возвращает время всех полупериодов в очереди.
+         *
          * @return время всех полупериодов в очереди
          */
         long getTime() {
@@ -92,10 +101,11 @@ final class Speaker {
 
         /**
          * Воспроизводит звук.
+         *
          * @param buf буфер, содержащий звуковые данные
          * @param len длина звуковых данных (нужно соблюдать условие len <= SDL.getBufferSize())
          */
-        void playSound(byte[] buf, int len) {
+        void playSound(final byte[] buf, final int len) {
             if (len > 0) {
                 // Если запущен SDL:
                 if (fSDL.isActive()) {
@@ -119,6 +129,7 @@ final class Speaker {
 
         /**
          * Показывает активен звуковой процессор или нет.
+         *
          * @return - true = звуковой процессор активен
          */
         boolean isRunning() {
@@ -127,6 +138,7 @@ final class Speaker {
 
         /**
          * Показывает занят звуковой процессор или нет.
+         *
          * @return - true = звуковой процессор занят
          */
         boolean isBusy() {
@@ -154,7 +166,7 @@ final class Speaker {
                             // увеличиваем счетчик сэмплов
                             samplesCounter += index;
                             index = 0;
-                            continue;
+                            continue ;
                         }
                         // Вычисляем примерное количество невоспроизведенных сэмплов
                         samples = (int) (samplesCounter - fSDL.getLongFramePosition());
@@ -171,7 +183,7 @@ final class Speaker {
                                 // - сбрасываем все данные в буфере SDL
                                 fSDL.flush();
                                 // - останавливаем SDL
-                                fSDL.stop();
+                                fSDL.stop ();
                                 // - устанавливаем состояние "Звуковой процессор не занят"
                                 fBusy = false;
                             }
@@ -208,7 +220,7 @@ final class Speaker {
                         // Иначе, инвертируем бит для перехода к следующему звуковому полупериоду
                         bit = !bit;
                         // Если очередь не пуста - извлекаем полупериод из очереди
-                        halfCycle = fSoundQueue.poll();
+                        halfCycle = fSoundQueue.pollInt();
                         // Разбиваем полупериод из очереди на семплы
                         if (bit) {
                             positive += halfCycle;
@@ -246,15 +258,16 @@ final class Speaker {
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Конструктор.
-     * @param  gen ссылка на объект класса ClockGenerator - "Тактовый генератор"
+     *
+     * @param gen ссылка на объект класса ClockGenerator - "Тактовый генератор"
      * @throws LineUnavailableException if a matching source data line
-     *         is not available due to resource restrictions
+     *                                  is not available due to resource restrictions
      */
     Speaker(@NotNull ClockGenerator gen) throws LineUnavailableException {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Инициализируем и открываем SDL
-        AudioFormat af = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
+        final AudioFormat af = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
         fSDL = AudioSystem.getSourceDataLine(af);
         fSDL.open(af);
         // Инициализируем Mutex
@@ -283,7 +296,7 @@ final class Speaker {
 
             if (fSoundProcessor.isRunning()) {
                 if (halfCycle <= MAX_HALF_CYCLE) {
-                    fSoundQueue.offer((int) halfCycle);
+                    fSoundQueue.offerInt((int) halfCycle);
                 }
             } else {
                 if (halfCycle <= BEG_HALF_CYCLE) {
@@ -297,7 +310,7 @@ final class Speaker {
                             }
                         }
                     }
-                    fSoundQueue.offer((int) halfCycle);
+                    fSoundQueue.offerInt((int) halfCycle);
                     // Запускаем звуковой процессор
                     synchronized (fMutex) {
                         fMutex.notifyAll();
@@ -309,6 +322,7 @@ final class Speaker {
 
     /**
      * Воспроизводит звуковые данные, поступающие из порта КР580ВВ55А.
+     *
      * @param bit бит, поступающий с вывода C5 порта ВВ55
      */
     void play8255(boolean bit) {
@@ -320,6 +334,7 @@ final class Speaker {
 
     /**
      * Воспроизводит звуковые данные, поступающие от таймера КР580ВИ53.
+     *
      * @param bit бит, поступающий с выхода таймера ВИ53
      */
     void play8253(boolean bit) {

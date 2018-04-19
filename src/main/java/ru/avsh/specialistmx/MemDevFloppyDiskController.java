@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Устройство памяти "Контроллер НГМД КР1818ВГ93 (FD1793-02)".
+ *
  * @author -=AVSh=-
  */
 final class MemDevFloppyDiskController implements IMemoryDevice {
@@ -89,6 +90,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
         /**
          * Вставляет диск в дисковод (открывает файл с образом диска).
+         *
          * @param file файл с образом диска
          * @throws IOException исключение, возникающее при вставке диска
          */
@@ -110,6 +112,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
         /**
          * Возвращает признак готовности дисковода.
+         *
          * @return true - дисковод готов.
          */
         boolean isReady() {
@@ -118,6 +121,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
         /**
          * Возвращает признак диска "только чтение".
+         *
          * @return true - диск только для чтения.
          */
         boolean isReadOnly() {
@@ -126,6 +130,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
         /**
          * Возвращает ссылку на диск.
+         *
          * @return ссылка на диск.
          */
         RandomAccessFile getDisk() {
@@ -134,6 +139,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
         /**
          * Возвращает номер текщей дорожки.
+         *
          * @return номер текущей дорожки.
          */
         int getCurTrack() {
@@ -180,7 +186,8 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
         }
 
         /**
-         * Сон на заданное количество миллисекунд с проверкой на прерывание.
+         * Усыпляет на заданное количество миллисекунд с проверкой на прерывание.
+         *
          * @param millis миллисекунды
          */
         private void sleep(long millis) {
@@ -197,6 +204,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
         /**
          * Ожидает данные заданное количество миллисекунд с проверкой на прерывание/готовность данных.
+         *
          * @param millis миллисекунды
          */
         private void waitData(long millis) {
@@ -219,6 +227,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
         /**
          * Выполняет команды "TYPE I" контроллера НГМД.
+         *
          * @param steps заданное количество шагов головки дисковода
          */
         private void emuCmdType1(int steps) {
@@ -289,6 +298,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
         /**
          * Проверяет корректность дорожки, сектора и стороны.
+         *
          * @return возвращает true, если обнаружены проблемы.
          */
         private boolean checkTrackSectorSide() {
@@ -304,6 +314,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
         /**
          * Получает позицию в файле-образе диска.
+         *
          * @return позиция.
          */
         private long getPos() {
@@ -539,6 +550,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Конструктор.
+     *
      * @param gen ссылка на объект класса ClockGenerator - "Тактовый генератор"
      * @param cpu ссылка на объект класса ProcessorI8080 - "Процессор Intel C8080A (К580ВМ80А)"
      */
@@ -737,6 +749,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
     /**
      * Получает значение определенного флага из регистра статуса контроллера НГМД.
+     *
      * @param flag флаг (маска)
      * @return значение флага
      */
@@ -746,7 +759,8 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
     /**
      * Устанавливает значение определенного флага регистра статуса контроллера НГМД.
-     * @param flag флаг (маска)
+     *
+     * @param flag  флаг (маска)
      * @param value значение флага
      */
     private void setStatusFlag(int flag, boolean value) {
@@ -760,6 +774,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
     /**
      * Прерывает выполнение команды контроллера НГМД.
+     *
      * @param wait true = ожидать завершения прерывания в течении 1 секунды
      */
     private void interrupt(boolean wait) {
@@ -787,6 +802,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
     /**
      * Возвращает номер (boolean) текущего дисковода.
+     *
      * @return false = "A" / true = "B"
      */
     private boolean isCurFDD() {
@@ -795,6 +811,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
     /**
      * Извлекает диск из заданного дисковода.
+     *
      * @param fdd false = "A" / true = "B"
      */
     void ejectDisk(boolean fdd) {
@@ -810,7 +827,8 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
     /**
      * Вставляет диск в заданный дисковод.
-     * @param fdd false = "A" / true = "B"
+     *
+     * @param fdd  false = "A" / true = "B"
      * @param file файл с образом диска
      * @throws IOException исключение, возникающее при вставке диска
      */
@@ -827,6 +845,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
     /**
      * Переключает дисковод на заданный.
+     *
      * @param fdd false = "A" / true = "B"
      */
     void switchFDD(boolean fdd) {
@@ -842,6 +861,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
 
     /**
      * Устанавливает строну диска.
+     *
      * @param side false = сторона 0 / true = сторона 1
      */
     void setSide(boolean side) {

@@ -9,10 +9,10 @@ import java.util.Objects;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 /**
  * Класс "Процессор Intel C8080A (К580ВМ80А)".
+ *
  * @author -=AVSh=-
  */
 final class ProcessorI8080 implements IClockedDevice {
@@ -1124,13 +1124,13 @@ final class ProcessorI8080 implements IClockedDevice {
                         // Отменяем режим "Пауза" только для CPU
                         hold(false);
                         // Удаляем StepOver ловушку, если она вызвала отладчик
-                        int page    = fSpMX.getPage();
-                        int address = debugGetValRegPair(DebugRegPair.PC);
+                        final int page    = fSpMX.getPage();
+                        final int address = debugGetValRegPair(DebugRegPair.PC);
                         if (debugIsStepOverTrap(page, address)) {
                                    debugRemTrap(page, address);
                         }
                         // Выводим окно отладчика
-                        DebuggerI8080 debug = new DebuggerI8080(fSpMX);
+                        final DebuggerI8080 debug = new DebuggerI8080(fSpMX);
                         // После окончания работы - убиваем отладчик
                         debug.getContentPane().removeAll();
                         debug.dispose();

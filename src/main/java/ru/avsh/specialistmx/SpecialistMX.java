@@ -15,6 +15,7 @@ import static ru.avsh.specialistmx.ConsStat.*;
 
 /**
  * Класс "Компьютер 'Специалист MX'".
+ *
  * @author -=AVSh=-
  */
 final class SpecialistMX {
@@ -477,56 +478,6 @@ final class SpecialistMX {
     }
 
     /**
-     * Загружает в память OS/BIOS (ROM-файл из ресурсов) эмулятора "Специалист MX".
-     *
-     * @throws IOException исключение
-     */
-    private void loadROM() throws IOException {
-        // Если ROM-файл прописан в ini-файле и он имеется на диске, то загружаем внешний ROM-файл
-        final String romPath = getIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, String.class);
-        if ((romPath != null) && (romPath.length() > 0)) {
-            final File romFile = new File(romPath);
-            if (romFile.exists() && romFile.isFile()) {
-                try {
-                    loadFile(romFile, 0x0000, 0, 0, -1);
-                    // Запоминаем ROM-файл
-                    fCurRomFile = romFile;
-                    return;
-                } catch (IOException e) {
-                    // Если были ошибки загрузки внешнего ROM-файла - загружаем встроенный ROM-файл
-                }
-            }
-        }
-
-        // Иначе загружаем встроенный ROM-файл
-        fCurRomFile = null;
-        final InputStream is = getResourceAsStream(SPMX_ROM_FILE);
-        if (is == null) {
-            throw new IOException("ROM-файл эмулятора не найден в ресурсах программы!");
-        }
-        try (BufferedInputStream bis = new BufferedInputStream(is)) {
-            final int length = bis.available();
-            if (length < 0x10000) {
-                final byte[] buf = new byte[length];
-                if (bis.read(buf, 0, length) < length) {
-                    throw new IOException("Не удалось полностью прочитать ROM-файл эмулятора из ресурсов!");
-                }
-                // Перемещаем данные из буфера в память через менеджер устройств памяти
-                if (isPaused()) {
-                    int address = 0x0000;
-                    for (byte data : buf) {
-                        writeByte(address++, data); // Вызываем синхронизированный метод
-                    }
-                } else {
-                    throw new IOException("Процессор эмулятора не находится в состоянии \"Пауза\" - невозможно загрузить в память ROM-файл эмулятора!");
-                }
-            } else {
-                throw new IOException("Невозможно загрузить в память ROM-файл эмулятора из ресурсов!");
-            }
-        }
-    }
-
-    /**
      * Загружает данные с заданным смещением и длиной из файла в память по заданному адресу.
      *
      * @param file     файл
@@ -606,6 +557,56 @@ final class SpecialistMX {
         } catch (IOException e) {
             exceptionAction.accept(e);
             throw e;
+        }
+    }
+
+    /**
+     * Загружает в память OS/BIOS (ROM-файл из ресурсов) эмулятора "Специалист MX".
+     *
+     * @throws IOException исключение
+     */
+    private void loadROM() throws IOException {
+        // Если ROM-файл прописан в ini-файле и он имеется на диске, то загружаем внешний ROM-файл
+        final String romPath = getIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, String.class);
+        if ((romPath != null) && (romPath.length() > 0)) {
+            final File romFile = new File(romPath);
+            if (romFile.exists() && romFile.isFile()) {
+                try {
+                    loadFile(romFile, 0x0000, 0, 0, -1);
+                    // Запоминаем ROM-файл
+                    fCurRomFile = romFile;
+                    return;
+                } catch (IOException e) {
+                    // Если были ошибки загрузки внешнего ROM-файла - загружаем встроенный ROM-файл
+                }
+            }
+        }
+
+        // Иначе загружаем встроенный ROM-файл
+        fCurRomFile = null;
+        final InputStream is = getResourceAsStream(SPMX_ROM_FILE);
+        if (is == null) {
+            throw new IOException("ROM-файл эмулятора не найден в ресурсах программы!");
+        }
+        try (BufferedInputStream bis = new BufferedInputStream(is)) {
+            final int length = bis.available();
+            if (length < 0x10000) {
+                final byte[] buf = new byte[length];
+                if (bis.read(buf, 0, length) < length) {
+                    throw new IOException("Не удалось полностью прочитать ROM-файл эмулятора из ресурсов!");
+                }
+                // Перемещаем данные из буфера в память через менеджер устройств памяти
+                if (isPaused()) {
+                    int address = 0x0000;
+                    for (byte data : buf) {
+                        writeByte(address++, data); // Вызываем синхронизированный метод
+                    }
+                } else {
+                    throw new IOException("Процессор эмулятора не находится в состоянии \"Пауза\" - невозможно загрузить в память ROM-файл эмулятора!");
+                }
+            } else {
+                throw new IOException("Невозможно загрузить в память ROM-файл эмулятора из ресурсов!");
+            }
         }
     }
 
@@ -990,7 +991,7 @@ final class SpecialistMX {
      * @param endAddress   конечный адрес
      * @return false = сохранение не удалось
      */
-    boolean saveFileRKS(File file, int beginAddress, int endAddress) {
+    boolean saveFileRKS(final File file, int beginAddress, int endAddress) {
         // Проверяем корректность переданных параметров
         if ((file   ==   null) ||
             (beginAddress < 0) || (beginAddress > 0xFFFF) ||
@@ -1000,7 +1001,7 @@ final class SpecialistMX {
         }
         try {
             // Вычисляем размер данных
-            int length = endAddress - beginAddress + 1;
+            final int length = endAddress - beginAddress + 1;
             // Формируем буфер размером на 6 байт больше размера данных (дополнительные байты выделены под данные RKS-файла)
             final byte[] buf = new byte[length + 6];
             // Записываем стартовый и конечный адреса данных
@@ -1011,7 +1012,8 @@ final class SpecialistMX {
             // Перемещаем данные из памяти в буфер через менеджер устройств памяти
             pause(true , true);
             for (int i = 4, j = length + i; i < j; i++) {
-                buf[i] = (byte) debugReadByte(beginAddress++); // Вызываем синхронизированный метод
+                // Вызываем синхронизированный метод
+                buf[i] = (byte) debugReadByte(beginAddress++);
             }
             pause(false, true);
             // Рассчитаем контрольную сумму данных
@@ -1044,7 +1046,7 @@ final class SpecialistMX {
                     // Отменяем режим "Пауза" только для CPU
                     fCPU.hold(false);
                     // Выводим окно отладчика
-                    DebuggerI8080 debug = new DebuggerI8080(this);
+                    final DebuggerI8080 debug = new DebuggerI8080(this);
                     // После окончания работы - убиваем отладчик
                     debug.getContentPane().removeAll();
                     debug.dispose();
@@ -1061,6 +1063,7 @@ final class SpecialistMX {
 
     /**
      * Возвращает название эмулятора и номер его версии.
+     *
      * @return название эмулятора и номер его версии
      */
     String getProductName() {
@@ -1069,6 +1072,7 @@ final class SpecialistMX {
 
     /**
      * Возвращает имя текущего MON-файла.
+     *
      * @return имя текущего MON-файла
      */
     String getCurMonName() {
@@ -1077,6 +1081,7 @@ final class SpecialistMX {
 
     /**
      * Возвращает текущий ROM-файл.
+     *
      * @return текущий ROM-файл (если = null, то используется встроенный ROM-файл).
      */
     File getCurRomFile() {

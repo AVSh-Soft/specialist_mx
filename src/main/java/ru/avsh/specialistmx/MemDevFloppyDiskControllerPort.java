@@ -6,6 +6,7 @@ import java.util.Objects;
 
 /**
  * Устройство памяти "Дополнительные порты контроллера НГМД"
+ *
  * @author -=AVSh=-
  */
 final class MemDevFloppyDiskControllerPort implements IMemoryDevice {
@@ -15,6 +16,7 @@ final class MemDevFloppyDiskControllerPort implements IMemoryDevice {
 
     /**
      * Конструктор.
+     *
      * @param fdc ссылка на объект класса MemDevFloppyDiskController - "Контроллер НГМД КР1818ВГ93 (FD1793-02)"
      */
     MemDevFloppyDiskControllerPort(@NotNull MemDevFloppyDiskController fdc) {

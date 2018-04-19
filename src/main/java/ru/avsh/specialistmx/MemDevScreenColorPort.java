@@ -6,6 +6,7 @@ import java.util.Objects;
 
 /**
  * Устройство памяти "Порт для установки цвета фона/изображения на экране 'Специалиста MX'".
+ *
  * @author -=AVSh=-
  */
 final class MemDevScreenColorPort implements IMemoryDevice {
@@ -16,6 +17,7 @@ final class MemDevScreenColorPort implements IMemoryDevice {
 
     /**
      * Конструктор.
+     *
      * @param screen ссылка на объект класса MemDevScreen - "Экран 'Специалиста MX'"
      */
     MemDevScreenColorPort(@NotNull MemDevScreen screen) {
