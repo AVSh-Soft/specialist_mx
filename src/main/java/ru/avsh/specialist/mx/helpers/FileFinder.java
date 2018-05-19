@@ -1,4 +1,4 @@
-package ru.avsh.lib;
+package ru.avsh.specialist.mx.helpers;
 
 import java.io.File;
 import java.util.ArrayList;

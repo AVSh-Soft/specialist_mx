@@ -1,4 +1,4 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -9,7 +9,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-final class MemDevScreenColorPort implements IMemoryDevice {
+public final class MemDevScreenColorPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 1;
 
     private int fCurrentColor;
@@ -20,7 +20,7 @@ final class MemDevScreenColorPort implements IMemoryDevice {
      *
      * @param screen ссылка на объект класса MemDevScreen - "Экран 'Специалиста MX'"
      */
-    MemDevScreenColorPort(@NotNull MemDevScreen screen) {
+    public MemDevScreenColorPort(@NotNull MemDevScreen screen) {
         fScreen       = screen;
         fCurrentColor = MemDevScreen.DEFAULT_COLOR;
     }

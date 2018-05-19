@@ -1,4 +1,4 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -8,7 +8,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-final class MemDevSimpleMemory implements IMemoryDevice {
+public final class MemDevSimpleMemory implements IMemoryDevice {
     private final int fLength;
     private final byte[] fRAM;
 
@@ -17,7 +17,7 @@ final class MemDevSimpleMemory implements IMemoryDevice {
      *
      * @param length длина
      */
-    MemDevSimpleMemory(int length) {
+    public MemDevSimpleMemory(int length) {
         fLength = length;
            fRAM = new byte[length];
     }

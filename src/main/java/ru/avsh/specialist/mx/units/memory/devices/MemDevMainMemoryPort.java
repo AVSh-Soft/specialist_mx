@@ -1,4 +1,4 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -9,7 +9,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-final class MemDevMainMemoryPort implements IMemoryDevice {
+public final class MemDevMainMemoryPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 3;
 
     private final MemDevMainMemory fRAM;
@@ -19,7 +19,7 @@ final class MemDevMainMemoryPort implements IMemoryDevice {
      *
      * @param ram ссылка на объект класса MemDevMainMemory - "Оперативная память 'Специалист MX'"
      */
-    MemDevMainMemoryPort(@NotNull MemDevMainMemory ram) {
+    public MemDevMainMemoryPort(@NotNull MemDevMainMemory ram) {
         fRAM = ram;
     }
 

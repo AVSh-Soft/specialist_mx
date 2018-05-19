@@ -1,11 +1,11 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
 
 /**
  * Интерфейс "Устройство памяти".
  *
  * @author -=AVSh=-
  */
-interface IMemoryDevice {
+public interface IMemoryDevice {
     /**
      * Возвращает длину устройства памяти в байтах.
      *

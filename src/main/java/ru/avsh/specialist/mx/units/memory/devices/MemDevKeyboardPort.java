@@ -1,4 +1,6 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
+
+import ru.avsh.specialist.mx.units.Speaker;
 
 import java.awt.event.KeyEvent;
 import java.util.List;
@@ -10,7 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * @author -=AVSh=-
  */
-final class MemDevKeyboardPort implements IMemoryDevice {
+public final class MemDevKeyboardPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     /*
@@ -111,7 +113,7 @@ final class MemDevKeyboardPort implements IMemoryDevice {
      *
      * @param speaker ссылка на объект класса Speaker - "Speaker (динамик)"
      */
-    MemDevKeyboardPort(Speaker speaker) {
+    public MemDevKeyboardPort(Speaker speaker) {
         fPR = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
         fSpeaker = speaker;
         fKeyBuffer = new CopyOnWriteArrayList<>();
@@ -296,7 +298,7 @@ final class MemDevKeyboardPort implements IMemoryDevice {
     /**
      * Устанавливает режим работы порта по умолчанию.
      */
-    synchronized void setDefaultMode() {
+    public  synchronized void setDefaultMode() {
         fPR = 0b1000_0010; // порт А - вывод, порт B - ввод, порт С3-С0 - вывод
     }
 
@@ -305,7 +307,7 @@ final class MemDevKeyboardPort implements IMemoryDevice {
      *
      * @return false = "Специалист MX" / true = стандартный "Специалист"
      */
-    boolean isKeyboardMode() {
+    public boolean isKeyboardMode() {
         return fKeyboardMode;
     }
 
@@ -314,14 +316,14 @@ final class MemDevKeyboardPort implements IMemoryDevice {
      *
      * @param keyboardMode false = "Специалист MX" / true = стандартный "Специалист"
      */
-    void setKeyboardMode(boolean keyboardMode) {
+    public void setKeyboardMode(boolean keyboardMode) {
         fKeyboardMode = keyboardMode;
     }
 
     /**
      * Очищает клавиатурный буфер.
      */
-    void clearKeyBuffer() {
+    public void clearKeyBuffer() {
         if (!fKeyBuffer.isEmpty()) {
              fKeyBuffer.clear();
         }
@@ -333,7 +335,7 @@ final class MemDevKeyboardPort implements IMemoryDevice {
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
      * @param keyCode        код клавиши
      */
-    void keyCodeReceiver(boolean flagKeyPressed, int keyCode) {
+    public void keyCodeReceiver(boolean flagKeyPressed, int keyCode) {
         if (keyCode <= 0xFF) {
             if (keyCode == KeyEvent.VK_SHIFT) {
                 fShiftKey = flagKeyPressed;

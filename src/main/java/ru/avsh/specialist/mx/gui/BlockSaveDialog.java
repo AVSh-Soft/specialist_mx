@@ -1,6 +1,7 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.gui;
 
-import ru.avsh.lib.JFormattedTextFieldExt;
+import ru.avsh.specialist.mx.gui.lib.JFormattedTextFieldExt;
+import ru.avsh.specialist.mx.helpers.Constants;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -17,7 +18,6 @@ import java.nio.file.Paths;
 
 import static javax.swing.JOptionPane.ERROR_MESSAGE;
 import static javax.swing.JOptionPane.showMessageDialog;
-import static ru.avsh.specialistmx.ConsStat.STR_ERROR;
 
 /**
  * Класс "Диалог сохранения блока".
@@ -194,16 +194,16 @@ final class BlockSaveDialog extends JDialog {
             final JFileChooser chooser = new JFileChooser();
             chooser.setDialogTitle("Сохранить файл");
             if (fileName.isEmpty()) {
-                chooser.setCurrentDirectory(new File(ConsStat.getCurPath()));
+                chooser.setCurrentDirectory(new File(Constants.getCurPath()));
             } else if (fileName.matches("^[^:/\\\\]+$")) {
-                chooser.setCurrentDirectory(new File(ConsStat.getCurPath()));
+                chooser.setCurrentDirectory(new File(Constants.getCurPath()));
                 chooser.setSelectedFile(new File(fileName));
             } else {
                 file = new File(fileName);
                 if (Paths.get(file.getParent()).toFile().exists()) {
                     chooser.setSelectedFile(file);
                 } else {
-                    chooser.setCurrentDirectory(new File(ConsStat.getCurPath()));
+                    chooser.setCurrentDirectory(new File(Constants.getCurPath()));
                     chooser.setSelectedFile(new File(file.getName()));
                 }
             }
@@ -218,7 +218,7 @@ final class BlockSaveDialog extends JDialog {
                     fileName = fileName.concat(".").concat(fileType);
                 }
                 fileNameTextField.setText(fileName);
-                ConsStat.setCurPath(file.getParent());
+                Constants.setCurPath(file.getParent());
             }
         });
 
@@ -262,19 +262,19 @@ final class BlockSaveDialog extends JDialog {
         okButton.addActionListener(actionEvent -> {
             String s = fileNameTextField.getText().trim();
             if (s.isEmpty()) {
-                showMessageDialog(this, "Не задано имя файла для сохранения", STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this, "Не задано имя файла для сохранения", Constants.STR_ERROR, ERROR_MESSAGE);
                 fileNameTextField.requestFocusInWindow();
                 return;
             }
 
             if (s.matches("^[^:/\\\\]+$")) {
-                s = ConsStat.getCurPath().concat(File.separator).concat(s);
+                s = Constants.getCurPath().concat(File.separator).concat(s);
             }
             fFile = new File(s);
 
             s = fFile.getParent();
             if (!Paths.get(s).toFile().exists()) {
-                showMessageDialog(this, String.format("Не найден путь: \"%s\" для сохранения файла: \"%s\"", s, fFile.getName()), STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this, String.format("Не найден путь: \"%s\" для сохранения файла: \"%s\"", s, fFile.getName()), Constants.STR_ERROR, ERROR_MESSAGE);
                 fileNameTextField.requestFocusInWindow();
                 return;
             }
@@ -293,13 +293,13 @@ final class BlockSaveDialog extends JDialog {
                 s = (String) curTextField.getValue();
                 fStartAddress = Integer.parseInt(s, 16);
             } catch (NumberFormatException ex) {
-                showMessageDialog(this, String.format("Ошибка задания адреса: [%s]%n%s", s, ex.toString()), STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this, String.format("Ошибка задания адреса: [%s]%n%s", s, ex.toString()), Constants.STR_ERROR, ERROR_MESSAGE);
                 curTextField.requestFocusInWindow();
                 return;
             }
 
             if (fBeginAddress > fEndAddress) {
-                showMessageDialog(this, String.format("Начальный адрес: [%04X] больше конечного: [%04X]", fBeginAddress, fEndAddress), STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this, String.format("Начальный адрес: [%04X] больше конечного: [%04X]", fBeginAddress, fEndAddress), Constants.STR_ERROR, ERROR_MESSAGE);
                 beginAddressTextField.requestFocusInWindow();
                 return;
             }

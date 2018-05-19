@@ -1,4 +1,4 @@
-package ru.avsh.lib;
+package ru.avsh.specialist.mx.gui.lib;
 
 import javax.swing.*;
 import javax.swing.text.DefaultFormatterFactory;

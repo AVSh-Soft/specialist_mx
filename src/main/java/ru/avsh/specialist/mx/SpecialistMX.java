@@ -1,7 +1,13 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx;
 
 import org.ini4j.Wini;
-import ru.avsh.lib.FileFinder;
+import ru.avsh.specialist.mx.helpers.FileFinder;
+import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
+import ru.avsh.specialist.mx.units.ProcessorI8080;
+import ru.avsh.specialist.mx.units.Speaker;
+import ru.avsh.specialist.mx.units.memory.*;
+import ru.avsh.specialist.mx.gui.DebuggerI8080;
+import ru.avsh.specialist.mx.units.memory.devices.*;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
@@ -11,19 +17,19 @@ import java.util.Properties;
 import java.util.function.Consumer;
 
 import static javax.swing.JOptionPane.*;
-import static ru.avsh.specialistmx.ConsStat.*;
+import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
  * Класс "Компьютер 'Специалист MX'".
  *
  * @author -=AVSh=-
  */
-final class SpecialistMX {
+public final class SpecialistMX {
     private final String fProductName;
 
     private final MemDevScreen fScr;
     private final ProcessorI8080 fCPU;
-    private final ClockGenerator fGen;
+    private final ClockSpeedGenerator fGen;
     private final MemDevMainMemory fRAM;
     private final MemDevKeyboardPort fKey;
     private final MemoryDevicesManager fMemDevMng;
@@ -59,7 +65,7 @@ final class SpecialistMX {
         fProductName = readProductName();
 
         // Создаем тактовый генератор
-        fGen = new ClockGenerator();
+        fGen = new ClockSpeedGenerator();
         // Создаем диспетчер устройств памяти
         fMemDevMng = new MemoryDevicesManager();
         // Создаем CPU
@@ -79,7 +85,7 @@ final class SpecialistMX {
         final MemDevTimer                    timer   = new MemDevTimer                   (fSpc );
         final MemDevSimpleMemory             excRAM  = new MemDevSimpleMemory            (0x20 );
         final MemDevProgrammerPort           prgPort = new MemDevProgrammerPort          (timer);
-        final MemDevMainMemoryPort           ramPort = new MemDevMainMemoryPort          (fRAM );
+        final MemDevMainMemoryPort ramPort = new MemDevMainMemoryPort          (fRAM );
         final MemDevScreenColorPort          colPort = new MemDevScreenColorPort         (fScr );
         final MemDevFloppyDiskControllerPort fdcPort = new MemDevFloppyDiskControllerPort(fFDC );
 
@@ -160,7 +166,7 @@ final class SpecialistMX {
      *
      * @return ссылка на главный фрейм
      */
-    JFrame getMainFrame() {
+    public JFrame getMainFrame() {
         return fMainFrame;
     }
 
@@ -169,7 +175,7 @@ final class SpecialistMX {
      *
      * @return ссылка на тактовый генератор
      */
-    ClockGenerator getGen() {
+    public ClockSpeedGenerator getGen() {
         return fGen;
     }
 
@@ -178,7 +184,7 @@ final class SpecialistMX {
      *
      * @return ссылка на диспетчер устройств памяти
      */
-    MemoryDevicesManager getMemDevMng() {
+    public MemoryDevicesManager getMemDevMng() {
         return fMemDevMng;
     }
 
@@ -187,7 +193,7 @@ final class SpecialistMX {
      *
      * @return ссылка на CPU
      */
-    ProcessorI8080 getCPU() {
+    public ProcessorI8080 getCPU() {
         return fCPU;
     }
 
@@ -196,7 +202,7 @@ final class SpecialistMX {
      *
      * @return ссылка на память
      */
-    MemDevMainMemory getRAM() {
+    public MemDevMainMemory getRAM() {
         return fRAM;
     }
 
@@ -205,7 +211,7 @@ final class SpecialistMX {
      *
      * @return ссылка на экран
      */
-    MemDevScreen getScreen() {
+    public MemDevScreen getScreen() {
         return fScr;
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -215,7 +221,7 @@ final class SpecialistMX {
      *
      * @return - true = CPU приостановлен
      */
-    boolean isPaused() {
+    public boolean isPaused() {
         return fGen.isPaused();
     }
 
@@ -225,7 +231,7 @@ final class SpecialistMX {
      * @param mode true/false = установить/снять режим "Пауза"
      * @param dev  true = устанавливать/снимать режим "Пауза" и для устройств памяти
      */
-    void pause(final boolean mode, final boolean dev) {
+    public void pause(final boolean mode, final boolean dev) {
         fGen.pause(mode, dev);
     }
 
@@ -234,7 +240,7 @@ final class SpecialistMX {
      *
      * @return номер страницы
      */
-    int getPage() {
+    public int getPage() {
         return fRAM.getPage();
     }
 
@@ -243,7 +249,7 @@ final class SpecialistMX {
      *
      * @param pageNumber от 0-8 - страницы RAM, 9 или больше - страница ROM
      */
-    void setPage(final int pageNumber) {
+    public void setPage(final int pageNumber) {
         fRAM.setPage(pageNumber);
     }
 
@@ -255,7 +261,7 @@ final class SpecialistMX {
      * @param address заданный адрес
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
-    int readByte(final int address) {
+    public int readByte(final int address) {
         return fMemDevMng.readByte(address);
     }
 
@@ -268,7 +274,7 @@ final class SpecialistMX {
      * @param address заданный адрес
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
-    int debugReadByte(final int address) {
+    public int debugReadByte(final int address) {
         return fMemDevMng.debugReadByte(address);
     }
 
@@ -278,7 +284,7 @@ final class SpecialistMX {
      * @param address заданный адрес
      * @param value   записываемый байт (байт представлен как int)
      */
-    void writeByte(final int address, final int value) {
+    public void writeByte(final int address, final int value) {
         fMemDevMng.writeByte(address, value);
     }
 
@@ -289,7 +295,7 @@ final class SpecialistMX {
      * @param file файл с образом диска
      * @throws IOException исключение, возникающее при вставке диска
      */
-    void insertDisk(final boolean fdd, final File file) throws IOException {
+    public void insertDisk(final boolean fdd, final File file) throws IOException {
         fFDC.insertDisk(fdd, file);
     }
 
@@ -298,7 +304,7 @@ final class SpecialistMX {
      *
      * @param fdd false = "A" / true = "B"
      */
-    void ejectDisk(final boolean fdd) {
+    public void ejectDisk(final boolean fdd) {
         fFDC.ejectDisk(fdd);
     }
 
@@ -307,7 +313,7 @@ final class SpecialistMX {
      *
      * @return false = "Специалист MX" / true = стандартный "Специалист"
      */
-    boolean isKeyboardMode() {
+    public boolean isKeyboardMode() {
         return fKey.isKeyboardMode();
     }
 
@@ -316,14 +322,14 @@ final class SpecialistMX {
      *
      * @param keyboardMode false = "Специалист MX" / true = стандартный "Специалист"
      */
-    void setKeyboardMode(final boolean keyboardMode) {
+    public void setKeyboardMode(final boolean keyboardMode) {
         fKey.setKeyboardMode(keyboardMode);
     }
 
     /**
      * Очищает клавиатурный буфер.
      */
-    void clearKeyBuffer() {
+    public void clearKeyBuffer() {
         fKey.clearKeyBuffer();
     }
 
@@ -333,7 +339,7 @@ final class SpecialistMX {
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
      * @param keyCode        код клавиши
      */
-    void keyCodeReceiver(final boolean flagKeyPressed, final int keyCode) {
+    public void keyCodeReceiver(final boolean flagKeyPressed, final int keyCode) {
         fKey.keyCodeReceiver(flagKeyPressed, keyCode);
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -347,7 +353,7 @@ final class SpecialistMX {
      * @param <T>         тип
      * @return полученное значение
      */
-    <T> T getIni(final Object sectionName, final Object optionName, final Class<T> clazz) {
+    public <T> T getIni(final Object sectionName, final Object optionName, final Class<T> clazz) {
         if (fIni != null) {
             return fIni.get(sectionName, optionName, clazz);
         }
@@ -361,7 +367,7 @@ final class SpecialistMX {
      * @param optionName  имя опции
      * @param value       значение
      */
-    void putIni(final String sectionName, final String optionName, final Object value) {
+    public void putIni(final String sectionName, final String optionName, final Object value) {
         if (fIni != null) {
             fIni.put(sectionName, optionName, value);
         }
@@ -370,7 +376,7 @@ final class SpecialistMX {
     /**
      * Сохраняет ini-файл на диск.
      */
-    void storeIni() {
+    public void storeIni() {
         try {
             fIni.store();
         } catch (IOException e) {
@@ -384,7 +390,7 @@ final class SpecialistMX {
      * @param file файл
      * @return путь
      */
-    String getShortPath(final File file) {
+    public String getShortPath(final File file) {
         final String p0 = file.getPath();
         final String p1 = APP_PATH.relativize(file.toPath()).toString();
         return (p0.length() < p1.length()) ? p0 : p1;
@@ -617,7 +623,7 @@ final class SpecialistMX {
      * @param clear       true = выполняется очистка памяти (перекрывается параметром clearDialog)
      * @return false = перезапуск не удался
      */
-    boolean restart(boolean clearDialog, boolean clear) {
+    public boolean restart(boolean clearDialog, boolean clear) {
         try {
             if (clearDialog) {
                 final Object[] options = {"Да", "Нет"};
@@ -637,7 +643,7 @@ final class SpecialistMX {
             /* Пока не используем!
             if (fInOutDevMng != null) {
                 fInOutDevMng.resetMemoryDevices(clear);
-            }*/
+            } */
             // Очищаем все ловушки, если выбрана полная очистка
             if (clear) {
                 fCPU.debugClearTraps();
@@ -663,7 +669,7 @@ final class SpecialistMX {
      * @param file ROM-файл
      * @return false = загрузка не удалась
      */
-    boolean loadFileROM(final File file) {
+    public boolean loadFileROM(final File file) {
         // Получаем имя ROM-файла
         final String fileName = file.getName();
         try {
@@ -693,7 +699,7 @@ final class SpecialistMX {
      * @param file MON-файл
      * @return false = загрузка не удалась
      */
-    boolean loadFileMON(final File file) {
+    public boolean loadFileMON(final File file) {
         // Получаем имя MON-файла
         final String fileName = file.getName();
         // Проверяем длину имени MON-файла
@@ -793,7 +799,7 @@ final class SpecialistMX {
      * @param file CPU-файл
      * @return false = загрузка не удалась
      */
-    boolean loadFileCPU(final File file) {
+    public boolean loadFileCPU(final File file) {
         try {
             int  loadAdr = 0;
             int startAdr = 0;
@@ -849,7 +855,7 @@ final class SpecialistMX {
                                     // Приостановим GUI на 0.5 секунды для инициализации BIOSа/монитора
                                     sleep(500L);
                                     // Устанавливаем тактовую частоту по умолчанию
-                                    fGen.setClockSpeed(ClockGenerator.CLOCK_SPEED);
+                                    fGen.setClockSpeed(ClockSpeedGenerator.CLOCK_SPEED);
                                 } else {
                                     // Были ошибки при загрузке BIOSа/монитора
                                     return false;
@@ -880,7 +886,7 @@ final class SpecialistMX {
      * @param file RKS-файл
      * @return false = загрузка не удалась
      */
-    boolean loadFileRKS(final File file) {
+    public boolean loadFileRKS(final File file) {
         final String fileName = "\"".concat(file.getName()).concat("\"");
         try {
             final int begAdr;
@@ -941,7 +947,7 @@ final class SpecialistMX {
      * @param startAddress стартовый адрес
      * @return false = сохранение не удалось
      */
-    boolean saveFileCPU(File file, int beginAddress, int endAddress, int startAddress) {
+    public boolean saveFileCPU(File file, int beginAddress, int endAddress, int startAddress) {
         // Проверяем корректность переданных параметров
         if ((file   ==   null) ||
             (beginAddress < 0) || (beginAddress > 0xFFFF) ||
@@ -991,7 +997,7 @@ final class SpecialistMX {
      * @param endAddress   конечный адрес
      * @return false = сохранение не удалось
      */
-    boolean saveFileRKS(final File file, int beginAddress, int endAddress) {
+    public boolean saveFileRKS(final File file, int beginAddress, int endAddress) {
         // Проверяем корректность переданных параметров
         if ((file   ==   null) ||
             (beginAddress < 0) || (beginAddress > 0xFFFF) ||
@@ -1034,7 +1040,7 @@ final class SpecialistMX {
     /**
      * Запускает отладчик.
      */
-    void startDebugger() {
+    public void startDebugger() {
         if (!fDebugRun) {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
              fDebugRun = true;
@@ -1066,7 +1072,7 @@ final class SpecialistMX {
      *
      * @return название эмулятора и номер его версии
      */
-    String getProductName() {
+    public String getProductName() {
         return fProductName;
     }
 
@@ -1075,7 +1081,7 @@ final class SpecialistMX {
      *
      * @return имя текущего MON-файла
      */
-    String getCurMonName() {
+    public String getCurMonName() {
         return fCurMonName;
     }
 
@@ -1084,7 +1090,7 @@ final class SpecialistMX {
      *
      * @return текущий ROM-файл (если = null, то используется встроенный ROM-файл).
      */
-    File getCurRomFile() {
+    public File getCurRomFile() {
         return fCurRomFile;
     }
 }

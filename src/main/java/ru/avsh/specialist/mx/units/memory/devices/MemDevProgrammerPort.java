@@ -1,4 +1,4 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -9,7 +9,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-final class MemDevProgrammerPort implements IMemoryDevice {
+public final class MemDevProgrammerPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     private int fPA;
@@ -23,7 +23,7 @@ final class MemDevProgrammerPort implements IMemoryDevice {
      *
      * @param timer ссылка на объект MemDevTimer - "Программируемый таймер КР580ВИ53 (i8253)"
      */
-    MemDevProgrammerPort(@NotNull MemDevTimer timer) {
+    public MemDevProgrammerPort(@NotNull MemDevTimer timer) {
         fTimer = timer;
         fPR    = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
     }

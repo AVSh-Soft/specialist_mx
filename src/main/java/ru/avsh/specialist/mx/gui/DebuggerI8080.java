@@ -1,8 +1,13 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.gui;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.lib.JFormattedTextFieldExt;
-import ru.avsh.specialistmx.ProcessorI8080.DebugRegPair;
+import ru.avsh.specialist.mx.SpecialistMX;
+import ru.avsh.specialist.mx.gui.lib.JFormattedTextFieldExt;
+import ru.avsh.specialist.mx.units.ProcessorI8080;
+import ru.avsh.specialist.mx.units.ProcessorI8080.DebugRegPair;
+import ru.avsh.specialist.mx.units.memory.devices.MemDevMainMemory;
+import ru.avsh.specialist.mx.helpers.Constants;
+import ru.avsh.specialist.mx.helpers.Trap;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -23,15 +28,13 @@ import java.util.function.Function;
 
 import static javax.swing.JOptionPane.*;
 import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharAt;
-import static ru.avsh.specialistmx.ConsStat.NUMBER_PAGES_RAMDISK;
-import static ru.avsh.specialistmx.ConsStat.STR_ERROR;
 
 /**
  * Класс "Отладчик для процессора i8080 (К580ВМ80А)".
  *
  * @author -=AVSh=-
  */
-final class DebuggerI8080 extends JDialog {
+public final class DebuggerI8080 extends JDialog {
     private static final long serialVersionUID = -4782408965788448666L;
 
     private static final String INI_OPTION_FRAME_WIDTH  = "DebugFrameWidth" ;
@@ -252,7 +255,7 @@ final class DebuggerI8080 extends JDialog {
      *
      * @param spMX ссылка на главный класс эмулятора.
      */
-    DebuggerI8080(@NotNull SpecialistMX spMX) {
+    public DebuggerI8080(@NotNull SpecialistMX spMX) {
         super(spMX.getMainFrame(), true);
 
         // Запоминаем ссылку на главный класс эмулятора
@@ -838,8 +841,8 @@ final class DebuggerI8080 extends JDialog {
                 // Запоминаем положение окна отладчика
                 setPrevLocation(getLocation());
                 // Запоминаем размеры фрейма в ini-файл
-                fSpMX.putIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
-                fSpMX.putIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
+                fSpMX.putIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
+                fSpMX.putIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
             }
         });
 
@@ -850,8 +853,8 @@ final class DebuggerI8080 extends JDialog {
 
         // Восстанавливаем размеры фрейма из ini-файла
         {
-            final Integer width  = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
-            final Integer height = fSpMX.getIni(ConsStat.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
+            final Integer width  = fSpMX.getIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
+            final Integer height = fSpMX.getIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
             if ((width != null) && (height != null)) {
                 setSize(width, height);
             }
@@ -1242,7 +1245,7 @@ final class DebuggerI8080 extends JDialog {
          * @return количество страниц памяти
          */
         int getNumPages() {
-            return NUMBER_PAGES_RAMDISK + 2; // Основная память и ROM-диск не учтены в параметре NUMBER_PAGES_RAMDISK
+            return Constants.NUMBER_PAGES_RAMDISK + 2; // Основная память и ROM-диск не учтены в параметре NUMBER_PAGES_RAMDISK
         }
 
         /**
@@ -1614,7 +1617,7 @@ final class DebuggerI8080 extends JDialog {
                     try {
                         fLayer.writeByte(page,rowIndex + columnIndex - DA_COL_BT0, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
+                        showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 case DA_COL_CMD:
@@ -2004,7 +2007,7 @@ final class DebuggerI8080 extends JDialog {
                             fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
                         }
                     } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
+                        showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 default:
@@ -2201,7 +2204,7 @@ final class DebuggerI8080 extends JDialog {
                     fLayer.writeByte(page, address, value & 0xFF);
                     fLayer.writeByte(page, address + 1, value >> 8);
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                 } finally {
                     if (fLayer.isEventsDisabled()) {
                         fLayer.enableEvents();
@@ -2865,7 +2868,7 @@ final class DebuggerI8080 extends JDialog {
                     try {
                         fLayer.writeByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
+                        showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 case MD_COL_STR: {
@@ -3178,7 +3181,7 @@ final class DebuggerI8080 extends JDialog {
                 try {
                     result = Integer.parseInt((String) (type ? fDataAddress.getValue() : fCodeAddress.getValue()), 16);
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerI8080.this, e.toString(), STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                 }
                 return result;
             }
@@ -3348,7 +3351,7 @@ final class DebuggerI8080 extends JDialog {
                         String strBytes = fBytes.getText().trim();
                         if (!( strBytes.equals("") || strBytes.matches(REGEXP_STRING_BYTES))) {
                             showMessageDialog(DebuggerI8080.this,
-                                    String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes), STR_ERROR, ERROR_MESSAGE);
+                                    String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes), Constants.STR_ERROR, ERROR_MESSAGE);
                         }
                     }
                 });

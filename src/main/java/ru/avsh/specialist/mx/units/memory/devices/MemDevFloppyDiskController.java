@@ -1,6 +1,8 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
 
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
+import ru.avsh.specialist.mx.units.ProcessorI8080;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,12 +16,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-final class MemDevFloppyDiskController implements IMemoryDevice {
+public final class MemDevFloppyDiskController implements IMemoryDevice {
     private static final String THREAD_NAME          = "FloppyDiskController"; // Имя потока
     private static final int    MEMORY_DEVICE_LENGTH = 4;
 
     // Константа для корректного взаимодействия с CPU
-    private static final long CPU_WAIT_TIME = Math.round(ClockGenerator.TIME_OF_PULSE / 1_000_000.0);
+    private static final long CPU_WAIT_TIME = Math.round(ClockSpeedGenerator.TIME_OF_PULSE / 1_000_000.0);
 
     // Константы для формирования индексного импульса
     private static final long REVOLUTION_TIME    = 400_000L; // Время одного оборота диска = 200мс (400_000 тактов) или 300об/мин
@@ -56,7 +58,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
     // Переменные
     private final ProcessorI8080 fCPU;
     private final Object fMutex;
-    private final ClockGenerator  fGen;
+    private final ClockSpeedGenerator fGen;
     private final FloppyDiskDrive fDriveA;
     private final FloppyDiskDrive fDriveB;
 
@@ -551,10 +553,10 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
     /**
      * Конструктор.
      *
-     * @param gen ссылка на объект класса ClockGenerator - "Тактовый генератор"
+     * @param gen ссылка на объект класса ClockSpeedGenerator - "Тактовый генератор"
      * @param cpu ссылка на объект класса ProcessorI8080 - "Процессор Intel C8080A (К580ВМ80А)"
      */
-    MemDevFloppyDiskController(@NotNull ClockGenerator gen, ProcessorI8080 cpu) {
+    public MemDevFloppyDiskController(@NotNull ClockSpeedGenerator gen, ProcessorI8080 cpu) {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Устанавливаем ссылку на CPU
@@ -814,7 +816,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
      *
      * @param fdd false = "A" / true = "B"
      */
-    void ejectDisk(boolean fdd) {
+    public void ejectDisk(boolean fdd) {
         if (fdd == isCurFDD()) {
             interrupt(true);
         }
@@ -832,7 +834,7 @@ final class MemDevFloppyDiskController implements IMemoryDevice {
      * @param file файл с образом диска
      * @throws IOException исключение, возникающее при вставке диска
      */
-    void insertDisk(boolean fdd, File file) throws IOException {
+    public void insertDisk(boolean fdd, File file) throws IOException {
         if (fdd == isCurFDD()) {
             interrupt(true);
         }

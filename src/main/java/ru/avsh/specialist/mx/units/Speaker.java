@@ -1,4 +1,4 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -14,27 +14,27 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-final class Speaker {
+public final class Speaker {
     // Константы для разбивки на сэмплы
     private static final float SAMPLE_RATE            = 44100F;
-    private static final float CYCLES_PER_SAMPLE      = ClockGenerator.CLOCK_SPEED / SAMPLE_RATE;
+    private static final float CYCLES_PER_SAMPLE      = ClockSpeedGenerator.CLOCK_SPEED / SAMPLE_RATE;
     private static final float HALF_CYCLES_PER_SAMPLE =          CYCLES_PER_SAMPLE /  2;
     // Константы для отбора полупериодов
-    private static final int   BEG_HALF_CYCLE         = ClockGenerator.CLOCK_SPEED / 40; // Стартовая максимальная длина полупериода (частота от 20Гц)
-    private static final int   MAX_HALF_CYCLE         = ClockGenerator.CLOCK_SPEED /  4; // Максимальная длина полупериода для воспроизведения пауз без искажений (от 2Гц)
+    private static final int   BEG_HALF_CYCLE         = ClockSpeedGenerator.CLOCK_SPEED / 40; // Стартовая максимальная длина полупериода (частота от 20Гц)
+    private static final int   MAX_HALF_CYCLE         = ClockSpeedGenerator.CLOCK_SPEED /  4; // Максимальная длина полупериода для воспроизведения пауз без искажений (от 2Гц)
     // Константы для задания времени наполнения буфера
     private static final int   BUF_TIME               = 100; // В миллисекундах
     private static final int   BUF_SAMPLES_TIME       =     Math.round(SAMPLE_RATE * BUF_TIME / 1000); // В семплах
-    private static final long  BUF_CYCLES_TIME        = ClockGenerator.CLOCK_SPEED * BUF_TIME / 1000 ; // В тактах
+    private static final long  BUF_CYCLES_TIME        = ClockSpeedGenerator.CLOCK_SPEED * BUF_TIME / 1000 ; // В тактах
     // Прочие константы
     private static final float SAMPLES_PER_MS         = SAMPLE_RATE / 1000;
     private static final int   SAMPLES_PER_2MS        = Math.round(2 * SAMPLES_PER_MS) ;
     private static final float AUDIO_LEVEL_FACTOR     = 128 / HALF_CYCLES_PER_SAMPLE * 0.25F; // Уровень громкости 25%
-    private static final int   CPU_PULSE_TIME         = Math.round(ClockGenerator.TIME_OF_PULSE / 1_000_000F) * ClockGenerator.CLOCK_SPEED / 1000;
+    private static final int   CPU_PULSE_TIME         = Math.round(ClockSpeedGenerator.TIME_OF_PULSE / 1_000_000F) * ClockSpeedGenerator.CLOCK_SPEED / 1000;
 
     private final Object fMutex;
     private final SourceDataLine fSDL;
-    private final ClockGenerator fGen;
+    private final ClockSpeedGenerator fGen;
     private final SoundQueue fSoundQueue;
     private final SoundProcessor fSoundProcessor;
 
@@ -259,11 +259,11 @@ final class Speaker {
     /**
      * Конструктор.
      *
-     * @param gen ссылка на объект класса ClockGenerator - "Тактовый генератор"
+     * @param gen ссылка на объект класса ClockSpeedGenerator - "Тактовый генератор"
      * @throws LineUnavailableException if a matching source data line
      *                                  is not available due to resource restrictions
      */
-    Speaker(@NotNull ClockGenerator gen) throws LineUnavailableException {
+    public Speaker(@NotNull ClockSpeedGenerator gen) throws LineUnavailableException {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Инициализируем и открываем SDL
@@ -325,7 +325,7 @@ final class Speaker {
      *
      * @param bit бит, поступающий с вывода C5 порта ВВ55
      */
-    void play8255(boolean bit) {
+    public void play8255(boolean bit) {
         if (fCurBit8255 ^ bit) {
             fCurBit8255 = bit;
             play();
@@ -337,7 +337,7 @@ final class Speaker {
      *
      * @param bit бит, поступающий с выхода таймера ВИ53
      */
-    void play8253(boolean bit) {
+    public void play8253(boolean bit) {
         if (fCurBit8253 ^ bit) {
             fCurBit8253 = bit;
             play();
@@ -347,7 +347,7 @@ final class Speaker {
     /**
      * Сбрасывает Speaker.
      */
-    void reset() {
+    public void reset() {
         // Очищаем очередь
         fSoundQueue.clear();
         // Сбрасываем сохраненное время
@@ -361,7 +361,7 @@ final class Speaker {
     /**
      * Закрывает SDL.
      */
-    void close() {
+    public void close() {
         // Очищаем очередь
         fSoundQueue.clear();
         // Ожидаем завершения работы звукового процессора

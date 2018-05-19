@@ -1,11 +1,11 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units;
 
 /**
  * Интерфейс "Тактируемое устройство".
  *
  * @author -=AVSh=-
  */
-interface IClockedDevice {
+public interface IClockedDevice {
     /**
      * Выполняет один такт.
      *

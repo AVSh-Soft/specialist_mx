@@ -1,11 +1,13 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory;
+
+import ru.avsh.specialist.mx.units.memory.devices.IMemoryDevice;
 
 /**
  * Класс "Быстрый диспетчер устройств памяти".
  *
  * @author -=AVSh=-
  */
-final class MemoryDevicesManager {
+public final class MemoryDevicesManager {
     // Максимальное количество устройств памяти
     private static final  int MAX_DEVICES = 50;
 
@@ -56,7 +58,7 @@ final class MemoryDevicesManager {
      * @param startAddress начальный адрес размещения устройства
      * @param memoryDevice устройство памяти
      */
-    synchronized void addMemoryDevice(int startAddress, final IMemoryDevice memoryDevice) {
+    public synchronized void addMemoryDevice(int startAddress, final IMemoryDevice memoryDevice) {
         if ((startAddress >= 0) && (startAddress <= 0xFFFF) && (memoryDevice != null)) {
             int  endAddress  = startAddress + memoryDevice.getMemoryDeviceLength() - 1;
             if ((endAddress >= startAddress) && (endAddress <= 0xFFFF)) {
@@ -74,7 +76,7 @@ final class MemoryDevicesManager {
      * @param address заданный адрес
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
-    synchronized int readByte(int address) {
+    public synchronized int readByte(int address) {
         for (int i = 0, startAddress; (i < fSize) && ((startAddress = fAddresses[0][i]) <= address); i++) {
             if (fAddresses[1][i] >= address) {
                 int value  = fMemoryDevices[i].readByte(address - startAddress);
@@ -95,7 +97,7 @@ final class MemoryDevicesManager {
      * @param address заданный адрес
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
-    synchronized int debugReadByte(int address) {
+    public synchronized int debugReadByte(int address) {
         for (int i = 0, startAddress; (i < fSize) && ((startAddress = fAddresses[0][i]) <= address); i++) {
             if (fAddresses[1][i] >= address) {
                 int value  = fMemoryDevices[i].debugReadByte(address - startAddress);
@@ -113,7 +115,7 @@ final class MemoryDevicesManager {
      * @param address заданный адрес
      * @return считанное из устройства памяти слово
      */
-    int readWord(int address) {
+    public int readWord(int address) {
         return readByte(address) | (readByte(address + 1) << 8);
     }
 
@@ -123,7 +125,7 @@ final class MemoryDevicesManager {
      * @param address заданный адрес
      * @param value   записываемый байт (байт представлен как int)
      */
-    synchronized void writeByte(int address, int value) {
+    public synchronized void writeByte(int address, int value) {
         for (int i = 0, startAddress; (i < fSize) && ((startAddress = fAddresses[0][i]) <= address); i++) {
             if ( fAddresses[1][i] >= address) {
                 fMemoryDevices[i].writeByte(address - startAddress, value & 0xFF);
@@ -137,7 +139,7 @@ final class MemoryDevicesManager {
      * @param address заданный адрес
      * @param word    записываемое слово
      */
-    void writeWord(int address, int word) {
+    public void writeWord(int address, int word) {
         writeByte(address, word);
         writeByte(address + 1, word >> 8);
     }
@@ -147,7 +149,7 @@ final class MemoryDevicesManager {
      *
      * @param clear true - очистка буферов устройств памяти
      */
-    synchronized void resetMemoryDevices(boolean clear) {
+    public synchronized void resetMemoryDevices(boolean clear) {
         for (int i = 0; i < fSize; i++) {
             fMemoryDevices[i].reset(clear);
         }
@@ -158,7 +160,7 @@ final class MemoryDevicesManager {
      *
      * @param mode true = установить режим "Пауза" / false = снять режим "Пауза"
      */
-    synchronized void pauseMemoryDevices(boolean mode) {
+    public synchronized void pauseMemoryDevices(boolean mode) {
         for (int i = 0; i < fSize; i++) {
             fMemoryDevices[i].pause(mode);
         }
@@ -167,7 +169,7 @@ final class MemoryDevicesManager {
     /**
      * Закрывает ресурсы устройств памяти (используется при завершении работы программы).
      */
-    synchronized void closeMemoryDevices() {
+    public synchronized void closeMemoryDevices() {
         for (int i = 0; i < fSize; i++) {
             fMemoryDevices[i].close();
         }

@@ -1,4 +1,4 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,11 +11,11 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-final class MemDevScreen extends JPanel implements IMemoryDevice {
+public final class MemDevScreen extends JPanel implements IMemoryDevice {
     private static final long serialVersionUID = 1612671161249875581L;
 
-            static final int   SCREEN_WIDTH  = 384;
-            static final int   SCREEN_HEIGHT = 256;
+    public  static final int   SCREEN_WIDTH  = 384;
+    public  static final int   SCREEN_HEIGHT = 256;
     private static final float ASPECT_RATIO  = (float) SCREEN_WIDTH / (float) SCREEN_HEIGHT;
 
     private static final Color CL_BLACK   = new Color(0x00,0x00,0x00);
@@ -40,7 +40,7 @@ final class MemDevScreen extends JPanel implements IMemoryDevice {
              CL_OLIVE.getRGB(),  CL_SILVER.getRGB(),   CL_GRAY.getRGB(),  CL_BLUE.getRGB(),   CL_LIME.getRGB(),   CL_AQUA.getRGB(),
                CL_RED.getRGB(), CL_FUCHSIA.getRGB(), CL_YELLOW.getRGB(), CL_WHITE.getRGB()};
 
-    static final int DEFAULT_COLOR = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
+    public static final int DEFAULT_COLOR = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
 
     private final int fLength;
     private final transient BufferedImage  fBufImg;
@@ -54,7 +54,7 @@ final class MemDevScreen extends JPanel implements IMemoryDevice {
     /**
      * Конструктор.
      */
-    MemDevScreen() {
+    public MemDevScreen() {
         fLength = (SCREEN_HEIGHT * SCREEN_WIDTH) / 8; // Размер экранной области в байтах (каждый пиксел = 1 бит)
         
         fBufImg = new BufferedImage(SCREEN_WIDTH, SCREEN_HEIGHT, BufferedImage.TYPE_INT_ARGB);
@@ -152,7 +152,7 @@ final class MemDevScreen extends JPanel implements IMemoryDevice {
      *
      * @param color старший полубайт - цвет изображения, младший полубайт - цвет фона
      */
-    void setColor(int color) {
+    public void setColor(int color) {
         fColData   = fBufImg.getColorModel().getDataElements(COLOR_TABLE[(color & 0xF0) >> 4], null);
         fColDataBg = fBufImg.getColorModel().getDataElements(COLOR_TABLE[ color & 0x0F      ], null);
     }

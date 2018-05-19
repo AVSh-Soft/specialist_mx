@@ -1,4 +1,6 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx;
+
+import ru.avsh.specialist.mx.gui.MainFrame;
 
 import javax.swing.*;
 import java.awt.*;

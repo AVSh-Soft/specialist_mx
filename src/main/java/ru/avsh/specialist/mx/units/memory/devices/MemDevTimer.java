@@ -1,4 +1,7 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
+
+import ru.avsh.specialist.mx.units.IClockedDevice;
+import ru.avsh.specialist.mx.units.Speaker;
 
 import java.util.Objects;
 
@@ -9,7 +12,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-final class MemDevTimer implements IMemoryDevice, IClockedDevice {
+public final class MemDevTimer implements IMemoryDevice, IClockedDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     // Режимы чтения/загрузки счетчика таймера
@@ -513,7 +516,7 @@ final class MemDevTimer implements IMemoryDevice, IClockedDevice {
      *
      * @param speaker ссылка на объект класса Speaker - "Speaker (динамик)"
      */
-    MemDevTimer(Speaker speaker) {
+    public MemDevTimer(Speaker speaker) {
         fSpeaker  = speaker;
         fCounter0 = new Counter();
         fCounter1 = new Counter();

@@ -1,4 +1,4 @@
-package ru.avsh.lib;
+package ru.avsh.specialist.mx.gui.lib;
 
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultCaret;
@@ -18,7 +18,7 @@ public class WideCaret extends DefaultCaret {
      *
      * @param rate the rate in milliseconds, 0 to stop blinking
      */
-    public WideCaret(final int rate) {
+    WideCaret(final int rate) {
         setBlinkRate(rate);
     }
 

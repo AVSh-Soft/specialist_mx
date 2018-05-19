@@ -1,6 +1,8 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.gui;
 
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.SpecialistMX;
+import ru.avsh.specialist.mx.units.memory.devices.MemDevScreen;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -13,14 +15,14 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.Properties;
 
-import static ru.avsh.specialistmx.ConsStat.*;
+import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
  * Класс для формирования главного окна приложения (меню, кнопоки обработчики событий).
  *
  * @author -=AVSh=-
  */
-final class MainFrame extends JFrame {
+public final class MainFrame extends JFrame {
     private static final long serialVersionUID = -7222591210056082993L;
 
     private static final String INI_OPTION_FRAME_WIDTH  = "MainFrameWidth" ;
@@ -37,7 +39,7 @@ final class MainFrame extends JFrame {
      *
      * @param spMX ссылка на объект класса SpecialistMX - "Компьютер 'Специалист MX'"
      */
-    MainFrame(@NotNull SpecialistMX spMX) {
+    public MainFrame(@NotNull SpecialistMX spMX) {
         fSpMX = spMX;
 
         final URL iconURL = getURL(SPMX_ICON_FILE);

@@ -1,4 +1,4 @@
-package ru.avsh.specialistmx;
+package ru.avsh.specialist.mx.units.memory.devices;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -9,7 +9,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-final class MemDevFloppyDiskControllerPort implements IMemoryDevice {
+public final class MemDevFloppyDiskControllerPort implements IMemoryDevice {
     private static final int MEMORY_DEVICE_LENGTH = 4;
 
     private final MemDevFloppyDiskController fFDC;
@@ -19,7 +19,7 @@ final class MemDevFloppyDiskControllerPort implements IMemoryDevice {
      *
      * @param fdc ссылка на объект класса MemDevFloppyDiskController - "Контроллер НГМД КР1818ВГ93 (FD1793-02)"
      */
-    MemDevFloppyDiskControllerPort(@NotNull MemDevFloppyDiskController fdc) {
+    public MemDevFloppyDiskControllerPort(@NotNull MemDevFloppyDiskController fdc) {
         fFDC = fdc;
     }
 
