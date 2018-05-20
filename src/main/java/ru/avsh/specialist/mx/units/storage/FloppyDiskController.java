@@ -1,7 +1,8 @@
-package ru.avsh.specialist.mx.units.memory.devices;
+package ru.avsh.specialist.mx.units.storage;
 
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
+import ru.avsh.specialist.mx.units.types.IAddressableStorage;
 import ru.avsh.specialist.mx.units.ProcessorI8080;
 
 import java.io.File;
@@ -12,13 +13,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Устройство памяти "Контроллер НГМД КР1818ВГ93 (FD1793-02)".
+ * Адресуемое устройство "Контроллер НГМД КР1818ВГ93 (FD1793-02)".
  *
  * @author -=AVSh=-
  */
-public final class MemDevFloppyDiskController implements IMemoryDevice {
-    private static final String THREAD_NAME          = "FloppyDiskController"; // Имя потока
-    private static final int    MEMORY_DEVICE_LENGTH = 4;
+public final class FloppyDiskController implements IAddressableStorage {
+    private static final String THREAD_NAME  = "FloppyDiskController"; // Имя потока
+    private static final int    STORAGE_SIZE = 4;
 
     // Константа для корректного взаимодействия с CPU
     private static final long CPU_WAIT_TIME = Math.round(ClockSpeedGenerator.TIME_OF_PULSE / 1_000_000.0);
@@ -56,11 +57,11 @@ public final class MemDevFloppyDiskController implements IMemoryDevice {
     private final AtomicBoolean fWasDataRequest;
 
     // Переменные
-    private final ProcessorI8080 fCPU;
     private final Object fMutex;
+    private final ProcessorI8080 fCPU;
+    private final FloppyDiskDrive fDriveA ;
+    private final FloppyDiskDrive fDriveB ;
     private final ClockSpeedGenerator fGen;
-    private final FloppyDiskDrive fDriveA;
-    private final FloppyDiskDrive fDriveB;
 
     private volatile boolean         fCurSide ;
     private volatile FloppyDiskDrive fCurDrive;
@@ -556,7 +557,7 @@ public final class MemDevFloppyDiskController implements IMemoryDevice {
      * @param gen ссылка на объект класса ClockSpeedGenerator - "Тактовый генератор"
      * @param cpu ссылка на объект класса ProcessorI8080 - "Процессор Intel C8080A (К580ВМ80А)"
      */
-    public MemDevFloppyDiskController(@NotNull ClockSpeedGenerator gen, ProcessorI8080 cpu) {
+    public FloppyDiskController(@NotNull ClockSpeedGenerator gen, ProcessorI8080 cpu) {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Устанавливаем ссылку на CPU
@@ -583,13 +584,13 @@ public final class MemDevFloppyDiskController implements IMemoryDevice {
     }
 
     @Override
-    public int getMemoryDeviceLength() {
-        return MEMORY_DEVICE_LENGTH;
+    public int storageSize() {
+        return STORAGE_SIZE;
     }
 
     @Override
     public int readByte(int address) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0: // -> Статус
                     setStatusFlag(F_NOT_READY, !fCurDrive.isReady());
@@ -636,7 +637,7 @@ public final class MemDevFloppyDiskController implements IMemoryDevice {
 
     @Override
     public int debugReadByte(int address) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0: // -> Статус
                     return fRegStatus.get();
@@ -655,7 +656,7 @@ public final class MemDevFloppyDiskController implements IMemoryDevice {
 
     @Override
     public void writeByte(int address, int value) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0: // <- Команда
                     // Если контроллер занят, то обрабатываем только команду "Принудительное прерывание" (прерывание с битами I1 и I0 игнорируем)
@@ -739,7 +740,7 @@ public final class MemDevFloppyDiskController implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemDevFloppyDiskController that = (MemDevFloppyDiskController) o;
+        FloppyDiskController that = (FloppyDiskController) o;
         return Objects.equals(fCPU, that.fCPU) &&
                Objects.equals(fGen, that.fGen);
     }

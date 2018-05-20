@@ -2,7 +2,7 @@ package ru.avsh.specialist.mx.gui;
 
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.SpecialistMX;
-import ru.avsh.specialist.mx.units.memory.devices.MemDevScreen;
+import ru.avsh.specialist.mx.units.storage.Screen;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -275,7 +275,7 @@ public final class MainFrame extends JFrame {
         size21Item.addActionListener(e -> {
             ((JCheckBoxMenuItem)e.getSource()).setSelected(true);
             final Dimension dim = getMinimumSize();
-            setSize(dim.width + MemDevScreen.SCREEN_WIDTH, dim.height + MemDevScreen.SCREEN_HEIGHT);
+            setSize(dim.width + Screen.SCREEN_WIDTH, dim.height + Screen.SCREEN_HEIGHT);
             setLocationRelativeTo(null);
         });
 
@@ -324,7 +324,7 @@ public final class MainFrame extends JFrame {
                 final Dimension cur = getSize();
                 final Dimension dim = getMinimumSize();
                 size11Item.setSelected(cur.equals(dim));
-                dim.setSize(dim.width + MemDevScreen.SCREEN_WIDTH, dim.height + MemDevScreen.SCREEN_HEIGHT);
+                dim.setSize(dim.width + Screen.SCREEN_WIDTH, dim.height + Screen.SCREEN_HEIGHT);
                 size21Item.setSelected(getSize().equals(dim));
             }
         });
@@ -343,7 +343,7 @@ public final class MainFrame extends JFrame {
                 // Останавливаем компьютер
                 fSpMX.pause(true, true);
                 // Закрываем открытые ресурсы устройств памяти
-                fSpMX.getMemDevMng().closeMemoryDevices();
+                fSpMX.getStorageManager().close();
                 // Запоминаем размеры фрейма в ini-файл
                 fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
                 fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());

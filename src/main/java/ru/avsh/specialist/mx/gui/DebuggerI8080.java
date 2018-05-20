@@ -5,7 +5,7 @@ import ru.avsh.specialist.mx.SpecialistMX;
 import ru.avsh.specialist.mx.gui.lib.JFormattedTextFieldExt;
 import ru.avsh.specialist.mx.units.ProcessorI8080;
 import ru.avsh.specialist.mx.units.ProcessorI8080.DebugRegPair;
-import ru.avsh.specialist.mx.units.memory.devices.MemDevMainMemory;
+import ru.avsh.specialist.mx.units.storage.MainMemory;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;
 
@@ -795,8 +795,8 @@ public final class DebuggerI8080 extends JDialog {
         codeMemPagesComboBox.addItemListener (itemEvent -> {
             if (itemEvent.getStateChange() == ItemEvent.SELECTED) {
                 final int index = ((JComboBox) itemEvent.getSource()).getSelectedIndex();
-                // Учитываются особенности класса MemDevMainMemory
-                fLayer.setCodePage((index == (fLayer.getNumPages() - 1)) ? MemDevMainMemory.ROM_DISK : index);
+                // Учитываются особенности класса MainMemory
+                fLayer.setCodePage((index == (fLayer.getNumPages() - 1)) ? MainMemory.ROM_DISK : index);
             }
         });
 
@@ -804,8 +804,8 @@ public final class DebuggerI8080 extends JDialog {
         dataMemPagesComboBox.addItemListener (itemEvent -> {
             if (itemEvent.getStateChange() == ItemEvent.SELECTED) {
                 final int index = ((JComboBox) itemEvent.getSource()).getSelectedIndex();
-                // Учитываются особенности класса MemDevMainMemory
-                fLayer.setDataPage((index == (fLayer.getNumPages() - 1)) ? MemDevMainMemory.ROM_DISK : index);
+                // Учитываются особенности класса MainMemory
+                fLayer.setDataPage((index == (fLayer.getNumPages() - 1)) ? MainMemory.ROM_DISK : index);
             }
         });
 
@@ -1006,11 +1006,11 @@ public final class DebuggerI8080 extends JDialog {
                 fCPU.hold(false);
             }
             // Отключаем режим "Пауза" для устройств памяти
-            fCPU.pauseMemoryDevices(false);
+            fCPU.pauseStorageUnits(false);
             // Выполнем одну команду CPU
             final boolean result = fSpMX.getGen().execOneCmdCPU();
             // Включаем режим "Пауза" для устройств памяти
-            fCPU.pauseMemoryDevices(true );
+            fCPU.pauseStorageUnits(true );
             return result;
         }
 
@@ -2487,7 +2487,7 @@ public final class DebuggerI8080 extends JDialog {
                 addItem("← ".concat(fLayer.getPageName(i)));
             }
             // Выделяем элемент, соответствующий странице памяти Data RAM
-            setSelectedIndex((fLayer.getCodePage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage());
+            setSelectedIndex((fLayer.getCodePage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage());
             // Подключаемся к fLayer для прослушивания
             fLayer.addObserver(this);
         }
@@ -2497,7 +2497,7 @@ public final class DebuggerI8080 extends JDialog {
             final InnerEvent event = (InnerEvent) arg;
             if (   fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CODE)
                 || fLayer.eventCheck(event, EventType.STEP, null)) {
-                final int index = (fLayer.getCodePage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage();
+                final int index = (fLayer.getCodePage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
                 }
@@ -2524,7 +2524,7 @@ public final class DebuggerI8080 extends JDialog {
                 addItem("↓ ".concat(fLayer.getPageName(i)));
             }
             // Выделяем элемент, соответствующий странице памяти Data RAM
-            setSelectedIndex((fLayer.getDataPage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage());
+            setSelectedIndex((fLayer.getDataPage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage());
             // Подключаемся к fLayer для прослушивания
             fLayer.addObserver(this);
         }
@@ -2533,7 +2533,7 @@ public final class DebuggerI8080 extends JDialog {
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.DATA)) {
-                final int index = (fLayer.getDataPage() >= MemDevMainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage();
+                final int index = (fLayer.getDataPage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
                 }

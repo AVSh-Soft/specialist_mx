@@ -1,36 +1,37 @@
-package ru.avsh.specialist.mx.units.memory.devices;
+package ru.avsh.specialist.mx.units.storage;
 
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.units.types.IAddressableStorage;
 
 import java.util.Objects;
 
 /**
- * Устройство памяти "Порт для управления страницами памяти 'Специалист MX'".
+ * Адресуемое устройство "Порт для управления страницами памяти 'Специалист MX'".
  *
  * @author -=AVSh=-
  */
-public final class MemDevMainMemoryPort implements IMemoryDevice {
-    private static final int MEMORY_DEVICE_LENGTH = 3;
+public final class MainMemoryPort implements IAddressableStorage {
+    private static final int STORAGE_SIZE = 3;
 
-    private final MemDevMainMemory fRAM;
+    private final MainMemory fRAM;
 
     /**
      * Конструктор.
      *
-     * @param ram ссылка на объект класса MemDevMainMemory - "Оперативная память 'Специалист MX'"
+     * @param ram ссылка на объект класса MainMemory - "Оперативная память 'Специалист MX'"
      */
-    public MemDevMainMemoryPort(@NotNull MemDevMainMemory ram) {
+    public MainMemoryPort(@NotNull MainMemory ram) {
         fRAM = ram;
     }
 
     @Override
-    public int getMemoryDeviceLength() {
-        return MEMORY_DEVICE_LENGTH;
+    public int storageSize() {
+        return STORAGE_SIZE;
     }
 
     @Override
     public void writeByte(int address, int value) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0:  // 0 - основная память
                     value = 0;
@@ -39,7 +40,7 @@ public final class MemDevMainMemoryPort implements IMemoryDevice {
                     value = (value & 0b111) + 1;
                     break;
                 case 2:  // 9 - ROM-диск
-                    value = MemDevMainMemory.ROM_DISK;
+                    value = MainMemory.ROM_DISK;
                     break;
                 default:
                     return;
@@ -53,7 +54,7 @@ public final class MemDevMainMemoryPort implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemDevMainMemoryPort that = (MemDevMainMemoryPort) o;
+        MainMemoryPort that = (MainMemoryPort) o;
         return Objects.equals(this.fRAM, that.fRAM);
     }
 

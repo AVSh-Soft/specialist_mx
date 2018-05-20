@@ -1,4 +1,6 @@
-package ru.avsh.specialist.mx.units.memory.devices;
+package ru.avsh.specialist.mx.units.storage;
+
+import ru.avsh.specialist.mx.units.types.IAddressableStorage;
 
 import javax.swing.*;
 import java.awt.*;
@@ -7,11 +9,11 @@ import java.awt.image.WritableRaster;
 import java.util.Objects;
 
 /**
- * Класс "Экран 'Специалиста MX'".
+ * Адресуемое устройство "Экран 'Специалиста MX'".
  *
  * @author -=AVSh=-
  */
-public final class MemDevScreen extends JPanel implements IMemoryDevice {
+public final class Screen extends JPanel implements IAddressableStorage {
     private static final long serialVersionUID = 1612671161249875581L;
 
     public  static final int   SCREEN_WIDTH  = 384;
@@ -42,7 +44,7 @@ public final class MemDevScreen extends JPanel implements IMemoryDevice {
 
     public static final int DEFAULT_COLOR = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
 
-    private final int fLength;
+    private final int fStorageSize;
     private final transient BufferedImage  fBufImg;
     private final transient WritableRaster fRaster;
 
@@ -54,8 +56,8 @@ public final class MemDevScreen extends JPanel implements IMemoryDevice {
     /**
      * Конструктор.
      */
-    public MemDevScreen() {
-        fLength = (SCREEN_HEIGHT * SCREEN_WIDTH) / 8; // Размер экранной области в байтах (каждый пиксел = 1 бит)
+    public Screen() {
+        fStorageSize = (SCREEN_HEIGHT * SCREEN_WIDTH) / 8; // Размер экранной области в байтах (каждый пиксел = 1 бит)
         
         fBufImg = new BufferedImage(SCREEN_WIDTH, SCREEN_HEIGHT, BufferedImage.TYPE_INT_ARGB);
         fRaster = fBufImg.getRaster();
@@ -90,13 +92,13 @@ public final class MemDevScreen extends JPanel implements IMemoryDevice {
     }
 
     @Override
-    public int getMemoryDeviceLength() {
-        return fLength;
+    public int storageSize() {
+        return fStorageSize;
     }
 
     @Override
     public void writeByte(int address, int value) {
-        if (fEnable && (address >= 0) && (address < fLength)) {
+        if (fEnable && (address >= 0) && (address < fStorageSize)) {
             fChanges = true;
 
             int x = (address / 256) * 8;
@@ -128,13 +130,13 @@ public final class MemDevScreen extends JPanel implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemDevScreen that = (MemDevScreen) o;
-        return Objects.equals(this.fLength, that.fLength);
+        Screen that = (Screen) o;
+        return Objects.equals(this.fStorageSize, that.fStorageSize);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fLength);
+        return Objects.hash(fStorageSize);
     }
 
     /**

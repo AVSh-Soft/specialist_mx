@@ -3,11 +3,12 @@ package ru.avsh.specialist.mx;
 import org.ini4j.Wini;
 import ru.avsh.specialist.mx.helpers.FileFinder;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
+import ru.avsh.specialist.mx.units.storage.AddressableStorageManager;
 import ru.avsh.specialist.mx.units.ProcessorI8080;
 import ru.avsh.specialist.mx.units.Speaker;
-import ru.avsh.specialist.mx.units.memory.*;
+import ru.avsh.specialist.mx.units.storage.*;
 import ru.avsh.specialist.mx.gui.DebuggerI8080;
-import ru.avsh.specialist.mx.units.memory.devices.*;
+import ru.avsh.specialist.mx.units.storage.ProgrammableTimer;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
@@ -27,15 +28,15 @@ import static ru.avsh.specialist.mx.helpers.Constants.*;
 public final class SpecialistMX {
     private final String fProductName;
 
-    private final MemDevScreen fScr;
+    private final Screen fScr;
+    private final MainMemory fRAM;
+    private final KeyboardPort fKey;
     private final ProcessorI8080 fCPU;
     private final ClockSpeedGenerator fGen;
-    private final MemDevMainMemory fRAM;
-    private final MemDevKeyboardPort fKey;
-    private final MemoryDevicesManager fMemDevMng;
-    private final MemDevFloppyDiskController fFDC;
+    private final FloppyDiskController fFDC;
+    private final AddressableStorageManager fStorageManager;
     /* Пока не используем!
-    private final MemoryDevicesManager fInOutDevMng; */
+    private final AddressableStorageManager fInOutDevMng; */
 
     private Wini    fIni;
     private Speaker fSpc;
@@ -67,9 +68,9 @@ public final class SpecialistMX {
         // Создаем тактовый генератор
         fGen = new ClockSpeedGenerator();
         // Создаем диспетчер устройств памяти
-        fMemDevMng = new MemoryDevicesManager();
+        fStorageManager = new AddressableStorageManager();
         // Создаем CPU
-        fCPU = new ProcessorI8080(this, fMemDevMng, null); // fInOutDevMng - пока не используем!
+        fCPU = new ProcessorI8080(this, fStorageManager, null); // fInOutDevMng - пока не используем!
         // Создаем Speaker
         try {
             fSpc = new Speaker(fGen);
@@ -77,33 +78,33 @@ public final class SpecialistMX {
             fSpc = null;
         }
         // Создаем устройства памяти
-        fScr = new MemDevScreen();
-        fRAM = new MemDevMainMemory(NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
-        fKey = new MemDevKeyboardPort(fSpc);
-        fFDC = new MemDevFloppyDiskController(fGen, fCPU);
+        fScr = new Screen();
+        fRAM = new MainMemory(NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
+        fKey = new KeyboardPort(fSpc);
+        fFDC = new FloppyDiskController(fGen, fCPU);
 
-        final MemDevTimer                    timer   = new MemDevTimer                   (fSpc );
-        final MemDevSimpleMemory             excRAM  = new MemDevSimpleMemory            (0x20 );
-        final MemDevProgrammerPort           prgPort = new MemDevProgrammerPort          (timer);
-        final MemDevMainMemoryPort ramPort = new MemDevMainMemoryPort          (fRAM );
-        final MemDevScreenColorPort          colPort = new MemDevScreenColorPort         (fScr );
-        final MemDevFloppyDiskControllerPort fdcPort = new MemDevFloppyDiskControllerPort(fFDC );
+        final ProgrammableTimer programmableTimer = new ProgrammableTimer(fSpc );
+        final SimpleMemory excRAM  = new SimpleMemory(0x20 );
+        final ProgrammerPort prgPort = new ProgrammerPort(programmableTimer);
+        final MainMemoryPort ramPort = new MainMemoryPort(fRAM );
+        final ScreenColorPort colPort = new ScreenColorPort(fScr );
+        final FloppyDiskControllerPort fdcPort = new FloppyDiskControllerPort(fFDC );
 
         // Добавляем тактируемые устройства в тактововый генератор
         fGen.addClockedDevice(fCPU );
-        fGen.addClockedDevice(timer);
+        fGen.addClockedDevice(programmableTimer);
 
         // Добавляем устройства памяти в диспетчер устройств памяти
-        fMemDevMng.addMemoryDevice(0x0000, fRAM   );
-        fMemDevMng.addMemoryDevice(0x9000, fScr   );
-        fMemDevMng.addMemoryDevice(0xFFC0, excRAM );
-        fMemDevMng.addMemoryDevice(0xFFE0, fKey   );
-        fMemDevMng.addMemoryDevice(0xFFE4, prgPort);
-        fMemDevMng.addMemoryDevice(0xFFE8, fFDC   );
-        fMemDevMng.addMemoryDevice(0xFFEC, timer  );
-        fMemDevMng.addMemoryDevice(0xFFF0, fdcPort);
-        fMemDevMng.addMemoryDevice(0xFFF8, colPort);
-        fMemDevMng.addMemoryDevice(0xFFFC, ramPort);
+        fStorageManager.addStorageUnit(0x0000, fRAM   );
+        fStorageManager.addStorageUnit(0x9000, fScr   );
+        fStorageManager.addStorageUnit(0xFFC0, excRAM );
+        fStorageManager.addStorageUnit(0xFFE0, fKey   );
+        fStorageManager.addStorageUnit(0xFFE4, prgPort);
+        fStorageManager.addStorageUnit(0xFFE8, fFDC   );
+        fStorageManager.addStorageUnit(0xFFEC, programmableTimer);
+        fStorageManager.addStorageUnit(0xFFF0, fdcPort);
+        fStorageManager.addStorageUnit(0xFFF8, colPort);
+        fStorageManager.addStorageUnit(0xFFFC, ramPort);
 
         // Инициализируем переменную под имя текущего MON-файла
         fCurMonName = "";
@@ -180,12 +181,12 @@ public final class SpecialistMX {
     }
 
     /**
-     * Возвращает ссылку на диспетчер устройств памяти.
+     * Возвращает ссылку на диспетчер запоминающих устройств.
      *
-     * @return ссылка на диспетчер устройств памяти
+     * @return ссылка на диспетчер запоминающих устройств
      */
-    public MemoryDevicesManager getMemDevMng() {
-        return fMemDevMng;
+    public AddressableStorageManager getStorageManager() {
+        return fStorageManager;
     }
 
     /**
@@ -202,7 +203,7 @@ public final class SpecialistMX {
      *
      * @return ссылка на память
      */
-    public MemDevMainMemory getRAM() {
+    public MainMemory getRAM() {
         return fRAM;
     }
 
@@ -211,7 +212,7 @@ public final class SpecialistMX {
      *
      * @return ссылка на экран
      */
-    public MemDevScreen getScreen() {
+    public Screen getScreen() {
         return fScr;
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -262,7 +263,7 @@ public final class SpecialistMX {
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
     public int readByte(final int address) {
-        return fMemDevMng.readByte(address);
+        return fStorageManager.readByte(address);
     }
 
     /**
@@ -275,7 +276,7 @@ public final class SpecialistMX {
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
     public int debugReadByte(final int address) {
-        return fMemDevMng.debugReadByte(address);
+        return fStorageManager.debugReadByte(address);
     }
 
     /**
@@ -285,7 +286,7 @@ public final class SpecialistMX {
      * @param value   записываемый байт (байт представлен как int)
      */
     public void writeByte(final int address, final int value) {
-        fMemDevMng.writeByte(address, value);
+        fStorageManager.writeByte(address, value);
     }
 
     /**
@@ -638,18 +639,18 @@ public final class SpecialistMX {
             // Приостанавливаем компьютер
             pause(true, true);
             // Сбрасываем устройства памяти (с полной очисткой или нет)
-            fMemDevMng.resetMemoryDevices(clear);
+            fStorageManager.reset(clear);
             // Сбрасываем устройства ввода/вывода (с полной очисткой или нет)
             /* Пока не используем!
             if (fInOutDevMng != null) {
-                fInOutDevMng.resetMemoryDevices(clear);
+                fInOutDevMng.reset(clear);
             } */
             // Очищаем все ловушки, если выбрана полная очистка
             if (clear) {
                 fCPU.debugClearTraps();
             }
             // Включаем ROM-диск
-            setPage(MemDevMainMemory.ROM_DISK);
+            setPage(MainMemory.ROM_DISK);
             // Загружаем BIOS "Специалиста_MX"
             loadROM();
             // Запоминаем имя ROM-файла
@@ -676,9 +677,9 @@ public final class SpecialistMX {
             // Приостанавливаем компьютер
             pause(true, true);
             // Сбрасываем устройства памяти (без полной очистки)
-            fMemDevMng.resetMemoryDevices(false);
+            fStorageManager.reset(false);
             // Включаем ROM-диск
-            setPage(MemDevMainMemory.ROM_DISK);
+            setPage(MainMemory.ROM_DISK);
             // Загружаем ROM-файл в страницу ROM-диска (в случае ошибки загрузки выполняем сброс)
             loadFile(file, 0x0000, 0, 0, -1, e -> restart(false, false));
             // Запоминаем ROM-файл
@@ -764,7 +765,7 @@ public final class SpecialistMX {
         });
         if (runFlag) {
             // Если выбрана загрузка с запуском, то устанавливаем цвет по умолчанию
-            fScr.setColor(MemDevScreen.DEFAULT_COLOR);
+            fScr.setColor(Screen.DEFAULT_COLOR);
             // Устанавливаем режим порта клавиатуры по умолчанию
             fKey.setDefaultMode();
             // Сбрасываем Speaker

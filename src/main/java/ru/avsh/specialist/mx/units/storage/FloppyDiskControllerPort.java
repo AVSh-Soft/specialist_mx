@@ -1,36 +1,37 @@
-package ru.avsh.specialist.mx.units.memory.devices;
+package ru.avsh.specialist.mx.units.storage;
 
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.units.types.IAddressableStorage;
 
 import java.util.Objects;
 
 /**
- * Устройство памяти "Дополнительные порты контроллера НГМД"
+ * Адресуемое устройство "Дополнительные порты контроллера НГМД"
  *
  * @author -=AVSh=-
  */
-public final class MemDevFloppyDiskControllerPort implements IMemoryDevice {
-    private static final int MEMORY_DEVICE_LENGTH = 4;
+public final class FloppyDiskControllerPort implements IAddressableStorage {
+    private static final int STORAGE_SIZE = 4;
 
-    private final MemDevFloppyDiskController fFDC;
+    private final FloppyDiskController fFDC;
 
     /**
      * Конструктор.
      *
-     * @param fdc ссылка на объект класса MemDevFloppyDiskController - "Контроллер НГМД КР1818ВГ93 (FD1793-02)"
+     * @param fdc ссылка на объект класса FloppyDiskController - "Контроллер НГМД КР1818ВГ93 (FD1793-02)"
      */
-    public MemDevFloppyDiskControllerPort(@NotNull MemDevFloppyDiskController fdc) {
+    public FloppyDiskControllerPort(@NotNull FloppyDiskController fdc) {
         fFDC = fdc;
     }
 
     @Override
-    public int getMemoryDeviceLength() {
-        return MEMORY_DEVICE_LENGTH;
+    public int storageSize() {
+        return STORAGE_SIZE;
     }
 
     @Override
     public void writeByte(int address, int value) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0: // Порт синхронизации CPU с контроллером НГМД
                     fFDC.waitDataRequest();
@@ -53,7 +54,7 @@ public final class MemDevFloppyDiskControllerPort implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemDevFloppyDiskControllerPort that = (MemDevFloppyDiskControllerPort) o;
+        FloppyDiskControllerPort that = (FloppyDiskControllerPort) o;
         return Objects.equals(fFDC, that.fFDC);
     }
 

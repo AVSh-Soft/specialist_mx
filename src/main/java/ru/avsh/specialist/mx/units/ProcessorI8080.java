@@ -2,9 +2,11 @@ package ru.avsh.specialist.mx.units;
 
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.SpecialistMX;
-import ru.avsh.specialist.mx.units.memory.MemoryDevicesManager;
 import ru.avsh.specialist.mx.gui.DebuggerI8080;
 import ru.avsh.specialist.mx.helpers.Trap;
+import ru.avsh.specialist.mx.units.storage.AddressableStorageManager;
+import ru.avsh.specialist.mx.units.types.IClockedDevice;
+import ru.avsh.specialist.mx.units.types.IUnit;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -19,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-public final class ProcessorI8080 implements IClockedDevice {
+public final class ProcessorI8080 implements IUnit, IClockedDevice {
     // Количество тактов для каждой команды CPU
     private static final int[] CYCLES = {
                  4, 10,      7,  5,      5,  5,  7,  4,      4, 10,      7,  5,      5,  5,  7,  4,
@@ -75,8 +77,8 @@ public final class ProcessorI8080 implements IClockedDevice {
     private final SpecialistMX fSpMX;
     private final AtomicInteger fCycles;
     private final SortedSet<Trap> fTraps;
-    private final MemoryDevicesManager fMDM;
-    private final MemoryDevicesManager fIoDM;
+    private final AddressableStorageManager fMSM;
+    private final AddressableStorageManager fIoSM;
 
     private int fOpCode;
     private boolean fTestResult;
@@ -89,13 +91,13 @@ public final class ProcessorI8080 implements IClockedDevice {
      * Конструктор.
      *
      * @param spMX ссылка на объект класса SpecialistMX - "Компьютер 'Специалист MX'"
-     * @param mDM  ссылка на объект класса MemoryDevicesManager - "Быстрый диспетчер устройств памяти" (устройства памяти)
-     * @param ioDM ссылка на объект класса MemoryDevicesManager - "Быстрый диспетчер устройств памяти" (устройства ввода/вывода)
+     * @param mSM  ссылка на объект класса AddressableStorageManager - "Быстрый диспетчер запоминающих устройств" (запоминающие устройства)
+     * @param ioSM ссылка на объект класса AddressableStorageManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода)
      */
-    public ProcessorI8080(@NotNull SpecialistMX spMX, @NotNull MemoryDevicesManager mDM, MemoryDevicesManager ioDM) {
+    public ProcessorI8080(@NotNull SpecialistMX spMX, @NotNull AddressableStorageManager mSM, AddressableStorageManager ioSM) {
         fSpMX = spMX;
-        fMDM  =  mDM;
-        fIoDM = ioDM;
+        fMSM  =  mSM;
+        fIoSM = ioSM;
                                 // 0, 1, 2, 3, 4, 5, 6, 7,  8,  9
         fRegs    = new int[10]; // B, C, D, E, H, L, F, A, SP, PC
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
@@ -111,11 +113,11 @@ public final class ProcessorI8080 implements IClockedDevice {
                              "Память с адреса PC: %02X, %02X, %02X, %02X, %02X, ...",
                 Integer.parseInt(Integer.toBinaryString(fRegs[F])),
                 fRegs[A], fRegs[B], fRegs[C], fRegs[D], fRegs[E], fRegs[H], fRegs[L], fRegs[SP], fRegs[PC],
-                fMDM.readByte((fRegs[PC]    ) & 0xFFFF),
-                fMDM.readByte((fRegs[PC] + 1) & 0xFFFF),
-                fMDM.readByte((fRegs[PC] + 2) & 0xFFFF),
-                fMDM.readByte((fRegs[PC] + 3) & 0xFFFF),
-                fMDM.readByte((fRegs[PC] + 4) & 0xFFFF));
+                fMSM.readByte((fRegs[PC]    ) & 0xFFFF),
+                fMSM.readByte((fRegs[PC] + 1) & 0xFFFF),
+                fMSM.readByte((fRegs[PC] + 2) & 0xFFFF),
+                fMSM.readByte((fRegs[PC] + 3) & 0xFFFF),
+                fMSM.readByte((fRegs[PC] + 4) & 0xFFFF));
     }
 
     /**
@@ -125,7 +127,7 @@ public final class ProcessorI8080 implements IClockedDevice {
      * @return значение регистра
      */
     private int getReg(int codeReg) {
-        return codeReg == M ? fMDM.readByte(getRegPair(P_HL)) : fRegs[codeReg];
+        return codeReg == M ? fMSM.readByte(getRegPair(P_HL)) : fRegs[codeReg];
     }
 
     /**
@@ -136,7 +138,7 @@ public final class ProcessorI8080 implements IClockedDevice {
      */
     private void setReg(int codeReg, int value) {
         if (codeReg == M) {
-            fMDM.writeByte(getRegPair(P_HL), value);
+            fMSM.writeByte(getRegPair(P_HL), value);
         } else {
             fRegs[codeReg] = value & 0xFF;
         }
@@ -363,7 +365,7 @@ public final class ProcessorI8080 implements IClockedDevice {
      */
     private void pushWord(int value) {
         fRegs[SP]  =  (fRegs[SP] - 2) & 0xFFFF;
-        fMDM.writeWord(fRegs[SP], value);
+        fMSM.writeWord(fRegs[SP], value);
     }
 
     /**
@@ -372,7 +374,7 @@ public final class ProcessorI8080 implements IClockedDevice {
      * @return значение
      */
     private int popWord() {
-        int v = fMDM.readWord(fRegs[SP]);
+        int v = fMSM.readWord(fRegs[SP]);
         fRegs[SP] = (fRegs[SP] + 2) & 0xFFFF;
         return v;
     }
@@ -381,10 +383,10 @@ public final class ProcessorI8080 implements IClockedDevice {
      * Читает байт из памяти по адресу, заданному в регистре PC (Регистр адреса)
      * и увеличивает значение регистра PC на 1.
      *
-     * @return считанный из устройства памяти байт
+     * @return считанный из памяти байт
      */
     private int nextBytePC() {
-        int v = fMDM.readByte(fRegs[PC]);
+        int v = fMSM.readByte(fRegs[PC]);
         fRegs[PC] = (fRegs[PC] + 1) & 0xFFFF;
         return v;
     }
@@ -393,10 +395,10 @@ public final class ProcessorI8080 implements IClockedDevice {
      * Читает слово из памяти по адресу, заданному в регистре PC (Регистр
      * адреса) и увеличивает значение регистра PC на 2.
      *
-     * @return считанное из устройства памяти слово
+     * @return считанное из памяти слово
      */
     private int nextWordPC() {
-        int v = fMDM.readWord(fRegs[PC]);
+        int v = fMSM.readWord(fRegs[PC]);
         fRegs[PC] = (fRegs[PC] + 2) & 0xFFFF;
         return v;
     }
@@ -456,7 +458,7 @@ public final class ProcessorI8080 implements IClockedDevice {
             // rr - 00 (BC), 01 (DE)
             case 0x02: // STAX B
             case 0x12: // STAX D
-                fMDM.writeByte(getRegPair(fOpCode >> 3), getReg(A));
+                fMSM.writeByte(getRegPair(fOpCode >> 3), getReg(A));
                 break;
 
             // INX, 0x03, 00rr0011
@@ -549,7 +551,7 @@ public final class ProcessorI8080 implements IClockedDevice {
             // rr - 00 (BC), 01 (DE)
             case 0x0A: // LDAX B
             case 0x1A: // LDAX D
-                setReg(A, fMDM.readByte(getRegPair((fOpCode & 0b0011_0000) >> 3)));
+                setReg(A, fMSM.readByte(getRegPair((fOpCode & 0b0011_0000) >> 3)));
                 break;
 
             // DCX, 0x0B, 00rr1011
@@ -604,7 +606,7 @@ public final class ProcessorI8080 implements IClockedDevice {
                 break;
 
             case 0x22: // SHLD addr
-                fMDM.writeWord(nextWordPC(), getRegPair(P_HL));
+                fMSM.writeWord(nextWordPC(), getRegPair(P_HL));
                 break;
 
             case 0x27: // DAA
@@ -612,7 +614,7 @@ public final class ProcessorI8080 implements IClockedDevice {
                 break;
 
             case 0x2A: // LHLD addr
-                setRegPair(P_HL, fMDM.readWord(nextWordPC()));
+                setRegPair(P_HL, fMSM.readWord(nextWordPC()));
                 break;
 
             case 0x2F: // CMA
@@ -620,7 +622,7 @@ public final class ProcessorI8080 implements IClockedDevice {
                 break;
 
             case 0x32: // STA addr
-                fMDM.writeByte(nextWordPC(), getReg(A));
+                fMSM.writeByte(nextWordPC(), getReg(A));
                 break;
 
             case 0x37: // STC
@@ -628,7 +630,7 @@ public final class ProcessorI8080 implements IClockedDevice {
                 break;
 
             case 0x3A: // LDA addr
-                setReg(A, fMDM.readByte(nextWordPC()));
+                setReg(A, fMSM.readByte(nextWordPC()));
                 break;
 
             case 0x3F: // CMC
@@ -945,10 +947,10 @@ public final class ProcessorI8080 implements IClockedDevice {
 
             case 0xD3: // OUT port8
                 v = nextBytePC();
-                if (fIoDM == null) {
-                    fMDM.writeByte(v | (v << 8), getReg(A)); // На "Специалисте_MX" как запись по адресу (port, port)
+                if (fIoSM == null) {
+                    fMSM.writeByte(v | (v << 8), getReg(A)); // На "Специалисте_MX" как запись по адресу (port, port)
                 } else {
-                    fIoDM.writeByte(v, getReg(A));
+                    fIoSM.writeByte(v, getReg(A));
                 }
                 break;
 
@@ -958,10 +960,10 @@ public final class ProcessorI8080 implements IClockedDevice {
 
             case 0xDB: // IN port8
                 v = nextBytePC();
-                if (fIoDM == null) {
-                    setReg(A, fMDM.readByte(v | (v << 8))); // На "Специалисте_MX" как запись по адресу (port, port)
+                if (fIoSM == null) {
+                    setReg(A, fMSM.readByte(v | (v << 8))); // На "Специалисте_MX" как запись по адресу (port, port)
                 } else {
-                    setReg(A, fIoDM.readByte(v));
+                    setReg(A, fIoSM.readByte(v));
                 }
                 break;
 
@@ -970,8 +972,8 @@ public final class ProcessorI8080 implements IClockedDevice {
                 break;
 
             case 0xE3: // XTHL
-                v = fMDM.readWord(getSP());
-                fMDM.writeWord(getSP(), getRegPair(P_HL));
+                v = fMSM.readWord(getSP());
+                fMSM.writeWord(getSP(), getRegPair(P_HL));
                 setRegPair(P_HL, v);
                 break;
 
@@ -1033,7 +1035,7 @@ public final class ProcessorI8080 implements IClockedDevice {
     }
 
     /**
-     * Перводит CPU в режим ожидания (выполняется захват "HOLD").
+     * Переводит CPU в режим ожидания (выполняется захват "HOLD").
      * (Данный метод нельзя запускать при остановленном тактовом генераторе!!!)
      *
      * @param mode true/false = установить/снять режим "HOLD"
@@ -1070,14 +1072,14 @@ public final class ProcessorI8080 implements IClockedDevice {
     }
 
     /**
-     * Переводит устройства памяти и устройства ввода/вывода, подключенные к CPU, в режим "Пауза".
+     * Переводит запоминающие устройства и устройства ввода/вывода, подключенные к CPU, в режим "Пауза".
      *
      * @param mode true/false = установить/снять режим "Пауза"
      */
-    public void pauseMemoryDevices(boolean mode) {
-        fMDM.pauseMemoryDevices(mode);
-        if (fIoDM != null) {
-            fIoDM.pauseMemoryDevices(mode);
+    public void pauseStorageUnits(boolean mode) {
+        fMSM.pause(mode);
+        if (fIoSM != null) {
+            fIoSM.pause(mode);
         }
     }
 
@@ -1093,17 +1095,16 @@ public final class ProcessorI8080 implements IClockedDevice {
     /**
      * Выполняет сброс CPU.
      *
-     * @param address            адрес запуска
-     * @param resetMemoryDevices true - выполняет сброс устройств памяти
+     * @param address           адрес запуска
+     * @param resetStorageUnits true - выполняет сброс запоминающих устройств
      */
-    public synchronized void reset(int address, boolean resetMemoryDevices) {
-        Arrays.fill(fRegs, 0);
-        fRegs[F] = 0b0000_0010; // по умолчанию SZ0A_0P1C
+    public synchronized void reset(int address, boolean resetStorageUnits) {
+        reset(true);
         setPC(address);
-        if (resetMemoryDevices) {
-            fMDM.resetMemoryDevices(false);
-            if (fIoDM != null) {
-                fIoDM.resetMemoryDevices(false);
+        if (resetStorageUnits) {
+            fMSM.reset(false);
+            if (fIoSM != null) {
+                fIoSM.reset(false);
             }
         }
     }
@@ -1116,9 +1117,9 @@ public final class ProcessorI8080 implements IClockedDevice {
         if (!fDebugRun && Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
              fDebugRun = true;
-            // Останавливаем CPU и устройства памяти
-                          hold(true);
-            pauseMemoryDevices(true);
+            // Останавливаем CPU и запоминающие устройства
+                         hold(true);
+            pauseStorageUnits(true);
             // Далее работаем в потоке Swing
             EventQueue.invokeLater(() -> {
                 try {
@@ -1139,7 +1140,7 @@ public final class ProcessorI8080 implements IClockedDevice {
                         debug.getContentPane().removeAll();
                         debug.dispose();
                     } finally {
-                        // Запускаем тактовый генератор и устройства памяти
+                        // Запускаем тактовый генератор и запоминающие устройства
                         fSpMX.pause(false, true);
                     }
                 } finally {
@@ -1347,17 +1348,35 @@ public final class ProcessorI8080 implements IClockedDevice {
     }
 
     @Override
+    public void reset(boolean clear) {
+        if (clear) {
+            Arrays.fill(fRegs, 0);
+            fRegs[F] = 0b0000_0010; // по умолчанию SZ0A_0P1C
+        } else {
+            setPC(0);
+        }
+    }
+
+    // Данный метод нельзя запускать при остановленном тактовом генераторе!!!
+    @Override
+    public void pause(boolean mode) {
+        if (isHoldAcknowledge() != mode) {
+            hold(mode);
+        }
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if ((o == null) || (getClass() != o.getClass())) return false;
         ProcessorI8080 processorI8080 = (ProcessorI8080) o;
         return Objects.equals(fSpMX, processorI8080.fSpMX) &&
-               Objects.equals( fMDM, processorI8080.fMDM ) &&
-               Objects.equals(fIoDM, processorI8080.fIoDM);
+               Objects.equals(fMSM , processorI8080.fMSM ) &&
+               Objects.equals(fIoSM, processorI8080.fIoSM);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fSpMX, fMDM, fIoDM);
+        return Objects.hash(fSpMX, fMSM, fIoSM);
     }
 }

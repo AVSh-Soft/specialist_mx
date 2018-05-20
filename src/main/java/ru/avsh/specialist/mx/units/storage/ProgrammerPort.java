@@ -1,48 +1,50 @@
-package ru.avsh.specialist.mx.units.memory.devices;
+package ru.avsh.specialist.mx.units.storage;
 
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.units.types.IAddressableStorage;
 
 import java.util.Objects;
 
 /**
- * Устройство памяти "Порт программатора 'Специалист MX' на базе КР580ВВ55А (i8255A)".
+ * Адресуемое устройство "Порт программатора 'Специалист MX' на базе КР580ВВ55А (i8255A)".
  *
  * @author -=AVSh=-
  */
-public final class MemDevProgrammerPort implements IMemoryDevice {
-    private static final int MEMORY_DEVICE_LENGTH = 4;
+public final class ProgrammerPort implements IAddressableStorage {
+    private static final int STORAGE_SIZE = 4;
+
+    private final ProgrammableTimer fProgrammableTimer;
 
     private int fPA;
     private int fPB;
     private int fPC;
     private int fPR;
-    private final MemDevTimer fTimer;
 
     /**
      * Конструктор.
      *
-     * @param timer ссылка на объект MemDevTimer - "Программируемый таймер КР580ВИ53 (i8253)"
+     * @param programmableTimer ссылка на объект ProgrammableTimer - "Программируемый таймер КР580ВИ53 (i8253)"
      */
-    public MemDevProgrammerPort(@NotNull MemDevTimer timer) {
-        fTimer = timer;
-        fPR    = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
+    public ProgrammerPort(@NotNull ProgrammableTimer programmableTimer) {
+        fProgrammableTimer = programmableTimer;
+        fPR                = 0b1001_1011      ; // начальная инициализация - режим 0, все порты на ввод
     }
 
     @Override
-    public int getMemoryDeviceLength() {
-        return MEMORY_DEVICE_LENGTH;
+    public int storageSize() {
+        return STORAGE_SIZE;
     }
 
     @Override
     public int readByte(int address) {
-        if ((address  >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address  >= 0) && (address < STORAGE_SIZE)) {
             int result = 0;
             switch (address) {
                 case 0:
                     if        ((fPR & 0b1101_0000) == 0b1000_0000) { // режим - 0 или 1, порт А - вывод
                         result = fPA;
                     } else if ((fPR & 0b1101_0000) == 0b1001_0000) { // режим - 0 или 1, порт А - ввод
-                        result |= fTimer.getCounter2Out() ? 1 : 0;
+                        result |= fProgrammableTimer.getCounter2Out() ? 1 : 0;
                     }
                     break;
                 case 1:
@@ -70,7 +72,7 @@ public final class MemDevProgrammerPort implements IMemoryDevice {
 
     @Override
     public void writeByte(int address, int value) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0: // режим - 0 или 1, порт А - вывод
                     if ((fPR & 0b1101_0000) == 0b1000_0000) {
@@ -119,12 +121,12 @@ public final class MemDevProgrammerPort implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemDevProgrammerPort that = (MemDevProgrammerPort) o;
-        return Objects.equals(fTimer, that.fTimer);
+        ProgrammerPort that = (ProgrammerPort) o;
+        return Objects.equals(fProgrammableTimer, that.fProgrammableTimer);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fTimer);
+        return Objects.hash(fProgrammableTimer);
     }
 }

@@ -1,50 +1,52 @@
-package ru.avsh.specialist.mx.units.memory.devices;
+package ru.avsh.specialist.mx.units.storage;
+
+import ru.avsh.specialist.mx.units.types.IAddressableStorage;
 
 import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * Устройство памяти "Оперативная память 'Специалист MX'".
+ * Адресуемое запоминающее устройство "Оперативная память 'Специалист MX'".
  *
  * @author -=AVSh=-
  */
-public final class MemDevMainMemory implements IMemoryDevice {
-    private static final int MEMORY_DEVICE_LENGTH = 0xFFC0;
-    private static final int ROM_DISK_LENGTH      = 0xC000;
-    private static final int MIN_NUMBER_PAGES     =      2; // Минимальное  число страниц памяти: 0 - основная, 1   - RAM-диск (не считая ROM-диск)
-    private static final int MAX_NUMBER_PAGES     =      9; // Максимальное число страниц памяти: 0 - основная, 1-8 - RAM-диск (не считая ROM-диск)
+public final class MainMemory implements IAddressableStorage {
+    private static final int STORAGE_SIZE     = 0xFFC0;
+    private static final int ROM_DISK_SIZE    = 0xC000;
+    private static final int MIN_NUMBER_PAGES =      2; // Минимальное  число страниц памяти: 0 - основная, 1   - RAM-диск (не считая ROM-диск)
+    private static final int MAX_NUMBER_PAGES =      9; // Максимальное число страниц памяти: 0 - основная, 1-8 - RAM-диск (не считая ROM-диск)
 
     // Номер ROM-диска для использования в методах getPage()/setPage()
     public static final int ROM_DISK = MAX_NUMBER_PAGES;
 
     private final byte[] fRAM;
+    private final Screen fScreen;
     private final int fNumberPages;
     private volatile int fCurrentPage;
     private volatile int fCurrentOffset;
-    private final MemDevScreen fScreen ;
 
     /**
      * Конструктор.
      *
      * @param numberPages количество страниц памяти (не считая ROM-диск)
-     * @param screen      ссылка на объект класса MemDevScreen - "Экран 'Специалиста MX'"
+     * @param screen      ссылка на объект класса Screen - "Экран 'Специалиста MX'"
      */
-    public MemDevMainMemory(int numberPages, MemDevScreen screen) {
+    public MainMemory(int numberPages, Screen screen) {
          numberPages = Math.min(Math.max(numberPages, MIN_NUMBER_PAGES), MAX_NUMBER_PAGES);
         fNumberPages = numberPages;
              fScreen = screen;
-                fRAM = new byte[MEMORY_DEVICE_LENGTH * numberPages + ROM_DISK_LENGTH];
+                fRAM = new byte[STORAGE_SIZE * numberPages + ROM_DISK_SIZE];
     }
 
     @Override
-    public int getMemoryDeviceLength() {
-        return MEMORY_DEVICE_LENGTH;
+    public int storageSize() {
+        return STORAGE_SIZE;
     }
 
     @Override
     public int readByte(int address) {
-        if ((fCurrentOffset >= 0) && (address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
-            if ((fCurrentPage < fNumberPages) || (address < ROM_DISK_LENGTH)) {
+        if ((fCurrentOffset >= 0) && (address >= 0) && (address < STORAGE_SIZE)) {
+            if ((fCurrentPage < fNumberPages) || (address < ROM_DISK_SIZE)) {
                 address += fCurrentOffset;
             }
             return (int) fRAM[address] & 0xFF;
@@ -54,8 +56,8 @@ public final class MemDevMainMemory implements IMemoryDevice {
 
     @Override
     public void writeByte(int address, int value) {
-        if ((fCurrentOffset >= 0) && (address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
-            if ((fCurrentPage < fNumberPages) || (address < ROM_DISK_LENGTH)) {
+        if ((fCurrentOffset >= 0) && (address >= 0) && (address < STORAGE_SIZE)) {
+            if ((fCurrentPage < fNumberPages) || (address < ROM_DISK_SIZE)) {
                 address += fCurrentOffset;
             }
             fRAM[address] = (byte) value;
@@ -84,7 +86,7 @@ public final class MemDevMainMemory implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemDevMainMemory that = (MemDevMainMemory) o;
+        MainMemory that = (MainMemory) o;
         return Objects.equals(this.fNumberPages, that.fNumberPages) &&
                Objects.equals(this.fScreen     , that.fScreen     );
     }
@@ -105,10 +107,10 @@ public final class MemDevMainMemory implements IMemoryDevice {
         }
         if (pageNumber < MAX_NUMBER_PAGES) {
             fCurrentPage   =  pageNumber;
-            fCurrentOffset = (pageNumber < fNumberPages) ? MEMORY_DEVICE_LENGTH * pageNumber : -1;
+            fCurrentOffset = (pageNumber < fNumberPages) ? STORAGE_SIZE * pageNumber : -1;
         } else {
             fCurrentPage   = ROM_DISK; // ROM-диск
-            fCurrentOffset = MEMORY_DEVICE_LENGTH * fNumberPages;
+            fCurrentOffset = STORAGE_SIZE * fNumberPages;
         }
         // Изображение выводится на экран только из страницы 0
         if (fScreen != null) {

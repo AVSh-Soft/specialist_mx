@@ -1,19 +1,20 @@
-package ru.avsh.specialist.mx.units.memory.devices;
+package ru.avsh.specialist.mx.units.storage;
 
-import ru.avsh.specialist.mx.units.IClockedDevice;
 import ru.avsh.specialist.mx.units.Speaker;
+import ru.avsh.specialist.mx.units.types.IAddressableStorage;
+import ru.avsh.specialist.mx.units.types.IClockedDevice;
 
 import java.util.Objects;
 
 /**
- * Устройство памяти "Программируемый таймер КР580ВИ53 (i8253)".
+ * Адресуемое устройство "Программируемый таймер КР580ВИ53 (i8253)".
  * Реализация с учетом особенностей подключения таймера на ПК "Специалист MX"
  * (на входы GATE всех таймеров подается логическая 1, Counter #1 соединен каскадно с Counter #2).
  *
  * @author -=AVSh=-
  */
-public final class MemDevTimer implements IMemoryDevice, IClockedDevice {
-    private static final int MEMORY_DEVICE_LENGTH = 4;
+public final class ProgrammableTimer implements IAddressableStorage, IClockedDevice {
+    private static final int STORAGE_SIZE = 4;
 
     // Режимы чтения/загрузки счетчика таймера
     private static final int RLM_LATCH   = 0; // Чтение фиксированного значения счетчика / Фиксация текущего значения счетчика
@@ -516,7 +517,7 @@ public final class MemDevTimer implements IMemoryDevice, IClockedDevice {
      *
      * @param speaker ссылка на объект класса Speaker - "Speaker (динамик)"
      */
-    public MemDevTimer(Speaker speaker) {
+    public ProgrammableTimer(Speaker speaker) {
         fSpeaker  = speaker;
         fCounter0 = new Counter();
         fCounter1 = new Counter();
@@ -550,13 +551,13 @@ public final class MemDevTimer implements IMemoryDevice, IClockedDevice {
     }
 
     @Override
-    public int getMemoryDeviceLength() {
-        return MEMORY_DEVICE_LENGTH;
+    public int storageSize() {
+        return STORAGE_SIZE;
     }
 
     @Override
     public int readByte(int address) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0: // -> Counter #0
                     return fCounter0.read();
@@ -573,7 +574,7 @@ public final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
     @Override
     public int debugReadByte(int address) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0: // -> Counter #0
                     return fCounter0.debugRead();
@@ -590,7 +591,7 @@ public final class MemDevTimer implements IMemoryDevice, IClockedDevice {
 
     @Override
     public void writeByte(int address, int value) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0: // <- Counter #0
                     fCounter0.load(value);
@@ -641,7 +642,7 @@ public final class MemDevTimer implements IMemoryDevice, IClockedDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemDevTimer that = (MemDevTimer) o;
+        ProgrammableTimer that = (ProgrammableTimer) o;
         return Objects.equals(this.fSpeaker, that.fSpeaker);
     }
 

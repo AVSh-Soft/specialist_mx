@@ -1,5 +1,7 @@
 package ru.avsh.specialist.mx.units;
 
+import ru.avsh.specialist.mx.units.types.IClockedDevice;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -186,7 +188,7 @@ public final class ClockSpeedGenerator implements Runnable {
                         fCPU.hold(true);
                     }
                     // Устройства
-                    fCPU.pauseMemoryDevices(true);
+                    fCPU.pauseStorageUnits(true);
                 }
 
                 // Останавливаем тактовый генератор
@@ -208,7 +210,7 @@ public final class ClockSpeedGenerator implements Runnable {
                 // Пробуждаем CPU и устройства памяти
                 if (dev && (fCPU != null)) {
                     // Устройства
-                    fCPU.pauseMemoryDevices(false);
+                    fCPU.pauseStorageUnits(false);
                     // CPU
                     if (!fPrevCpuHoldMode && fCPU.isHoldAcknowledge()) {
                         fCPU.hold(false);

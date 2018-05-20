@@ -1,5 +1,6 @@
-package ru.avsh.specialist.mx.units.memory.devices;
+package ru.avsh.specialist.mx.units.storage;
 
+import ru.avsh.specialist.mx.units.types.IAddressableStorage;
 import ru.avsh.specialist.mx.units.Speaker;
 
 import java.awt.event.KeyEvent;
@@ -8,12 +9,12 @@ import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Устройство памяти "Порт клавиатуры Specialist_MX на базе КР580ВВ55А (i8255A)".
+ * Адресуемое устройство "Порт клавиатуры Specialist_MX на базе КР580ВВ55А (i8255A)".
  *
  * @author -=AVSh=-
  */
-public final class MemDevKeyboardPort implements IMemoryDevice {
-    private static final int MEMORY_DEVICE_LENGTH = 4;
+public final class KeyboardPort implements IAddressableStorage {
+    private static final int STORAGE_SIZE = 4;
 
     /*
      Матрица клавиш 12х6 - ПК "Специалист MX"
@@ -113,20 +114,20 @@ public final class MemDevKeyboardPort implements IMemoryDevice {
      *
      * @param speaker ссылка на объект класса Speaker - "Speaker (динамик)"
      */
-    public MemDevKeyboardPort(Speaker speaker) {
+    public KeyboardPort(Speaker speaker) {
         fPR = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
         fSpeaker = speaker;
         fKeyBuffer = new CopyOnWriteArrayList<>();
     }
 
     @Override
-    public int getMemoryDeviceLength() {
-        return MEMORY_DEVICE_LENGTH;
+    public int storageSize() {
+        return STORAGE_SIZE;
     }
 
     @Override
     public int readByte(int address) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             int result = 0xFF;
             switch (address) {
                 case 0:
@@ -217,7 +218,7 @@ public final class MemDevKeyboardPort implements IMemoryDevice {
 
     @Override
     public void writeByte(int address, int value) {
-        if ((address >= 0) && (address < MEMORY_DEVICE_LENGTH)) {
+        if ((address >= 0) && (address < STORAGE_SIZE)) {
             switch (address) {
                 case 0: // режим - 0 или 1, порт А - вывод
                     if ((fPR & 0b1101_0000) == 0b1000_0000) {
@@ -286,7 +287,7 @@ public final class MemDevKeyboardPort implements IMemoryDevice {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MemDevKeyboardPort that = (MemDevKeyboardPort) o;
+        KeyboardPort that = (KeyboardPort) o;
         return Objects.equals(this.fSpeaker, that.fSpeaker);
     }
 
