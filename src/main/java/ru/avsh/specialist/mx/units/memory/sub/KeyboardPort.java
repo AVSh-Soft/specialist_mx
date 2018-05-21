@@ -1,6 +1,6 @@
-package ru.avsh.specialist.mx.units.storage;
+package ru.avsh.specialist.mx.units.memory.sub;
 
-import ru.avsh.specialist.mx.units.types.IAddressableStorage;
+import ru.avsh.specialist.mx.units.types.MemoryUnit;
 import ru.avsh.specialist.mx.units.Speaker;
 
 import java.awt.event.KeyEvent;
@@ -13,7 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * @author -=AVSh=-
  */
-public final class KeyboardPort implements IAddressableStorage {
+public final class KeyboardPort implements MemoryUnit {
     private static final int STORAGE_SIZE = 4;
 
     /*

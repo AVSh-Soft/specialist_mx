@@ -1,7 +1,7 @@
-package ru.avsh.specialist.mx.units.storage;
+package ru.avsh.specialist.mx.units.memory.sub;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.units.types.IAddressableStorage;
+import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import java.util.Objects;
 
@@ -10,7 +10,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-public final class ProgrammerPort implements IAddressableStorage {
+public final class ProgrammerPort implements MemoryUnit {
     private static final int STORAGE_SIZE = 4;
 
     private final ProgrammableTimer fProgrammableTimer;

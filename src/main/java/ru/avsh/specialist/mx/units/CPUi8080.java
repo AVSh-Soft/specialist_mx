@@ -4,9 +4,8 @@ import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.SpecialistMX;
 import ru.avsh.specialist.mx.gui.DebuggerI8080;
 import ru.avsh.specialist.mx.helpers.Trap;
-import ru.avsh.specialist.mx.units.storage.AddressableStorageManager;
-import ru.avsh.specialist.mx.units.types.IClockedDevice;
-import ru.avsh.specialist.mx.units.types.IUnit;
+import ru.avsh.specialist.mx.units.memory.MemoryUnitManager;
+import ru.avsh.specialist.mx.units.types.ClockedUnit;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -14,6 +13,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-public final class ProcessorI8080 implements IUnit, IClockedDevice {
+public final class CPUi8080 implements ClockedUnit {
     // Количество тактов для каждой команды CPU
     private static final int[] CYCLES = {
                  4, 10,      7,  5,      5,  5,  7,  4,      4, 10,      7,  5,      5,  5,  7,  4,
@@ -76,14 +76,16 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
     private final Trap fCompareTrap;
     private final SpecialistMX fSpMX;
     private final AtomicInteger fCycles;
+    private final AtomicBoolean fDebugRun;
+    private final AtomicInteger fHoldPhase;
+
     private final SortedSet<Trap> fTraps;
-    private final AddressableStorageManager fMSM;
-    private final AddressableStorageManager fIoSM;
+    private final MemoryUnitManager fMUM;
+    private final MemoryUnitManager fIoUM;
 
     private int fOpCode;
     private boolean fTestResult;
-    private volatile int fHoldPhase;
-    private volatile boolean fDebugRun;
+
     private volatile boolean fTrapsFlag;
     private volatile Trap fTrapStepOver;
 
@@ -91,18 +93,20 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      * Конструктор.
      *
      * @param spMX ссылка на объект класса SpecialistMX - "Компьютер 'Специалист MX'"
-     * @param mSM  ссылка на объект класса AddressableStorageManager - "Быстрый диспетчер запоминающих устройств" (запоминающие устройства)
-     * @param ioSM ссылка на объект класса AddressableStorageManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода)
+     * @param mUM  ссылка на объект класса MemoryUnitManager - "Быстрый диспетчер запоминающих устройств" (запоминающие устройства)
+     * @param ioUM ссылка на объект класса MemoryUnitManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода)
      */
-    public ProcessorI8080(@NotNull SpecialistMX spMX, @NotNull AddressableStorageManager mSM, AddressableStorageManager ioSM) {
+    public CPUi8080(@NotNull SpecialistMX spMX, @NotNull MemoryUnitManager mUM, MemoryUnitManager ioUM) {
         fSpMX = spMX;
-        fMSM  =  mSM;
-        fIoSM = ioSM;
+        fMUM  =  mUM;
+        fIoUM = ioUM;
                                 // 0, 1, 2, 3, 4, 5, 6, 7,  8,  9
         fRegs    = new int[10]; // B, C, D, E, H, L, F, A, SP, PC
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
 
              fCycles = new AtomicInteger();
+           fDebugRun = new AtomicBoolean();
+          fHoldPhase = new AtomicInteger();
         fCompareTrap = new Trap(0,0);
               fTraps = new ConcurrentSkipListSet<>();
     }
@@ -113,11 +117,11 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
                              "Память с адреса PC: %02X, %02X, %02X, %02X, %02X, ...",
                 Integer.parseInt(Integer.toBinaryString(fRegs[F])),
                 fRegs[A], fRegs[B], fRegs[C], fRegs[D], fRegs[E], fRegs[H], fRegs[L], fRegs[SP], fRegs[PC],
-                fMSM.readByte((fRegs[PC]    ) & 0xFFFF),
-                fMSM.readByte((fRegs[PC] + 1) & 0xFFFF),
-                fMSM.readByte((fRegs[PC] + 2) & 0xFFFF),
-                fMSM.readByte((fRegs[PC] + 3) & 0xFFFF),
-                fMSM.readByte((fRegs[PC] + 4) & 0xFFFF));
+                fMUM.readByte((fRegs[PC]    ) & 0xFFFF),
+                fMUM.readByte((fRegs[PC] + 1) & 0xFFFF),
+                fMUM.readByte((fRegs[PC] + 2) & 0xFFFF),
+                fMUM.readByte((fRegs[PC] + 3) & 0xFFFF),
+                fMUM.readByte((fRegs[PC] + 4) & 0xFFFF));
     }
 
     /**
@@ -127,7 +131,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      * @return значение регистра
      */
     private int getReg(int codeReg) {
-        return codeReg == M ? fMSM.readByte(getRegPair(P_HL)) : fRegs[codeReg];
+        return codeReg == M ? fMUM.readByte(getRegPair(P_HL)) : fRegs[codeReg];
     }
 
     /**
@@ -138,7 +142,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      */
     private void setReg(int codeReg, int value) {
         if (codeReg == M) {
-            fMSM.writeByte(getRegPair(P_HL), value);
+            fMUM.writeByte(getRegPair(P_HL), value);
         } else {
             fRegs[codeReg] = value & 0xFF;
         }
@@ -365,7 +369,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      */
     private void pushWord(int value) {
         fRegs[SP]  =  (fRegs[SP] - 2) & 0xFFFF;
-        fMSM.writeWord(fRegs[SP], value);
+        fMUM.writeWord(fRegs[SP], value);
     }
 
     /**
@@ -374,7 +378,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      * @return значение
      */
     private int popWord() {
-        int v = fMSM.readWord(fRegs[SP]);
+        int v = fMUM.readWord(fRegs[SP]);
         fRegs[SP] = (fRegs[SP] + 2) & 0xFFFF;
         return v;
     }
@@ -386,7 +390,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      * @return считанный из памяти байт
      */
     private int nextBytePC() {
-        int v = fMSM.readByte(fRegs[PC]);
+        int v = fMUM.readByte(fRegs[PC]);
         fRegs[PC] = (fRegs[PC] + 1) & 0xFFFF;
         return v;
     }
@@ -398,7 +402,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      * @return считанное из памяти слово
      */
     private int nextWordPC() {
-        int v = fMSM.readWord(fRegs[PC]);
+        int v = fMUM.readWord(fRegs[PC]);
         fRegs[PC] = (fRegs[PC] + 2) & 0xFFFF;
         return v;
     }
@@ -458,7 +462,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
             // rr - 00 (BC), 01 (DE)
             case 0x02: // STAX B
             case 0x12: // STAX D
-                fMSM.writeByte(getRegPair(fOpCode >> 3), getReg(A));
+                fMUM.writeByte(getRegPair(fOpCode >> 3), getReg(A));
                 break;
 
             // INX, 0x03, 00rr0011
@@ -551,7 +555,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
             // rr - 00 (BC), 01 (DE)
             case 0x0A: // LDAX B
             case 0x1A: // LDAX D
-                setReg(A, fMSM.readByte(getRegPair((fOpCode & 0b0011_0000) >> 3)));
+                setReg(A, fMUM.readByte(getRegPair((fOpCode & 0b0011_0000) >> 3)));
                 break;
 
             // DCX, 0x0B, 00rr1011
@@ -606,7 +610,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
                 break;
 
             case 0x22: // SHLD addr
-                fMSM.writeWord(nextWordPC(), getRegPair(P_HL));
+                fMUM.writeWord(nextWordPC(), getRegPair(P_HL));
                 break;
 
             case 0x27: // DAA
@@ -614,7 +618,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
                 break;
 
             case 0x2A: // LHLD addr
-                setRegPair(P_HL, fMSM.readWord(nextWordPC()));
+                setRegPair(P_HL, fMUM.readWord(nextWordPC()));
                 break;
 
             case 0x2F: // CMA
@@ -622,7 +626,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
                 break;
 
             case 0x32: // STA addr
-                fMSM.writeByte(nextWordPC(), getReg(A));
+                fMUM.writeByte(nextWordPC(), getReg(A));
                 break;
 
             case 0x37: // STC
@@ -630,7 +634,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
                 break;
 
             case 0x3A: // LDA addr
-                setReg(A, fMSM.readByte(nextWordPC()));
+                setReg(A, fMUM.readByte(nextWordPC()));
                 break;
 
             case 0x3F: // CMC
@@ -947,10 +951,10 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
 
             case 0xD3: // OUT port8
                 v = nextBytePC();
-                if (fIoSM == null) {
-                    fMSM.writeByte(v | (v << 8), getReg(A)); // На "Специалисте_MX" как запись по адресу (port, port)
+                if (fIoUM == null) {
+                    fMUM.writeByte(v | (v << 8), getReg(A)); // На "Специалисте_MX" как запись по адресу (port, port)
                 } else {
-                    fIoSM.writeByte(v, getReg(A));
+                    fIoUM.writeByte(v, getReg(A));
                 }
                 break;
 
@@ -960,10 +964,10 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
 
             case 0xDB: // IN port8
                 v = nextBytePC();
-                if (fIoSM == null) {
-                    setReg(A, fMSM.readByte(v | (v << 8))); // На "Специалисте_MX" как запись по адресу (port, port)
+                if (fIoUM == null) {
+                    setReg(A, fMUM.readByte(v | (v << 8))); // На "Специалисте_MX" как запись по адресу (port, port)
                 } else {
-                    setReg(A, fIoSM.readByte(v));
+                    setReg(A, fIoUM.readByte(v));
                 }
                 break;
 
@@ -972,8 +976,8 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
                 break;
 
             case 0xE3: // XTHL
-                v = fMSM.readWord(getSP());
-                fMSM.writeWord(getSP(), getRegPair(P_HL));
+                v = fMUM.readWord(getSP());
+                fMUM.writeWord(getSP(), getRegPair(P_HL));
                 setRegPair(P_HL, v);
                 break;
 
@@ -1036,28 +1040,27 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
 
     /**
      * Переводит CPU в режим ожидания (выполняется захват "HOLD").
-     * (Данный метод нельзя запускать при остановленном тактовом генераторе!!!)
      *
      * @param mode true/false = установить/снять режим "HOLD"
      */
     public void hold(boolean mode) {
-        if ((fHoldPhase == HOLD_IS_NOT_SET) == mode) {
+        if ((fHoldPhase.get() == HOLD_IS_NOT_SET) == mode) {
             if (mode) {
-                if ((fCycles.get() <= 1) || Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
+                if (Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
                     // Для потока тактового генератора останавливаем CPU сразу конечным значением HOLD_ACKNOWLEDGE,
                     // т.к. здесь вызов всегда происходит в последней фазе работы цикла CPU (из метода cmdFinish())
-                    fHoldPhase = HOLD_ACKNOWLEDGE;
+                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
                 } else {
                     // Для других потоков устанавливаем промежуточную фазу остановки CPU и ожидаем её завершения
-                    fHoldPhase = HOLD_IN_PROCESS;
+                    fHoldPhase.getAndSet(HOLD_IN_PROCESS);
                     // noinspection StatementWithEmptyBody
-                    while (fHoldPhase == HOLD_IN_PROCESS) {
+                    while (!fSpMX.isPaused() && (fHoldPhase.get() == HOLD_IN_PROCESS)) {
                         //
                     }
                 }
             } else {
                 // Запускаем CPU
-                fHoldPhase = HOLD_IS_NOT_SET;
+                fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
             }
         }
     }
@@ -1068,7 +1071,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      * @return true = установлен режим "HOLD"
      */
     public boolean isHoldAcknowledge() {
-        return fHoldPhase == HOLD_ACKNOWLEDGE;
+        return fHoldPhase.get() == HOLD_ACKNOWLEDGE;
     }
 
     /**
@@ -1076,10 +1079,10 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      *
      * @param mode true/false = установить/снять режим "Пауза"
      */
-    public void pauseStorageUnits(boolean mode) {
-        fMSM.pause(mode);
-        if (fIoSM != null) {
-            fIoSM.pause(mode);
+    public void pauseMemoryUnits(boolean mode) {
+        fMUM.pause(mode);
+        if (fIoUM != null) {
+            fIoUM.pause(mode);
         }
     }
 
@@ -1095,16 +1098,16 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
     /**
      * Выполняет сброс CPU.
      *
-     * @param address           адрес запуска
-     * @param resetStorageUnits true - выполняет сброс запоминающих устройств
+     * @param address          адрес запуска
+     * @param resetMemoryUnits true - выполняет сброс запоминающих устройств
      */
-    public synchronized void reset(int address, boolean resetStorageUnits) {
+    public synchronized void reset(int address, boolean resetMemoryUnits) {
         reset(true);
         setPC(address);
-        if (resetStorageUnits) {
-            fMSM.reset(false);
-            if (fIoSM != null) {
-                fIoSM.reset(false);
+        if (resetMemoryUnits) {
+            fMUM.reset(false);
+            if (fIoUM != null) {
+                fIoUM.reset(false);
             }
         }
     }
@@ -1114,12 +1117,12 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
      */
     private void startDebugger() {
         // Вызов возможен только для потока тактового генератора (блокирует вызов из потока Swing)
-        if (!fDebugRun && Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
+        if (!fDebugRun.get() && Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
-             fDebugRun = true;
+             fDebugRun.getAndSet(true);
             // Останавливаем CPU и запоминающие устройства
-                         hold(true);
-            pauseStorageUnits(true);
+                        hold(true);
+            pauseMemoryUnits(true);
             // Далее работаем в потоке Swing
             EventQueue.invokeLater(() -> {
                 try {
@@ -1144,7 +1147,7 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
                         fSpMX.pause(false, true);
                     }
                 } finally {
-                    fDebugRun = false;
+                    fDebugRun.getAndSet(false);
                 }
             });
         }
@@ -1324,17 +1327,18 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
     @Override
     public boolean cycle() {
         if (fCycles.get() <= 1)  {
-            switch (fHoldPhase) {
+            switch (fHoldPhase.get()) {
                 case HOLD_IS_NOT_SET:
                     fCycles.set(cmdStart());
                     return false;
                 case HOLD_IN_PROCESS:
-                    fHoldPhase = HOLD_ACKNOWLEDGE;
+                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
                     return true;
                 case HOLD_ACKNOWLEDGE:
                     return true;
                 default:
-                    fHoldPhase = 0;
+                    // Если была установлена некорректная фаза
+                    fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
                     fCycles.set(cmdStart());
                     return false;
             }
@@ -1357,26 +1361,28 @@ public final class ProcessorI8080 implements IUnit, IClockedDevice {
         }
     }
 
-    // Данный метод нельзя запускать при остановленном тактовом генераторе!!!
+    /**
+     * Переводит CPU в режим ожидания (выполняется захват "HOLD").
+     *
+     * @param mode - true = установить режим "Пауза" / false = снять режим "Пауза"
+     */
     @Override
     public void pause(boolean mode) {
-        if (isHoldAcknowledge() != mode) {
-            hold(mode);
-        }
+        hold(mode);
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if ((o == null) || (getClass() != o.getClass())) return false;
-        ProcessorI8080 processorI8080 = (ProcessorI8080) o;
-        return Objects.equals(fSpMX, processorI8080.fSpMX) &&
-               Objects.equals(fMSM , processorI8080.fMSM ) &&
-               Objects.equals(fIoSM, processorI8080.fIoSM);
+        CPUi8080 i8080 = (CPUi8080) o;
+        return Objects.equals(fSpMX, i8080.fSpMX) &&
+               Objects.equals(fMUM , i8080.fMUM ) &&
+               Objects.equals(fIoUM, i8080.fIoUM);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fSpMX, fMSM, fIoSM);
+        return Objects.hash(fSpMX, fMUM, fIoUM);
     }
 }

@@ -2,7 +2,7 @@ package ru.avsh.specialist.mx.gui;
 
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.SpecialistMX;
-import ru.avsh.specialist.mx.units.storage.Screen;
+import ru.avsh.specialist.mx.units.memory.sub.Screen;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -343,7 +343,7 @@ public final class MainFrame extends JFrame {
                 // Останавливаем компьютер
                 fSpMX.pause(true, true);
                 // Закрываем открытые ресурсы устройств памяти
-                fSpMX.getStorageManager().close();
+                fSpMX.getMemoryUnitManager().close();
                 // Запоминаем размеры фрейма в ini-файл
                 fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
                 fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());

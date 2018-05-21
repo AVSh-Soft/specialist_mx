@@ -1,6 +1,6 @@
-package ru.avsh.specialist.mx.units.storage;
+package ru.avsh.specialist.mx.units.memory.sub;
 
-import ru.avsh.specialist.mx.units.types.IAddressableStorage;
+import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,7 +13,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-public final class Screen extends JPanel implements IAddressableStorage {
+public final class Screen extends JPanel implements MemoryUnit {
     private static final long serialVersionUID = 1612671161249875581L;
 
     public  static final int   SCREEN_WIDTH  = 384;

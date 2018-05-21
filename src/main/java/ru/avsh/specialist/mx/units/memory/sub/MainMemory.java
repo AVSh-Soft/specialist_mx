@@ -1,6 +1,6 @@
-package ru.avsh.specialist.mx.units.storage;
+package ru.avsh.specialist.mx.units.memory.sub;
 
-import ru.avsh.specialist.mx.units.types.IAddressableStorage;
+import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -10,7 +10,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-public final class MainMemory implements IAddressableStorage {
+public final class MainMemory implements MemoryUnit {
     private static final int STORAGE_SIZE     = 0xFFC0;
     private static final int ROM_DISK_SIZE    = 0xC000;
     private static final int MIN_NUMBER_PAGES =      2; // Минимальное  число страниц памяти: 0 - основная, 1   - RAM-диск (не считая ROM-диск)

@@ -1,8 +1,8 @@
-package ru.avsh.specialist.mx.units.storage;
+package ru.avsh.specialist.mx.units.memory.sub;
 
 import ru.avsh.specialist.mx.units.Speaker;
-import ru.avsh.specialist.mx.units.types.IAddressableStorage;
-import ru.avsh.specialist.mx.units.types.IClockedDevice;
+import ru.avsh.specialist.mx.units.types.ClockedUnit;
+import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import java.util.Objects;
 
@@ -13,7 +13,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-public final class ProgrammableTimer implements IAddressableStorage, IClockedDevice {
+public final class ProgrammableTimer implements MemoryUnit, ClockedUnit {
     private static final int STORAGE_SIZE = 4;
 
     // Режимы чтения/загрузки счетчика таймера
@@ -95,7 +95,7 @@ public final class ProgrammableTimer implements IAddressableStorage, IClockedDev
          *
          * @return true - состояние выхода OUT изменилось.
          */
-        boolean isChange() {
+        boolean isChanged() {
             return fOutChanged;
         }
 
@@ -539,11 +539,11 @@ public final class ProgrammableTimer implements IAddressableStorage, IClockedDev
             // Тактируем счетчики
             fCounter0.step();
             fCounter1.step();
-            if (fCounter1.isChange() && !fCounter1.isOut()) {
+            if (fCounter1.isChanged() && !fCounter1.isOut()) {
                 fCounter2.step();
             }
             // Выводим звук
-            if ((fSpeaker != null) && (((fCounter0.isChange() ^ fCounter0.isOut()) || (fCounter2.isChange() ^ fCounter2.isOut())) ^ (fCounter0.isOut() || fCounter2.isOut()))) {
+            if ((fSpeaker != null) && (((fCounter0.isChanged() ^ fCounter0.isOut()) || (fCounter2.isChanged() ^ fCounter2.isOut())) ^ (fCounter0.isOut() || fCounter2.isOut()))) {
                  fSpeaker.play8253(!(fCounter0.isOut() || fCounter2.isOut()));
             }
         }

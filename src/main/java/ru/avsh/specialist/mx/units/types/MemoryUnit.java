@@ -1,11 +1,11 @@
 package ru.avsh.specialist.mx.units.types;
 
 /**
- * Интерфейс "Запоминающее устройство с обращением по адресу".
+ * Интерфейс "Запоминающее устройство".
  *
  * @author -=AVSh=-
  */
-public interface IAddressableStorage extends IUnit {
+public interface MemoryUnit extends Unit {
     /**
      * Возвращает объём памяти запоминающего устройства в байтах.
      *

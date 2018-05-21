@@ -1,9 +1,9 @@
-package ru.avsh.specialist.mx.units.storage;
+package ru.avsh.specialist.mx.units.memory.sub;
 
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
-import ru.avsh.specialist.mx.units.types.IAddressableStorage;
-import ru.avsh.specialist.mx.units.ProcessorI8080;
+import ru.avsh.specialist.mx.units.types.MemoryUnit;
+import ru.avsh.specialist.mx.units.CPUi8080;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-public final class FloppyDiskController implements IAddressableStorage {
+public final class FloppyDiskController implements MemoryUnit {
     private static final String THREAD_NAME  = "FloppyDiskController"; // Имя потока
     private static final int    STORAGE_SIZE = 4;
 
@@ -58,7 +58,7 @@ public final class FloppyDiskController implements IAddressableStorage {
 
     // Переменные
     private final Object fMutex;
-    private final ProcessorI8080 fCPU;
+    private final CPUi8080 fCPU;
     private final FloppyDiskDrive fDriveA ;
     private final FloppyDiskDrive fDriveB ;
     private final ClockSpeedGenerator fGen;
@@ -360,7 +360,7 @@ public final class FloppyDiskController implements IAddressableStorage {
                 for (int i = 0; i < length; i++) {
                     // Устанавливаем флаг "Запрос данных"
                     setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
-                    // Ожидаем, когда CPU заполнит регистр данных (время ожидания с учетом особенностей реализации CPU в классе ProcessorI8080)
+                    // Ожидаем, когда CPU заполнит регистр данных (время ожидания с учетом особенностей реализации CPU в классе CPUi8080)
                     waitData(CPU_WAIT_TIME);
                     // Если было принудительное прерывание
                     if (fInterrupt.get()) {
@@ -426,7 +426,7 @@ public final class FloppyDiskController implements IAddressableStorage {
                     fRegData.getAndSet(fBuf[i] & 0xFF);
                     // Устанавливаем флаг "Запрос данных"
                     setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
-                    // Ожидаем, когда CPU прочитает данные из регистра данных (время ожидания с учетом особенностей реализации CPU в классе ProcessorI8080)
+                    // Ожидаем, когда CPU прочитает данные из регистра данных (время ожидания с учетом особенностей реализации CPU в классе CPUi8080)
                     waitData(CPU_WAIT_TIME);
                     // Если CPU не прочитал вовремя данные из регистра данных
                     if (getStatusFlag(F_INDEX_OR_DATA_REQUEST)) {
@@ -555,9 +555,9 @@ public final class FloppyDiskController implements IAddressableStorage {
      * Конструктор.
      *
      * @param gen ссылка на объект класса ClockSpeedGenerator - "Тактовый генератор"
-     * @param cpu ссылка на объект класса ProcessorI8080 - "Процессор Intel C8080A (К580ВМ80А)"
+     * @param cpu ссылка на объект класса CPUi8080 - "Процессор Intel C8080A (К580ВМ80А)"
      */
-    public FloppyDiskController(@NotNull ClockSpeedGenerator gen, ProcessorI8080 cpu) {
+    public FloppyDiskController(@NotNull ClockSpeedGenerator gen, CPUi8080 cpu) {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Устанавливаем ссылку на CPU

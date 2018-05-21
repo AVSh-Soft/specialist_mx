@@ -3,12 +3,11 @@ package ru.avsh.specialist.mx;
 import org.ini4j.Wini;
 import ru.avsh.specialist.mx.helpers.FileFinder;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
-import ru.avsh.specialist.mx.units.storage.AddressableStorageManager;
-import ru.avsh.specialist.mx.units.ProcessorI8080;
+import ru.avsh.specialist.mx.units.memory.MemoryUnitManager;
+import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.Speaker;
-import ru.avsh.specialist.mx.units.storage.*;
 import ru.avsh.specialist.mx.gui.DebuggerI8080;
-import ru.avsh.specialist.mx.units.storage.ProgrammableTimer;
+import ru.avsh.specialist.mx.units.memory.sub.*;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
@@ -31,12 +30,12 @@ public final class SpecialistMX {
     private final Screen fScr;
     private final MainMemory fRAM;
     private final KeyboardPort fKey;
-    private final ProcessorI8080 fCPU;
+    private final CPUi8080 fCPU;
     private final ClockSpeedGenerator fGen;
     private final FloppyDiskController fFDC;
-    private final AddressableStorageManager fStorageManager;
+    private final MemoryUnitManager fMemoryUnitManager;
     /* Пока не используем!
-    private final AddressableStorageManager fInOutDevMng; */
+    private final MemoryUnitManager fInOutUnitManager; */
 
     private Wini    fIni;
     private Speaker fSpc;
@@ -68,9 +67,9 @@ public final class SpecialistMX {
         // Создаем тактовый генератор
         fGen = new ClockSpeedGenerator();
         // Создаем диспетчер устройств памяти
-        fStorageManager = new AddressableStorageManager();
+        fMemoryUnitManager = new MemoryUnitManager();
         // Создаем CPU
-        fCPU = new ProcessorI8080(this, fStorageManager, null); // fInOutDevMng - пока не используем!
+        fCPU = new CPUi8080(this, fMemoryUnitManager, null); // fInOutUnitManager - пока не используем!
         // Создаем Speaker
         try {
             fSpc = new Speaker(fGen);
@@ -91,20 +90,20 @@ public final class SpecialistMX {
         final FloppyDiskControllerPort fdcPort = new FloppyDiskControllerPort(fFDC );
 
         // Добавляем тактируемые устройства в тактововый генератор
-        fGen.addClockedDevice(fCPU );
-        fGen.addClockedDevice(programmableTimer);
+        fGen.addClockedUnit(fCPU );
+        fGen.addClockedUnit(programmableTimer);
 
         // Добавляем устройства памяти в диспетчер устройств памяти
-        fStorageManager.addStorageUnit(0x0000, fRAM   );
-        fStorageManager.addStorageUnit(0x9000, fScr   );
-        fStorageManager.addStorageUnit(0xFFC0, excRAM );
-        fStorageManager.addStorageUnit(0xFFE0, fKey   );
-        fStorageManager.addStorageUnit(0xFFE4, prgPort);
-        fStorageManager.addStorageUnit(0xFFE8, fFDC   );
-        fStorageManager.addStorageUnit(0xFFEC, programmableTimer);
-        fStorageManager.addStorageUnit(0xFFF0, fdcPort);
-        fStorageManager.addStorageUnit(0xFFF8, colPort);
-        fStorageManager.addStorageUnit(0xFFFC, ramPort);
+        fMemoryUnitManager.addMemoryUnit(0x0000, fRAM   );
+        fMemoryUnitManager.addMemoryUnit(0x9000, fScr   );
+        fMemoryUnitManager.addMemoryUnit(0xFFC0, excRAM );
+        fMemoryUnitManager.addMemoryUnit(0xFFE0, fKey   );
+        fMemoryUnitManager.addMemoryUnit(0xFFE4, prgPort);
+        fMemoryUnitManager.addMemoryUnit(0xFFE8, fFDC   );
+        fMemoryUnitManager.addMemoryUnit(0xFFEC, programmableTimer);
+        fMemoryUnitManager.addMemoryUnit(0xFFF0, fdcPort);
+        fMemoryUnitManager.addMemoryUnit(0xFFF8, colPort);
+        fMemoryUnitManager.addMemoryUnit(0xFFFC, ramPort);
 
         // Инициализируем переменную под имя текущего MON-файла
         fCurMonName = "";
@@ -185,8 +184,8 @@ public final class SpecialistMX {
      *
      * @return ссылка на диспетчер запоминающих устройств
      */
-    public AddressableStorageManager getStorageManager() {
-        return fStorageManager;
+    public MemoryUnitManager getMemoryUnitManager() {
+        return fMemoryUnitManager;
     }
 
     /**
@@ -194,7 +193,7 @@ public final class SpecialistMX {
      *
      * @return ссылка на CPU
      */
-    public ProcessorI8080 getCPU() {
+    public CPUi8080 getCPU() {
         return fCPU;
     }
 
@@ -220,7 +219,7 @@ public final class SpecialistMX {
     /**
      * Показывает приостановлен тактовый генератор или нет.
      *
-     * @return - true = CPU приостановлен
+     * @return - true = тактовый генератор приостановлен
      */
     public boolean isPaused() {
         return fGen.isPaused();
@@ -263,7 +262,7 @@ public final class SpecialistMX {
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
     public int readByte(final int address) {
-        return fStorageManager.readByte(address);
+        return fMemoryUnitManager.readByte(address);
     }
 
     /**
@@ -276,7 +275,7 @@ public final class SpecialistMX {
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
     public int debugReadByte(final int address) {
-        return fStorageManager.debugReadByte(address);
+        return fMemoryUnitManager.debugReadByte(address);
     }
 
     /**
@@ -286,7 +285,7 @@ public final class SpecialistMX {
      * @param value   записываемый байт (байт представлен как int)
      */
     public void writeByte(final int address, final int value) {
-        fStorageManager.writeByte(address, value);
+        fMemoryUnitManager.writeByte(address, value);
     }
 
     /**
@@ -429,7 +428,7 @@ public final class SpecialistMX {
     private void run(final int address) {
         pause(true, true);
         fCPU.run(address);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе ProcessorI8080)
+        // Проверям ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
         if (fCPU.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {
@@ -440,13 +439,13 @@ public final class SpecialistMX {
     /**
      * Выполняет сброс компьютера.
      *
-     * @param address            адрес запуска
-     * @param resetMemoryDevices true = выполняет сброс устройств памяти
+     * @param address          адрес запуска
+     * @param resetMemoryUnits true = выполняет сброс запоминающих устройств
      */
-    private void reset(final int address, final boolean resetMemoryDevices) {
+    private void reset(final int address, final boolean resetMemoryUnits) {
         pause(true, true);
-        fCPU.reset(address, resetMemoryDevices);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе ProcessorI8080)
+        fCPU.reset(address, resetMemoryUnits);
+        // Проверям ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
         if (fCPU.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {
@@ -639,11 +638,11 @@ public final class SpecialistMX {
             // Приостанавливаем компьютер
             pause(true, true);
             // Сбрасываем устройства памяти (с полной очисткой или нет)
-            fStorageManager.reset(clear);
+            fMemoryUnitManager.reset(clear);
             // Сбрасываем устройства ввода/вывода (с полной очисткой или нет)
             /* Пока не используем!
-            if (fInOutDevMng != null) {
-                fInOutDevMng.reset(clear);
+            if (fInOutUnitManager != null) {
+                fInOutUnitManager.reset(clear);
             } */
             // Очищаем все ловушки, если выбрана полная очистка
             if (clear) {
@@ -677,7 +676,7 @@ public final class SpecialistMX {
             // Приостанавливаем компьютер
             pause(true, true);
             // Сбрасываем устройства памяти (без полной очистки)
-            fStorageManager.reset(false);
+            fMemoryUnitManager.reset(false);
             // Включаем ROM-диск
             setPage(MainMemory.ROM_DISK);
             // Загружаем ROM-файл в страницу ROM-диска (в случае ошибки загрузки выполняем сброс)

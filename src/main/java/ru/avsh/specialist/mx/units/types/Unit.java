@@ -5,7 +5,7 @@ package ru.avsh.specialist.mx.units.types;
  *
  * @author -=AVSh=-
  */
-public interface IUnit {
+public interface Unit {
     /**
      * Сбрасывает устройство в начальное состояние.
      *

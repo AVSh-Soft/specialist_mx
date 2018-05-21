@@ -1,6 +1,6 @@
 package ru.avsh.specialist.mx.units;
 
-import ru.avsh.specialist.mx.units.types.IClockedDevice;
+import ru.avsh.specialist.mx.units.types.ClockedUnit;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -12,15 +12,15 @@ public final class ClockSpeedGenerator implements Runnable {
             static final String THREAD_NAME   = "ClockSpeedGenerator"; // Имя потока
     public  static final int    CLOCK_SPEED   =            2_000_000 ; // Тактовая частота
     public  static final long   TIME_OF_PULSE =           33_000_000L; // Время импульса в наносекундах
-    private static final int    MAX_DEVICES   =                   50 ; // Максимальное количество тактируемых устройств
+    private static final int    MAX_UNITS     =                   50 ; // Максимальное количество тактируемых устройств
 
-    private final Object           fMutex;
-    private final AtomicLong       fCyclesCounter ; // Это может быть излишним и достаточно volatile
-    private final IClockedDevice[] fClockedDevices;
+    private final Object        fMutex;
+    private final AtomicLong    fCyclesCounter; // Это может быть излишним и достаточно volatile
+    private final ClockedUnit[] fClockedUnits ;
 
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
 
-    private volatile ProcessorI8080 fCPU;
+    private volatile CPUi8080 fCPU;
     private volatile int            fIndexCPU  ;
     private volatile boolean        fWaitFlag  ;
     private volatile boolean        fPauseFlag ;
@@ -34,7 +34,7 @@ public final class ClockSpeedGenerator implements Runnable {
     public ClockSpeedGenerator() {
         fMutex          = new Object();
         fCyclesCounter  = new AtomicLong();
-        fClockedDevices = new IClockedDevice[MAX_DEVICES];
+        fClockedUnits   = new ClockedUnit[MAX_UNITS];
         fIndexCPU       =   -1;
         fPauseFlag      = true;
         setClockSpeed(CLOCK_SPEED);
@@ -80,7 +80,7 @@ public final class ClockSpeedGenerator implements Runnable {
                     for (long end = fCyclesCounter.get() + fIterationCycles; !fPauseFlag && (fCyclesCounter.get() < end); ) {
                         // Выполняем один такт у тактируемых устройств
                         for (index = 0; index < fSize; index++) {
-                            fClockedDevices[index].cycle();
+                            fClockedUnits[index].cycle();
                         }
                         // Увеличиваем счетчик циклов (тактов) генератора
                         fCyclesCounter.getAndIncrement();
@@ -111,25 +111,25 @@ public final class ClockSpeedGenerator implements Runnable {
 
     /**
      * Добавляет тактируемое устройство в массив.
-     * Метод должен вызываться до старта тактового генератора.
+     * (Метод должен вызываться до старта тактового генератора.)
      *
-     * @param clockedDevice тактируемое устройство
+     * @param clockedUnit тактируемое устройство
      */
-    public synchronized void addClockedDevice(final IClockedDevice clockedDevice) {
-        if (clockedDevice != null) {
+    public synchronized void addClockedUnit(final ClockedUnit clockedUnit) {
+        if (clockedUnit != null) {
             int index = 0;
             for (; index < fSize; index++) {
-                if (fClockedDevices[index].equals(clockedDevice)) {
+                if (fClockedUnits[index].equals(clockedUnit)) {
                     break;
                 }
             }
-            if ((fSize == index) && (fSize < MAX_DEVICES)) {
+            if ((fSize == index) && (fSize < MAX_UNITS)) {
                 // Запоминаем ссылку на CPU и индекс CPU в массиве устройств
-                if (clockedDevice instanceof ProcessorI8080) {
-                         fCPU = (ProcessorI8080) clockedDevice;
+                if (clockedUnit instanceof CPUi8080) {
+                         fCPU = (CPUi8080) clockedUnit;
                     fIndexCPU = fSize;
                 }
-                fClockedDevices[fSize++] = clockedDevice; // fClockedDevices и fSize изменяются только тут
+                fClockedUnits[fSize++] = clockedUnit; // fClockedUnits и fSize изменяются только тут
             }
         }
     }
@@ -165,7 +165,7 @@ public final class ClockSpeedGenerator implements Runnable {
     /**
      * Показывает приостановлен тактовый генератор или нет.
      *
-     * @return - true = CPU приостановлен
+     * @return - true = тактовый генератор приостановлен
      */
     public boolean isPaused() {
         return fPauseFlag;
@@ -175,20 +175,20 @@ public final class ClockSpeedGenerator implements Runnable {
      * Переводит тактовый генератор в режим "Пауза".
      *
      * @param mode true/false = установить/снять режим "Пауза"
-     * @param dev  true = устанавливать/снимать режим "Пауза" и для устройств памяти
+     * @param mem  true = устанавливать/снимать режим "Пауза" и для запоминающих устройств
      */
-    public void pause(final boolean mode, final boolean dev) {
+    public void pause(final boolean mode, final boolean mem) {
         if (fPauseFlag != mode) {
             if (mode) {
                 // Останавливаем CPU и устройства памяти
-                if (dev && (fCPU != null)) {
+                if (mem && (fCPU != null)) {
                     // CPU
                     fPrevCpuHoldMode = fCPU.isHoldAcknowledge();
                     if (!fPrevCpuHoldMode) {
                         fCPU.hold(true);
                     }
                     // Устройства
-                    fCPU.pauseStorageUnits(true);
+                    fCPU.pauseMemoryUnits(true);
                 }
 
                 // Останавливаем тактовый генератор
@@ -208,9 +208,9 @@ public final class ClockSpeedGenerator implements Runnable {
                 }
 
                 // Пробуждаем CPU и устройства памяти
-                if (dev && (fCPU != null)) {
+                if (mem && (fCPU != null)) {
                     // Устройства
-                    fCPU.pauseStorageUnits(false);
+                    fCPU.pauseMemoryUnits(false);
                     // CPU
                     if (!fPrevCpuHoldMode && fCPU.isHoldAcknowledge()) {
                         fCPU.hold(false);
@@ -233,9 +233,9 @@ public final class ClockSpeedGenerator implements Runnable {
                 // Выполняем один такт у тактируемых устройств
                 for (int index = 0; index < fSize; index++) {
                     if ( index == fIndexCPU) {
-                          flag = fClockedDevices[index].cycle();
+                          flag = fClockedUnits[index].cycle();
                     } else {
-                        fClockedDevices[index].cycle();
+                        fClockedUnits[index].cycle();
                     }
                 }
             } while (!flag);

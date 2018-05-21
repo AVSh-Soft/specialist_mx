@@ -1,6 +1,6 @@
-package ru.avsh.specialist.mx.units.storage;
+package ru.avsh.specialist.mx.units.memory.sub;
 
-import ru.avsh.specialist.mx.units.types.IAddressableStorage;
+import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -10,7 +10,7 @@ import java.util.Objects;
  *
  * @author -=AVSh=-
  */
-public final class SimpleMemory implements IAddressableStorage {
+public final class SimpleMemory implements MemoryUnit {
     private final int fStorageSize;
     private final byte[]      fRAM;
 

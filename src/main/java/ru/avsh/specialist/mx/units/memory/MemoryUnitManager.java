@@ -1,19 +1,19 @@
-package ru.avsh.specialist.mx.units.storage;
+package ru.avsh.specialist.mx.units.memory;
 
-import ru.avsh.specialist.mx.units.types.IAddressableStorage;
+import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 /**
  * Класс "Быстрый диспетчер запоминающих устройств".
  *
  * @author -=AVSh=-
  */
-public final class AddressableStorageManager implements IAddressableStorage {
+public final class MemoryUnitManager implements MemoryUnit {
     private static final int STORAGE_SIZE      = 0x1_0000;
     // Максимальное количество запоминающих устройств
     private static final int MAX_STORAGE_UNITS = 50;
 
-    private final               int[][] fAddresses    = new              int[2][MAX_STORAGE_UNITS];
-    private final IAddressableStorage[] fStorageUnits = new IAddressableStorage[MAX_STORAGE_UNITS];
+    private final      int[][] fAddresses   = new     int[2][MAX_STORAGE_UNITS];
+    private final MemoryUnit[] fMemoryUnits = new MemoryUnit[MAX_STORAGE_UNITS];
 
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
 
@@ -22,30 +22,30 @@ public final class AddressableStorageManager implements IAddressableStorage {
      *
      * @param startAddress начальный адрес размещения устройства
      * @param endAddress   конечный адрес размещения устройства
-     * @param storageUnit  запоминающее устройство
+     * @param memoryUnit  запоминающее устройство
      */
-    private void add(int startAddress, int endAddress, final IAddressableStorage storageUnit) {
-        if (storageUnit != null) {
+    private void add(int startAddress, int endAddress, final MemoryUnit memoryUnit) {
+        if (memoryUnit != null) {
             int index = 0;
             for (; index < fSize; index++) {
-                if (fStorageUnits[index].equals(storageUnit) && (fAddresses[0][index] == startAddress)) {
+                if (fMemoryUnits[index].equals(memoryUnit) && (fAddresses[0][index] == startAddress)) {
                     break;
                 }
             }
             if ((fSize == index) && (fSize < MAX_STORAGE_UNITS)) {
-                for (index = 0; index < fSize; index++)    {
+                for (index = 0; index < fSize; index++)       {
                     if (fAddresses[0][index]  > startAddress) {
                         for (int i = fSize; i > index;   i--) {
                              fAddresses[0][i] = fAddresses[0][i - 1];
                              fAddresses[1][i] = fAddresses[1][i - 1];
-                             fStorageUnits[i] = fStorageUnits[i - 1];
+                             fMemoryUnits [i] = fMemoryUnits [i - 1];
                         }
                         break;
                     }
                 }
                 fAddresses[0][index] = startAddress;
                 fAddresses[1][index] =   endAddress;
-                fStorageUnits[index] =  storageUnit;
+                fMemoryUnits [index] =   memoryUnit;
                 fSize++;
             }
         }
@@ -57,14 +57,14 @@ public final class AddressableStorageManager implements IAddressableStorage {
      * Метод должен вызываться до старта главного потока выполнения.
      *
      * @param startAddress начальный адрес размещения устройства
-     * @param storageUnit  запоминающее устройство
+     * @param memoryUnit  запоминающее устройство
      */
-    public synchronized void addStorageUnit(int startAddress, final IAddressableStorage storageUnit) {
-        if ((startAddress >= 0) && (startAddress < STORAGE_SIZE) && (storageUnit != null)) {
-            int  endAddress  = startAddress + storageUnit.storageSize() - 1;
+    public synchronized void addMemoryUnit(int startAddress, final MemoryUnit memoryUnit) {
+        if ((startAddress >= 0) && (startAddress < STORAGE_SIZE) && (memoryUnit != null)) {
+            int  endAddress  = startAddress + memoryUnit.storageSize() - 1;
             if ((endAddress >= startAddress) && (endAddress < STORAGE_SIZE)) {
                 // Добавляем запоминающее устройство
-                add(startAddress, endAddress, storageUnit);
+                add(startAddress, endAddress, memoryUnit);
             }
         }
     }
@@ -86,7 +86,7 @@ public final class AddressableStorageManager implements IAddressableStorage {
     public synchronized int readByte(int address) {
         for (int i = 0, startAddress; (i < fSize) && ((startAddress = fAddresses[0][i]) <= address); i++) {
             if (fAddresses[1][i] >= address) {
-                int value  = fStorageUnits[i].readByte(address - startAddress);
+                int value  = fMemoryUnits[i].readByte(address - startAddress);
                 if (value != -1) {
                     return value & 0xFF;
                 }
@@ -108,7 +108,7 @@ public final class AddressableStorageManager implements IAddressableStorage {
     public synchronized int debugReadByte(int address) {
         for (int i = 0, startAddress; (i < fSize) && ((startAddress = fAddresses[0][i]) <= address); i++) {
             if (fAddresses[1][i] >= address) {
-                int value  = fStorageUnits[i].debugReadByte(address - startAddress);
+                int value  = fMemoryUnits[i].debugReadByte(address - startAddress);
                 if (value != -1) {
                     return value & 0xFF;
                 }
@@ -137,7 +137,7 @@ public final class AddressableStorageManager implements IAddressableStorage {
     public synchronized void writeByte(int address, int value) {
         for (int i = 0, startAddress; (i < fSize) && ((startAddress = fAddresses[0][i]) <= address); i++) {
             if (fAddresses[1][i] >= address) {
-                fStorageUnits[i].writeByte(address - startAddress, value & 0xFF);
+                fMemoryUnits[i].writeByte(address - startAddress, value & 0xFF);
             }
         }
     }
@@ -161,7 +161,7 @@ public final class AddressableStorageManager implements IAddressableStorage {
     @Override
     public synchronized void reset(boolean clear) {
         for (int i = 0; i < fSize; i++) {
-            fStorageUnits[i].reset(clear);
+            fMemoryUnits[i].reset(clear);
         }
     }
 
@@ -173,7 +173,7 @@ public final class AddressableStorageManager implements IAddressableStorage {
     @Override
     public synchronized void pause(boolean mode) {
         for (int i = 0; i < fSize; i++) {
-            fStorageUnits[i].pause(mode);
+            fMemoryUnits[i].pause(mode);
         }
     }
 
@@ -183,8 +183,7 @@ public final class AddressableStorageManager implements IAddressableStorage {
     @Override
     public synchronized void close() {
         for (int i = 0; i < fSize; i++) {
-            fStorageUnits[i].close();
+            fMemoryUnits[i].close();
         }
     }
-
 }

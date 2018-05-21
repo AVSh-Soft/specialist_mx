@@ -5,7 +5,7 @@ package ru.avsh.specialist.mx.units.types;
  *
  * @author -=AVSh=-
  */
-public interface IClockedDevice {
+public interface ClockedUnit extends Unit {
     /**
      * Выполняет один такт.
      *

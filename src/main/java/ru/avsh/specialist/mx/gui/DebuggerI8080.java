@@ -3,9 +3,9 @@ package ru.avsh.specialist.mx.gui;
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.SpecialistMX;
 import ru.avsh.specialist.mx.gui.lib.JFormattedTextFieldExt;
-import ru.avsh.specialist.mx.units.ProcessorI8080;
-import ru.avsh.specialist.mx.units.ProcessorI8080.DebugRegPair;
-import ru.avsh.specialist.mx.units.storage.MainMemory;
+import ru.avsh.specialist.mx.units.CPUi8080;
+import ru.avsh.specialist.mx.units.CPUi8080.DebugRegPair;
+import ru.avsh.specialist.mx.units.memory.sub.MainMemory;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;
 
@@ -920,7 +920,7 @@ public final class DebuggerI8080 extends JDialog {
      * Класс "Слой для взаимодействия отладчика с CPU и памятью".
      */
     private class Layer extends Observable {
-        private final ProcessorI8080 fCPU;
+        private final CPUi8080 fCPU;
 
         private boolean fDisableEvents;
         private int     fCodePage;
@@ -929,7 +929,7 @@ public final class DebuggerI8080 extends JDialog {
         /**
          * Конструктор.
          */
-        Layer(ProcessorI8080 cpu) {
+        Layer(CPUi8080 cpu) {
             fCPU = cpu;
             // Заполняем пустой массив предыдущих значений регистровых пар
             if ((getPrevValRegPair(DebugRegPair.AF) & 0xFF) == 0) {
@@ -1006,11 +1006,11 @@ public final class DebuggerI8080 extends JDialog {
                 fCPU.hold(false);
             }
             // Отключаем режим "Пауза" для устройств памяти
-            fCPU.pauseStorageUnits(false);
+            fCPU.pauseMemoryUnits(false);
             // Выполнем одну команду CPU
             final boolean result = fSpMX.getGen().execOneCmdCPU();
             // Включаем режим "Пауза" для устройств памяти
-            fCPU.pauseStorageUnits(true );
+            fCPU.pauseMemoryUnits(true );
             return result;
         }
 
