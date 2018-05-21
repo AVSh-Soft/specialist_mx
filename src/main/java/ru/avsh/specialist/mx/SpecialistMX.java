@@ -1,12 +1,12 @@
 package ru.avsh.specialist.mx;
 
 import org.ini4j.Wini;
+import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.FileFinder;
-import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
-import ru.avsh.specialist.mx.units.memory.MemoryUnitManager;
 import ru.avsh.specialist.mx.units.CPUi8080;
+import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
 import ru.avsh.specialist.mx.units.Speaker;
-import ru.avsh.specialist.mx.gui.DebuggerI8080;
+import ru.avsh.specialist.mx.units.memory.MemoryUnitManager;
 import ru.avsh.specialist.mx.units.memory.sub.*;
 
 import javax.sound.sampled.LineUnavailableException;
@@ -28,9 +28,9 @@ public final class SpecialistMX {
     private final String fProductName;
 
     private final Screen fScr;
+    private final CPUi8080 fCPU;
     private final MainMemory fRAM;
     private final KeyboardPort fKey;
-    private final CPUi8080 fCPU;
     private final ClockSpeedGenerator fGen;
     private final FloppyDiskController fFDC;
     private final MemoryUnitManager fMemoryUnitManager;
@@ -76,22 +76,22 @@ public final class SpecialistMX {
         } catch (LineUnavailableException e) {
             fSpc = null;
         }
-        // Создаем устройства памяти
+        // Создаем запоминающие устройства
         fScr = new Screen();
         fRAM = new MainMemory(NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
         fKey = new KeyboardPort(fSpc);
         fFDC = new FloppyDiskController(fGen, fCPU);
 
-        final ProgrammableTimer programmableTimer = new ProgrammableTimer(fSpc );
-        final SimpleMemory excRAM  = new SimpleMemory(0x20 );
-        final ProgrammerPort prgPort = new ProgrammerPort(programmableTimer);
-        final MainMemoryPort ramPort = new MainMemoryPort(fRAM );
-        final ScreenColorPort colPort = new ScreenColorPort(fScr );
+        final ProgrammableTimer        timer   = new ProgrammableTimer       (fSpc );
+        final SimpleMemory             excRAM  = new SimpleMemory            (0x20);
+        final ProgrammerPort           prgPort = new ProgrammerPort          (timer);
+        final MainMemoryPort           ramPort = new MainMemoryPort          (fRAM );
+        final ScreenColorPort          colPort = new ScreenColorPort         (fScr );
         final FloppyDiskControllerPort fdcPort = new FloppyDiskControllerPort(fFDC );
 
         // Добавляем тактируемые устройства в тактововый генератор
         fGen.addClockedUnit(fCPU );
-        fGen.addClockedUnit(programmableTimer);
+        fGen.addClockedUnit(timer);
 
         // Добавляем устройства памяти в диспетчер устройств памяти
         fMemoryUnitManager.addMemoryUnit(0x0000, fRAM   );
@@ -100,7 +100,7 @@ public final class SpecialistMX {
         fMemoryUnitManager.addMemoryUnit(0xFFE0, fKey   );
         fMemoryUnitManager.addMemoryUnit(0xFFE4, prgPort);
         fMemoryUnitManager.addMemoryUnit(0xFFE8, fFDC   );
-        fMemoryUnitManager.addMemoryUnit(0xFFEC, programmableTimer);
+        fMemoryUnitManager.addMemoryUnit(0xFFEC, timer  );
         fMemoryUnitManager.addMemoryUnit(0xFFF0, fdcPort);
         fMemoryUnitManager.addMemoryUnit(0xFFF8, colPort);
         fMemoryUnitManager.addMemoryUnit(0xFFFC, ramPort);
@@ -769,7 +769,7 @@ public final class SpecialistMX {
             fKey.setDefaultMode();
             // Сбрасываем Speaker
             if (fSpc != null) {
-                fSpc.reset();
+                fSpc.reset(true);
             }
             // Запускаем CPU с заданного адреса
             run(startAdr);
@@ -1052,7 +1052,7 @@ public final class SpecialistMX {
                     // Отменяем режим "Пауза" только для CPU
                     fCPU.hold(false);
                     // Выводим окно отладчика
-                    final DebuggerI8080 debug = new DebuggerI8080(this);
+                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(this);
                     // После окончания работы - убиваем отладчик
                     debug.getContentPane().removeAll();
                     debug.dispose();

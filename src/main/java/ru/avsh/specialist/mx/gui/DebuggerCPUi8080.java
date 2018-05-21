@@ -3,11 +3,11 @@ package ru.avsh.specialist.mx.gui;
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.SpecialistMX;
 import ru.avsh.specialist.mx.gui.lib.JFormattedTextFieldExt;
+import ru.avsh.specialist.mx.helpers.Constants;
+import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.CPUi8080.DebugRegPair;
 import ru.avsh.specialist.mx.units.memory.sub.MainMemory;
-import ru.avsh.specialist.mx.helpers.Constants;
-import ru.avsh.specialist.mx.helpers.Trap;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -34,7 +34,7 @@ import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharA
  *
  * @author -=AVSh=-
  */
-public final class DebuggerI8080 extends JDialog {
+public final class DebuggerCPUi8080 extends JDialog {
     private static final long serialVersionUID = -4782408965788448666L;
 
     private static final String INI_OPTION_FRAME_WIDTH  = "DebugFrameWidth" ;
@@ -255,7 +255,7 @@ public final class DebuggerI8080 extends JDialog {
      *
      * @param spMX ссылка на главный класс эмулятора.
      */
-    public DebuggerI8080(@NotNull SpecialistMX spMX) {
+    public DebuggerCPUi8080(@NotNull SpecialistMX spMX) {
         super(spMX.getMainFrame(), true);
 
         // Запоминаем ссылку на главный класс эмулятора
@@ -1002,15 +1002,13 @@ public final class DebuggerI8080 extends JDialog {
          */
         boolean execOneCmdCPU() {
             // Если CPU находится в режиме "HOLD" (в результате обращения в порт FFF0), то отменяем этот режим
-            if (fCPU.isHoldAcknowledge()) {
-                fCPU.hold(false);
-            }
-            // Отключаем режим "Пауза" для устройств памяти
+            fCPU.hold(false);
+            // Отключаем режим "Пауза" для запоминающие устройств
             fCPU.pauseMemoryUnits(false);
             // Выполнем одну команду CPU
             final boolean result = fSpMX.getGen().execOneCmdCPU();
-            // Включаем режим "Пауза" для устройств памяти
-            fCPU.pauseMemoryUnits(true );
+            // Включаем режим "Пауза" для запоминающие устройств
+            fCPU.pauseMemoryUnits(true);
             return result;
         }
 
@@ -1617,7 +1615,7 @@ public final class DebuggerI8080 extends JDialog {
                     try {
                         fLayer.writeByte(page,rowIndex + columnIndex - DA_COL_BT0, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                        showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 case DA_COL_CMD:
@@ -2007,7 +2005,7 @@ public final class DebuggerI8080 extends JDialog {
                             fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
                         }
                     } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                        showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 default:
@@ -2204,7 +2202,7 @@ public final class DebuggerI8080 extends JDialog {
                     fLayer.writeByte(page, address, value & 0xFF);
                     fLayer.writeByte(page, address + 1, value >> 8);
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                 } finally {
                     if (fLayer.isEventsDisabled()) {
                         fLayer.enableEvents();
@@ -2868,7 +2866,7 @@ public final class DebuggerI8080 extends JDialog {
                     try {
                         fLayer.writeByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                        showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 case MD_COL_STR: {
@@ -3181,14 +3179,14 @@ public final class DebuggerI8080 extends JDialog {
                 try {
                     result = Integer.parseInt((String) (type ? fDataAddress.getValue() : fCodeAddress.getValue()), 16);
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerI8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                 }
                 return result;
             }
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         InputAddressPanel inputAddressPanel = new InputAddressPanel();
-        int result =  showConfirmDialog(DebuggerI8080.this, inputAddressPanel, "Go to ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
+        int result =  showConfirmDialog(DebuggerCPUi8080.this, inputAddressPanel, "Go to ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
         if (result == OK_OPTION) {
             int codeAddress = inputAddressPanel.getAddress(false);
             int dataAddress = inputAddressPanel.getAddress(true );
@@ -3350,7 +3348,7 @@ public final class DebuggerI8080 extends JDialog {
                     public void focusLost(FocusEvent e) {
                         String strBytes = fBytes.getText().trim();
                         if (!( strBytes.equals("") || strBytes.matches(REGEXP_STRING_BYTES))) {
-                            showMessageDialog(DebuggerI8080.this,
+                            showMessageDialog(DebuggerCPUi8080.this,
                                     String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes), Constants.STR_ERROR, ERROR_MESSAGE);
                         }
                     }
@@ -3404,7 +3402,7 @@ public final class DebuggerI8080 extends JDialog {
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         InputDataPanel inputDataPanel = new InputDataPanel();
-        int result = showConfirmDialog(DebuggerI8080.this, inputDataPanel,
+        int result = showConfirmDialog(DebuggerCPUi8080.this, inputDataPanel,
                 String.format("Поиск в странице: [%s]", fLayer.getPageName(fLayer.getDataPage())), OK_CANCEL_OPTION, QUESTION_MESSAGE);
 
         if (result == OK_OPTION) {
@@ -3416,7 +3414,7 @@ public final class DebuggerI8080 extends JDialog {
                    if (address >=  0) {
                 fMemDatTable.gotoAddress(address);
             } else if (address == -2) {
-                showMessageDialog(DebuggerI8080.this,
+                showMessageDialog(DebuggerCPUi8080.this,
                         String.format("Заданные для поиска данные:%n[%s]%nНе найдены!", fPrevStringBytes), "Информация", INFORMATION_MESSAGE);
             }
         }

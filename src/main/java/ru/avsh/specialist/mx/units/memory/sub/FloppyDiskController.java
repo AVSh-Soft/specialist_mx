@@ -1,9 +1,9 @@
 package ru.avsh.specialist.mx.units.memory.sub;
 
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
 import ru.avsh.specialist.mx.units.types.MemoryUnit;
-import ru.avsh.specialist.mx.units.CPUi8080;
 
 import java.io.File;
 import java.io.IOException;
@@ -180,11 +180,8 @@ public final class FloppyDiskController implements MemoryUnit {
          * Возобновляет работу CPU (только если HOLD для CPU был инициирован в методе waitDataRequest()).
          */
         private void continueCPU() {
-            if (fWasDataRequest.get()) {
-                fWasDataRequest.getAndSet(false);
-                if (fCPU.isHoldAcknowledge()) {
-                    fCPU.hold(false);
-                }
+            if (fWasDataRequest.getAndSet(false)) {
+                fCPU.hold(false);
             }
         }
 

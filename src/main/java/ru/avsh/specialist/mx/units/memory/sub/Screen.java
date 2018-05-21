@@ -7,6 +7,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Адресуемое устройство "Экран 'Специалиста MX'".
@@ -45,11 +46,11 @@ public final class Screen extends JPanel implements MemoryUnit {
     public static final int DEFAULT_COLOR = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
 
     private final int fStorageSize;
+    private final AtomicBoolean fChanges;
     private final transient BufferedImage  fBufImg;
     private final transient WritableRaster fRaster;
 
-    private volatile boolean fEnable ;
-    private volatile boolean fChanges;
+    private volatile  boolean  fEnable;
     private transient volatile Object fColData  ;
     private transient volatile Object fColDataBg;
 
@@ -58,9 +59,10 @@ public final class Screen extends JPanel implements MemoryUnit {
      */
     public Screen() {
         fStorageSize = (SCREEN_HEIGHT * SCREEN_WIDTH) / 8; // Размер экранной области в байтах (каждый пиксел = 1 бит)
-        
-        fBufImg = new BufferedImage(SCREEN_WIDTH, SCREEN_HEIGHT, BufferedImage.TYPE_INT_ARGB);
-        fRaster = fBufImg.getRaster();
+
+        fChanges = new AtomicBoolean(false);
+        fBufImg  = new BufferedImage(SCREEN_WIDTH, SCREEN_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        fRaster  = fBufImg.getRaster();
         
         setColor(DEFAULT_COLOR);
         
@@ -99,7 +101,7 @@ public final class Screen extends JPanel implements MemoryUnit {
     @Override
     public void writeByte(int address, int value) {
         if (fEnable && (address >= 0) && (address < fStorageSize)) {
-            fChanges = true;
+            fChanges.getAndSet(true);
 
             int x = (address / 256) * 8;
             int y =  address % 256;
@@ -118,8 +120,8 @@ public final class Screen extends JPanel implements MemoryUnit {
     public void reset(boolean clear) {
         setColor(DEFAULT_COLOR);
 
-        fEnable  = true ;
-        fChanges = false;
+        fEnable = true;
+        fChanges.getAndSet(false);
 
         if (clear) {
             fBufImg.getGraphics().clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT); // Здесь без EventQueue.invokeLater для скорости!
@@ -143,8 +145,7 @@ public final class Screen extends JPanel implements MemoryUnit {
      * Перерисовывает экран.
      */
     private void repaintScreen() {
-        if (fChanges) {
-            fChanges = false;
+        if (fChanges.getAndSet(false)) {
             repaint();
         }
     }

@@ -1,7 +1,7 @@
 package ru.avsh.specialist.mx.units.memory.sub;
 
-import ru.avsh.specialist.mx.units.types.MemoryUnit;
 import ru.avsh.specialist.mx.units.Speaker;
+import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import java.awt.event.KeyEvent;
 import java.util.List;

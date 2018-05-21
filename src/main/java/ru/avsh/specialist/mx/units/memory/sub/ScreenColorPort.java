@@ -55,8 +55,8 @@ public final class ScreenColorPort implements MemoryUnit {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this ==  o) return true;
+        if ((o == null) || (getClass() != o.getClass())) return false;
         ScreenColorPort that = (ScreenColorPort) o;
         return Objects.equals(this.fScreen, that.fScreen);
     }

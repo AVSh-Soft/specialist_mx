@@ -2,7 +2,7 @@ package ru.avsh.specialist.mx.units;
 
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.SpecialistMX;
-import ru.avsh.specialist.mx.gui.DebuggerI8080;
+import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.units.memory.MemoryUnitManager;
 import ru.avsh.specialist.mx.units.types.ClockedUnit;
@@ -1070,7 +1070,7 @@ public final class CPUi8080 implements ClockedUnit {
      *
      * @return true = установлен режим "HOLD"
      */
-    public boolean isHoldAcknowledge() {
+    boolean isHoldAcknowledge() {
         return fHoldPhase.get() == HOLD_ACKNOWLEDGE;
     }
 
@@ -1138,7 +1138,7 @@ public final class CPUi8080 implements ClockedUnit {
                                    debugRemTrap(page, address);
                         }
                         // Выводим окно отладчика
-                        final DebuggerI8080 debug = new DebuggerI8080(fSpMX);
+                        final DebuggerCPUi8080 debug = new DebuggerCPUi8080(fSpMX);
                         // После окончания работы - убиваем отладчик
                         debug.getContentPane().removeAll();
                         debug.dispose();
@@ -1287,7 +1287,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @return true = ловушка установлена
      */
     public boolean debugIsTrap(final int page, final int address) {
-        final Trap trap = new Trap(page,  address);
+        final Trap trap = new Trap(page, address);
         return fTrapsFlag && !trap.equals(fTrapStepOver) && (fTraps.contains(trap));
     }
 

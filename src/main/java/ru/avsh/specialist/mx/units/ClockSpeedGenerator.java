@@ -21,12 +21,12 @@ public final class ClockSpeedGenerator implements Runnable {
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
 
     private volatile CPUi8080 fCPU;
-    private volatile int            fIndexCPU  ;
-    private volatile boolean        fWaitFlag  ;
-    private volatile boolean        fPauseFlag ;
-    private volatile int            fClockSpeed;
-    private volatile int            fIterationCycles;
-    private volatile boolean        fPrevCpuHoldMode;
+    private volatile int      fIndexCPU  ;
+    private volatile boolean  fWaitFlag  ;
+    private volatile boolean  fPauseFlag ;
+    private volatile int      fClockSpeed;
+    private volatile int      fIterationCycles;
+    private volatile boolean  fPrevCpuHoldMode;
 
     /**
      * Конструктор.
@@ -181,12 +181,10 @@ public final class ClockSpeedGenerator implements Runnable {
         if (fPauseFlag != mode) {
             if (mode) {
                 // Останавливаем CPU и устройства памяти
-                if (mem && (fCPU != null)) {
+                if ((fCPU != null) && mem) {
                     // CPU
                     fPrevCpuHoldMode = fCPU.isHoldAcknowledge();
-                    if (!fPrevCpuHoldMode) {
-                        fCPU.hold(true);
-                    }
+                    fCPU.hold            (true);
                     // Устройства
                     fCPU.pauseMemoryUnits(true);
                 }
@@ -208,11 +206,11 @@ public final class ClockSpeedGenerator implements Runnable {
                 }
 
                 // Пробуждаем CPU и устройства памяти
-                if (mem && (fCPU != null)) {
+                if ((fCPU != null) && mem) {
                     // Устройства
                     fCPU.pauseMemoryUnits(false);
                     // CPU
-                    if (!fPrevCpuHoldMode && fCPU.isHoldAcknowledge()) {
+                    if (!fPrevCpuHoldMode) {
                         fCPU.hold(false);
                     }
                 }

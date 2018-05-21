@@ -1,6 +1,7 @@
 package ru.avsh.specialist.mx.units;
 
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.units.types.Unit;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
@@ -14,28 +15,28 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-public final class Speaker {
+public final class Speaker implements Unit {
     // Константы для разбивки на сэмплы
     private static final float SAMPLE_RATE            = 44100F;
     private static final float CYCLES_PER_SAMPLE      = ClockSpeedGenerator.CLOCK_SPEED / SAMPLE_RATE;
-    private static final float HALF_CYCLES_PER_SAMPLE =          CYCLES_PER_SAMPLE /  2;
+    private static final float HALF_CYCLES_PER_SAMPLE =               CYCLES_PER_SAMPLE /  2;
     // Константы для отбора полупериодов
     private static final int   BEG_HALF_CYCLE         = ClockSpeedGenerator.CLOCK_SPEED / 40; // Стартовая максимальная длина полупериода (частота от 20Гц)
     private static final int   MAX_HALF_CYCLE         = ClockSpeedGenerator.CLOCK_SPEED /  4; // Максимальная длина полупериода для воспроизведения пауз без искажений (от 2Гц)
     // Константы для задания времени наполнения буфера
     private static final int   BUF_TIME               = 100; // В миллисекундах
-    private static final int   BUF_SAMPLES_TIME       =     Math.round(SAMPLE_RATE * BUF_TIME / 1000); // В семплах
+    private static final int   BUF_SAMPLES_TIME       =          Math.round(SAMPLE_RATE * BUF_TIME / 1000); // В семплах
     private static final long  BUF_CYCLES_TIME        = ClockSpeedGenerator.CLOCK_SPEED * BUF_TIME / 1000 ; // В тактах
     // Прочие константы
-    private static final float SAMPLES_PER_MS         = SAMPLE_RATE / 1000;
-    private static final int   SAMPLES_PER_2MS        = Math.round(2 * SAMPLES_PER_MS) ;
-    private static final float AUDIO_LEVEL_FACTOR     = 128 / HALF_CYCLES_PER_SAMPLE * 0.25F; // Уровень громкости 25%
+    private static final float SAMPLES_PER_MS         = SAMPLE_RATE  / 1000;
+    private static final int   SAMPLES_PER_2MS        = Math.round(2 * SAMPLES_PER_MS);
+    private static final float AUDIO_LEVEL_FACTOR     = 128 / HALF_CYCLES_PER_SAMPLE  * 0.25F; // Уровень громкости 25%
     private static final int   CPU_PULSE_TIME         = Math.round(ClockSpeedGenerator.TIME_OF_PULSE / 1_000_000F) * ClockSpeedGenerator.CLOCK_SPEED / 1000;
 
     private final Object fMutex;
     private final SourceDataLine fSDL;
-    private final ClockSpeedGenerator fGen;
     private final SoundQueue fSoundQueue;
+    private final ClockSpeedGenerator fGen;
     private final SoundProcessor fSoundProcessor;
 
     private volatile long    fPrevTime;
@@ -347,9 +348,12 @@ public final class Speaker {
     /**
      * Сбрасывает Speaker.
      */
-    public void reset() {
+    @Override
+    public void reset(boolean clear) {
         // Очищаем очередь
-        fSoundQueue.clear();
+        if (clear) {
+            fSoundQueue.clear();
+        }
         // Сбрасываем сохраненное время
         fPrevTime = 0;
         // Устанавливаем выходной бит, согласно схеме ПК "Специалист MX"
@@ -361,6 +365,7 @@ public final class Speaker {
     /**
      * Закрывает SDL.
      */
+    @Override
     public void close() {
         // Очищаем очередь
         fSoundQueue.clear();
