@@ -61,7 +61,7 @@ public final class Screen extends JPanel implements MemoryUnit {
         fStorageSize = (SCREEN_HEIGHT * SCREEN_WIDTH) / 8; // Размер экранной области в байтах (каждый пиксел = 1 бит)
 
         fChanges = new AtomicBoolean(false);
-        fBufImg  = new BufferedImage(SCREEN_WIDTH, SCREEN_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        fBufImg  = new BufferedImage(SCREEN_WIDTH, SCREEN_HEIGHT, BufferedImage.TYPE_INT_RGB);
         fRaster  = fBufImg.getRaster();
         
         setColor(DEFAULT_COLOR);

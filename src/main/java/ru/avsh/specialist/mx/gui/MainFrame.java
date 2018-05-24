@@ -116,7 +116,7 @@ public final class MainFrame extends JFrame {
         controlPanel.add(resetBtn);
         controlPanel.add(debugBtn );
 
-        add(fSpMX.getScreen(), BorderLayout.CENTER);
+        //add(fSpMX.getScreen(), BorderLayout.CENTER);
         add(controlPanel     , BorderLayout.SOUTH );
 
         // -=-=-=-=- Обработчики событий -=-=-=-=-

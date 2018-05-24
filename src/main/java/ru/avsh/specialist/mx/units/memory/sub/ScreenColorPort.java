@@ -13,7 +13,7 @@ import java.util.Objects;
 public final class ScreenColorPort implements MemoryUnit {
     private static final int STORAGE_SIZE = 1;
 
-    private final Screen fScreen;
+    private final ScreenFx fScreen;
 
     private int fCurrentColor;
 
@@ -22,7 +22,7 @@ public final class ScreenColorPort implements MemoryUnit {
      *
      * @param screen ссылка на объект класса Screen - "Экран 'Специалиста MX'"
      */
-    public ScreenColorPort(@NotNull Screen screen) {
+    public ScreenColorPort(@NotNull ScreenFx screen) {
         fScreen       = screen;
         fCurrentColor = Screen.DEFAULT_COLOR;
     }

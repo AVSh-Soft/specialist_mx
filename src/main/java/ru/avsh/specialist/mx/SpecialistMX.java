@@ -27,7 +27,7 @@ import static ru.avsh.specialist.mx.helpers.Constants.*;
 public final class SpecialistMX {
     private final String fProductName;
 
-    private final Screen fScr;
+    private final ScreenFx fScr;
     private final CPUi8080 fCPU;
     private final MainMemory fRAM;
     private final KeyboardPort fKey;
@@ -47,7 +47,7 @@ public final class SpecialistMX {
     /**
      * Конструктор.
      */
-    SpecialistMX() {
+    public SpecialistMX() {
         // Создаем объект для работы с ini-файлом настроек
         fIni = new Wini();
         fIni.setFile(new File(INI_FILE));
@@ -77,7 +77,7 @@ public final class SpecialistMX {
             fSpc = null;
         }
         // Создаем запоминающие устройства
-        fScr = new Screen();
+        fScr = new ScreenFx();
         fRAM = new MainMemory(NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
         fKey = new KeyboardPort(fSpc);
         fFDC = new FloppyDiskController(fGen, fCPU);
@@ -211,7 +211,7 @@ public final class SpecialistMX {
      *
      * @return ссылка на экран
      */
-    public Screen getScreen() {
+    public ScreenFx getScreen() {
         return fScr;
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
