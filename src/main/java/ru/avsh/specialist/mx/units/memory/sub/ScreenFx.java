@@ -66,7 +66,7 @@ public class ScreenFx extends WritableImage implements MemoryUnit {
         if (fEnable && (address >= 0) && (address < STORAGE_SIZE)) {
             fChanges.getAndSet(true);
 
-            for (int idx = (((address / 256) * 8) * 384) + (address % 256), end = idx + 8, mask = 0x80; idx < end; idx++, mask >>= 1) {
+            for (int idx = ((address % 256) * 384) + ((address / 256) * 8), end = idx + 8, mask = 0x80; idx < end; idx++, mask >>= 1) {
                 fImageBuffer[idx] = ((value & mask) != 0) ? fFgColor : fBgColor;
             }
         }
