@@ -17,8 +17,8 @@ public class ScreenFx extends WritableImage implements MemoryUnit {
             0xFF_FF_00_00, 0xFF_FF_00_FF, 0xFF_FF_FF_00, 0xFF_FF_FF_FF
     };
 
-    public static final int SCREEN_WIDTH = 384;
-    public static final int SCREEN_HEIGHT = 256;
+    public static final int SCREEN_WIDTH  =  384;
+    public static final int SCREEN_HEIGHT =  256;
     public static final int DEFAULT_COLOR = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
 
     // Размер экранной области в байтах (каждый пиксел = 1 бит)
@@ -66,7 +66,7 @@ public class ScreenFx extends WritableImage implements MemoryUnit {
         if (fEnable && (address >= 0) && (address < STORAGE_SIZE)) {
             fChanges.getAndSet(true);
 
-            for (int idx = ((address % 256) * 384) + ((address / 256) * 8), end = idx + 8, mask = 0x80; idx < end; idx++, mask >>= 1) {
+            for (int idx = ((address & 0xFF) * 384) + ((address >> 5) & 0xFFF8), end = idx + 8, mask = 0x80; idx < end; idx++, mask >>= 1) {
                 fImageBuffer[idx] = ((value & mask) != 0) ? fFgColor : fBgColor;
             }
         }
