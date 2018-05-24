@@ -28,9 +28,29 @@ public class MainFormFX extends Application {
         imageView.setSmooth(false);
         imageView.setCache(true);
 
+
         StackPane root = new StackPane(imageView);
         Scene scene = new Scene(root, 800, 600);
 
+
+        scene.setOnKeyPressed(key -> {
+            System.out.println(">>" + key.getCode());
+/*
+            if (imageView.isManaged()) {
+                System.out.println(key.getCode());
+                //fSpMX.keyCodeReceiver(true, key.getCode().ordinal());
+            }
+*/
+        });
+
+        scene.setOnKeyReleased(key -> {
+            System.out.println("<<" + key.getCode());
+/*
+            if (imageView.isFocused()) {
+                //fSpMX.keyCodeReceiver(false, key.getCode().ordinal());
+            }
+*/
+        });
         primaryStage.setScene(scene);
         //primaryStage.setMinWidth(width);
         //primaryStage.setMinHeight(height);
