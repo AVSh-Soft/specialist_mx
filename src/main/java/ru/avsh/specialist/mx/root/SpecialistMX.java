@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx;
+package ru.avsh.specialist.mx.root;
 
 import org.ini4j.Wini;
 import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
@@ -157,7 +157,7 @@ public final class SpecialistMX {
      *
      * @param frame ссылка на главный фрейм
      */
-    void setMainFrame(final JFrame frame) {
+    public void setMainFrame(final JFrame frame) {
         fMainFrame = frame;
     }
 

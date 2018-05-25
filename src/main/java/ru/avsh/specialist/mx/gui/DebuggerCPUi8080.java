@@ -1,7 +1,7 @@
 package ru.avsh.specialist.mx.gui;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.SpecialistMX;
+import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.gui.lib.JFormattedTextFieldExt;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;

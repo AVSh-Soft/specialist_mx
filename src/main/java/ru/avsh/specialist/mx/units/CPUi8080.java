@@ -1,7 +1,7 @@
 package ru.avsh.specialist.mx.units;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.SpecialistMX;
+import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.units.memory.MemoryUnitManager;
