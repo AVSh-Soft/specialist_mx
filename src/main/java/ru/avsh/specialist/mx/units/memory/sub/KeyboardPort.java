@@ -151,6 +151,12 @@ public final class KeyboardPort implements MemoryUnit {
         BIT_MASKS_MX.put(KeyCode.ESCAPE       , 0x80_800);
     }
 
+    // Битовые маски в формате B7-B0_C3-C0_A7-A0
+    private static final Map<KeyCode, Integer> BIT_MASKS_ST = new EnumMap<>(KeyCode.class);
+    static {
+        BIT_MASKS_ST.put(KeyCode.ENTER, 0x04_001);
+    }
+
     private int fPA;
     private int fPB;
     private int fPC;
@@ -393,10 +399,11 @@ public final class KeyboardPort implements MemoryUnit {
         if (KeyCode.SHIFT.equals(keyCode)) {
             fShiftKey = flagKeyPressed;
         } else {
-            int bitMask = /*fKeyboardMode ? BIT_MASKS_ST[keyCode] :*/ BIT_MASKS_MX.getOrDefault(keyCode, 0);
+            int bitMask = fKeyboardMode ? BIT_MASKS_ST.getOrDefault(keyCode, 0)
+                                        : BIT_MASKS_MX.getOrDefault(keyCode, 0);
             if (flagKeyPressed) {
                 if (fKeyBuffer.indexOf(bitMask) == -1) {
-                    fKeyBuffer.add(bitMask);
+                    fKeyBuffer.add    (bitMask);
                 }
             } else {
                 fKeyBuffer.remove((Integer) bitMask);

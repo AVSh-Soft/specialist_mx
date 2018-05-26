@@ -11,6 +11,11 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * Адресуемое устройство "Экран 'Специалиста MX'".
+ *
+ * @author -=AVSh=-
+ */
 public class ScreenFx extends WritableImage implements MemoryUnit {
     // Таблица цветов A_R_G_B
     private static final int[] COLORS = {
