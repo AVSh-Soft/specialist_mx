@@ -142,10 +142,10 @@ public final class MainFrame extends JFrame {
                             fSpMX.startDebugger();
                             break;
                         default:
-                            fSpMX.keyCodeReceiver(true, keyCode);
+                            //fSpMX.keyCodeReceiver(true, keyCode);
                     }
                 } else {
-                    fSpMX.keyCodeReceiver(false, keyCode);
+                    //fSpMX.keyCodeReceiver(false, keyCode);
                 }
                 return true;
             }

@@ -37,30 +37,15 @@ public class MainFormFX extends Application {
         //primaryStage.setMinHeight(height);
         primaryStage.show();
 
-
-
         scene.setOnKeyPressed(event -> {
-
-
             System.out.println(">>" + event.getCode());
-/*
-            if (imageView.isManaged()) {
-                System.out.println(event.getCode());
-                //fSpMX.keyCodeReceiver(true, event.getCode().ordinal());
-            }
-*/
+            fSpMX.keyCodeReceiver(true, event.getCode());
         });
 
         scene.setOnKeyReleased(event -> {
             System.out.println("<<" + event.getCode());
-/*
-            if (imageView.isFocused()) {
-                //fSpMX.keyCodeReceiver(false, event.getCode().ordinal());
-            }
-*/
+            fSpMX.keyCodeReceiver(false, event.getCode());
         });
-
-
 
         // Обработчик вызывается, когда окно закрывается - для завершения работы программы
         primaryStage.setOnCloseRequest(event -> {

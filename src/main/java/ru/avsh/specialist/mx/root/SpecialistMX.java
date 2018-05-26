@@ -1,5 +1,6 @@
 package ru.avsh.specialist.mx.root;
 
+import javafx.scene.input.KeyCode;
 import org.ini4j.Wini;
 import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.FileFinder;
@@ -339,7 +340,7 @@ public final class SpecialistMX {
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
      * @param keyCode        код клавиши
      */
-    public void keyCodeReceiver(final boolean flagKeyPressed, final int keyCode) {
+    public void keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
         fKey.keyCodeReceiver(flagKeyPressed, keyCode);
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-

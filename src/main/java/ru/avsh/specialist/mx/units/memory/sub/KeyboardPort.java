@@ -1,10 +1,12 @@
 package ru.avsh.specialist.mx.units.memory.sub;
 
+import javafx.scene.input.KeyCode;
 import ru.avsh.specialist.mx.units.Speaker;
 import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
-import java.awt.event.KeyEvent;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -57,46 +59,97 @@ public final class KeyboardPort implements MemoryUnit {
     */
 
     // Битовые маски в формате B7-B0_C3-C0_A7-A0
-    private static final int[] BIT_MASKS_MX = {
-    //             0         1         2         3         4         5         6         7         8         9         A         B         C         D         E         F
-    /* 0 */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x08_001, 0x04_008, 0x04_001, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* 1 */ 0x00_000, 0x00_000, 0x04_800, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x80_800, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* 2 */ 0x04_020, 0x00_000, 0x00_000, 0x04_002, 0x04_400, 0x04_010, 0x04_200, 0x04_004, 0x04_100, 0x00_000, 0x00_000, 0x00_000, 0x08_004, 0x40_001, 0x10_001, 0x08_002,
-    /* 3 */ 0x40_002, 0x40_400, 0x40_200, 0x40_100, 0x40_080, 0x40_040, 0x40_020, 0x40_010, 0x40_008, 0x40_004, 0x00_000, 0x08_008, 0x00_000, 0x20_001, 0x00_000, 0x00_000,
-    /* 4 */ 0x00_000, 0x10_100, 0x08_010, 0x20_400, 0x10_008, 0x20_080, 0x10_800, 0x20_020, 0x20_002, 0x08_080, 0x20_800, 0x20_100, 0x10_010, 0x08_100, 0x20_040, 0x10_020,
-    /* 5 */ 0x10_080, 0x08_800, 0x10_040, 0x08_200, 0x08_040, 0x20_200, 0x10_004, 0x10_200, 0x08_020, 0x10_400, 0x20_004, 0x20_010, 0x10_002, 0x20_008, 0x00_000, 0x00_000,
-    /* 6 */ 0x40_002, 0x40_400, 0x40_200, 0x40_100, 0x40_080, 0x40_040, 0x40_020, 0x40_010, 0x40_008, 0x40_004, 0x20_001, 0x40_800, 0x00_000, 0x40_001, 0x10_001, 0x08_002,
-    /* 7 */ 0x80_200, 0x80_100, 0x80_080, 0x80_040, 0x80_020, 0x80_010, 0x80_008, 0x80_004, 0x80_002, 0x80_400, 0x04_080, 0x04_040, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* 8 */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* 9 */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x80_001, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* A */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* B */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* C */ 0x40_800, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* D */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x08_400, 0x00_000,
-    /* E */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* F */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000
-    };
-
-    // Битовые маски в формате B7-B0_C3-C0_A7-A0
-    private static final int[] BIT_MASKS_ST = {
-    //             0         1         2         3         4         5         6         7         8         9         A         B         C         D         E         F
-    /* 0 */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x08_001, 0x04_080, 0x04_001, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* 1 */ 0x00_000, 0x00_000, 0x04_800, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x04_040, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* 2 */ 0x04_020, 0x00_000, 0x00_000, 0x04_002, 0x04_400, 0x04_010, 0x04_200, 0x04_004, 0x04_100, 0x00_000, 0x00_000, 0x00_000, 0x08_004, 0x40_001, 0x10_001, 0x08_002,
-    /* 3 */ 0x40_002, 0x40_400, 0x40_200, 0x40_100, 0x40_080, 0x40_040, 0x40_020, 0x40_010, 0x40_008, 0x40_004, 0x00_000, 0x08_008, 0x00_000, 0x20_001, 0x00_000, 0x00_000,
-    /* 4 */ 0x00_000, 0x10_100, 0x08_010, 0x20_400, 0x10_008, 0x20_080, 0x10_800, 0x20_020, 0x20_002, 0x08_080, 0x20_800, 0x20_100, 0x10_010, 0x08_100, 0x20_040, 0x10_020,
-    /* 5 */ 0x10_080, 0x08_800, 0x10_040, 0x08_200, 0x08_040, 0x20_200, 0x10_004, 0x10_200, 0x08_020, 0x10_400, 0x20_004, 0x20_010, 0x10_002, 0x20_008, 0x00_000, 0x00_000,
-    /* 6 */ 0x40_002, 0x40_400, 0x40_200, 0x40_100, 0x40_080, 0x40_040, 0x40_020, 0x40_010, 0x40_008, 0x40_004, 0x20_001, 0x40_800, 0x00_000, 0x40_001, 0x10_001, 0x08_002,
-    /* 7 */ 0x80_800, 0x80_400, 0x80_200, 0x80_100, 0x80_080, 0x80_040, 0x80_020, 0x80_010, 0x80_008, 0x80_004, 0x80_002, 0x04_008, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* 8 */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* 9 */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x80_001, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* A */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* B */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* C */ 0x40_800, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* D */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x08_400, 0x00_000,
-    /* E */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000,
-    /* F */ 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000, 0x00_000
-    };
+    private static final Map<KeyCode, Integer> BIT_MASKS_MX = new EnumMap<>(KeyCode.class);
+    static {
+        BIT_MASKS_MX.put(KeyCode.ENTER        , 0x04_001);
+        BIT_MASKS_MX.put(KeyCode.END          , 0x04_002);
+        BIT_MASKS_MX.put(KeyCode.RIGHT        , 0x04_004);
+        BIT_MASKS_MX.put(KeyCode.TAB          , 0x04_008);
+        BIT_MASKS_MX.put(KeyCode.LEFT         , 0x04_010);
+        BIT_MASKS_MX.put(KeyCode.SPACE        , 0x04_020);
+        BIT_MASKS_MX.put(KeyCode.F12          , 0x04_040);
+        BIT_MASKS_MX.put(KeyCode.F11          , 0x04_080);
+        BIT_MASKS_MX.put(KeyCode.DOWN         , 0x04_100);
+        BIT_MASKS_MX.put(KeyCode.UP           , 0x04_200);
+        BIT_MASKS_MX.put(KeyCode.HOME         , 0x04_400);
+        BIT_MASKS_MX.put(KeyCode.ALT          , 0x04_800);
+        BIT_MASKS_MX.put(KeyCode.ALT_GRAPH    , 0x04_800);
+        BIT_MASKS_MX.put(KeyCode.BACK_SPACE   , 0x08_001);
+        BIT_MASKS_MX.put(KeyCode.SLASH        , 0x08_002);
+        BIT_MASKS_MX.put(KeyCode.DIVIDE       , 0x08_002);
+        BIT_MASKS_MX.put(KeyCode.COMMA        , 0x08_004);
+        BIT_MASKS_MX.put(KeyCode.SEMICOLON    , 0x08_008);
+        BIT_MASKS_MX.put(KeyCode.B            , 0x08_010);
+        BIT_MASKS_MX.put(KeyCode.X            , 0x08_020);
+        BIT_MASKS_MX.put(KeyCode.T            , 0x08_040);
+        BIT_MASKS_MX.put(KeyCode.I            , 0x08_080);
+        BIT_MASKS_MX.put(KeyCode.M            , 0x08_100);
+        BIT_MASKS_MX.put(KeyCode.S            , 0x08_200);
+        BIT_MASKS_MX.put(KeyCode.QUOTE        , 0x08_400);
+        BIT_MASKS_MX.put(KeyCode.Q            , 0x08_800);
+        BIT_MASKS_MX.put(KeyCode.PERIOD       , 0x10_001);
+        BIT_MASKS_MX.put(KeyCode.DECIMAL      , 0x10_001);
+        BIT_MASKS_MX.put(KeyCode.BACK_SLASH   , 0x10_002);
+        BIT_MASKS_MX.put(KeyCode.V            , 0x10_004);
+        BIT_MASKS_MX.put(KeyCode.D            , 0x10_008);
+        BIT_MASKS_MX.put(KeyCode.L            , 0x10_010);
+        BIT_MASKS_MX.put(KeyCode.O            , 0x10_020);
+        BIT_MASKS_MX.put(KeyCode.R            , 0x10_040);
+        BIT_MASKS_MX.put(KeyCode.P            , 0x10_080);
+        BIT_MASKS_MX.put(KeyCode.A            , 0x10_100);
+        BIT_MASKS_MX.put(KeyCode.W            , 0x10_200);
+        BIT_MASKS_MX.put(KeyCode.Y            , 0x10_400);
+        BIT_MASKS_MX.put(KeyCode.F            , 0x10_800);
+        BIT_MASKS_MX.put(KeyCode.EQUALS       , 0x20_001);
+        BIT_MASKS_MX.put(KeyCode.MULTIPLY     , 0x20_001);
+        BIT_MASKS_MX.put(KeyCode.H            , 0x20_002);
+        BIT_MASKS_MX.put(KeyCode.Z            , 0x20_004);
+        BIT_MASKS_MX.put(KeyCode.CLOSE_BRACKET, 0x20_008);
+        BIT_MASKS_MX.put(KeyCode.OPEN_BRACKET , 0x20_010);
+        BIT_MASKS_MX.put(KeyCode.G            , 0x20_020);
+        BIT_MASKS_MX.put(KeyCode.N            , 0x20_040);
+        BIT_MASKS_MX.put(KeyCode.E            , 0x20_080);
+        BIT_MASKS_MX.put(KeyCode.K            , 0x20_100);
+        BIT_MASKS_MX.put(KeyCode.U            , 0x20_200);
+        BIT_MASKS_MX.put(KeyCode.C            , 0x20_400);
+        BIT_MASKS_MX.put(KeyCode.J            , 0x20_800);
+        BIT_MASKS_MX.put(KeyCode.MINUS        , 0x40_001);
+        BIT_MASKS_MX.put(KeyCode.SUBTRACT     , 0x40_001);
+        BIT_MASKS_MX.put(KeyCode.DIGIT0       , 0x40_002);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD0      , 0x40_002);
+        BIT_MASKS_MX.put(KeyCode.DIGIT9       , 0x40_004);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD9      , 0x40_004);
+        BIT_MASKS_MX.put(KeyCode.DIGIT8       , 0x40_008);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD8      , 0x40_008);
+        BIT_MASKS_MX.put(KeyCode.DIGIT7       , 0x40_010);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD7      , 0x40_010);
+        BIT_MASKS_MX.put(KeyCode.DIGIT6       , 0x40_020);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD6      , 0x40_020);
+        BIT_MASKS_MX.put(KeyCode.DIGIT5       , 0x40_040);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD5      , 0x40_040);
+        BIT_MASKS_MX.put(KeyCode.DIGIT4       , 0x40_080);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD4      , 0x40_080);
+        BIT_MASKS_MX.put(KeyCode.DIGIT3       , 0x40_100);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD3      , 0x40_100);
+        BIT_MASKS_MX.put(KeyCode.DIGIT2       , 0x40_200);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD2      , 0x40_200);
+        BIT_MASKS_MX.put(KeyCode.DIGIT1       , 0x40_400);
+        BIT_MASKS_MX.put(KeyCode.NUMPAD1      , 0x40_400);
+        BIT_MASKS_MX.put(KeyCode.BACK_QUOTE   , 0x40_800);
+        BIT_MASKS_MX.put(KeyCode.ADD          , 0x40_800);
+        BIT_MASKS_MX.put(KeyCode.INSERT       , 0x80_001);
+        BIT_MASKS_MX.put(KeyCode.F9           , 0x80_002);
+        BIT_MASKS_MX.put(KeyCode.F8           , 0x80_004);
+        BIT_MASKS_MX.put(KeyCode.F7           , 0x80_008);
+        BIT_MASKS_MX.put(KeyCode.F6           , 0x80_010);
+        BIT_MASKS_MX.put(KeyCode.F5           , 0x80_020);
+        BIT_MASKS_MX.put(KeyCode.F4           , 0x80_040);
+        BIT_MASKS_MX.put(KeyCode.F3           , 0x80_080);
+        BIT_MASKS_MX.put(KeyCode.F2           , 0x80_100);
+        BIT_MASKS_MX.put(KeyCode.F1           , 0x80_200);
+        BIT_MASKS_MX.put(KeyCode.F10          , 0x80_400);
+        BIT_MASKS_MX.put(KeyCode.ESCAPE       , 0x80_800);
+    }
 
     private int fPA;
     private int fPB;
@@ -115,8 +168,8 @@ public final class KeyboardPort implements MemoryUnit {
      * @param speaker ссылка на объект класса Speaker - "Speaker (динамик)"
      */
     public KeyboardPort(Speaker speaker) {
-        fPR = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
-        fSpeaker = speaker;
+        fPR        = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
+        fSpeaker   =     speaker;
         fKeyBuffer = new CopyOnWriteArrayList<>();
     }
 
@@ -336,19 +389,17 @@ public final class KeyboardPort implements MemoryUnit {
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
      * @param keyCode        код клавиши
      */
-    public void keyCodeReceiver(boolean flagKeyPressed, int keyCode) {
-        if (keyCode <= 0xFF) {
-            if (keyCode == KeyEvent.VK_SHIFT) {
-                fShiftKey = flagKeyPressed;
-            } else {
-                int bitMask = fKeyboardMode ? BIT_MASKS_ST[keyCode] : BIT_MASKS_MX[keyCode];
-                if (flagKeyPressed) {
-                    if (fKeyBuffer.indexOf(bitMask) == -1) {
-                        fKeyBuffer.add(bitMask);
-                    }
-                } else {
-                    fKeyBuffer.remove((Integer) bitMask);
+    public void keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
+        if (KeyCode.SHIFT.equals(keyCode)) {
+            fShiftKey = flagKeyPressed;
+        } else {
+            int bitMask = /*fKeyboardMode ? BIT_MASKS_ST[keyCode] :*/ BIT_MASKS_MX.getOrDefault(keyCode, 0);
+            if (flagKeyPressed) {
+                if (fKeyBuffer.indexOf(bitMask) == -1) {
+                    fKeyBuffer.add(bitMask);
                 }
+            } else {
+                fKeyBuffer.remove((Integer) bitMask);
             }
         }
     }
