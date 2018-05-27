@@ -58,7 +58,7 @@ public final class KeyboardPort implements MemoryUnit {
      ---------------------------------------------------------------------------------
     */
 
-    // Битовые маски в формате B7-B0_C3-C0_A7-A0
+    // Битовые маски в формате B7-B0_C3-C0_A7-A0 - ПК "Специалист MX"
     private static final Map<KeyCode, Integer> BIT_MASKS_MX = new EnumMap<>(KeyCode.class);
     static {
         BIT_MASKS_MX.put(KeyCode.ENTER        , 0x04_001);
@@ -151,10 +151,97 @@ public final class KeyboardPort implements MemoryUnit {
         BIT_MASKS_MX.put(KeyCode.ESCAPE       , 0x80_800);
     }
 
-    // Битовые маски в формате B7-B0_C3-C0_A7-A0
+    // Битовые маски в формате B7-B0_C3-C0_A7-A0 - Стандартный ПК "Специалист"
     private static final Map<KeyCode, Integer> BIT_MASKS_ST = new EnumMap<>(KeyCode.class);
     static {
-        BIT_MASKS_ST.put(KeyCode.ENTER, 0x04_001);
+        BIT_MASKS_ST.put(KeyCode.ENTER        , 0x04_001);
+        BIT_MASKS_ST.put(KeyCode.END          , 0x04_002);
+        BIT_MASKS_ST.put(KeyCode.RIGHT        , 0x04_004);
+        BIT_MASKS_ST.put(KeyCode.F12          , 0x04_008);
+        BIT_MASKS_ST.put(KeyCode.LEFT         , 0x04_010);
+        BIT_MASKS_ST.put(KeyCode.SPACE        , 0x04_020);
+        BIT_MASKS_ST.put(KeyCode.ESCAPE       , 0x04_040);
+        BIT_MASKS_ST.put(KeyCode.TAB          , 0x04_080);
+        BIT_MASKS_ST.put(KeyCode.DOWN         , 0x04_100);
+        BIT_MASKS_ST.put(KeyCode.UP           , 0x04_200);
+        BIT_MASKS_ST.put(KeyCode.HOME         , 0x04_400);
+        BIT_MASKS_ST.put(KeyCode.ALT          , 0x04_800);
+        BIT_MASKS_ST.put(KeyCode.ALT_GRAPH    , 0x04_800);
+        BIT_MASKS_ST.put(KeyCode.BACK_SPACE   , 0x08_001);
+        BIT_MASKS_ST.put(KeyCode.SLASH        , 0x08_002);
+        BIT_MASKS_ST.put(KeyCode.DIVIDE       , 0x08_002);
+        BIT_MASKS_ST.put(KeyCode.COMMA        , 0x08_004);
+        BIT_MASKS_ST.put(KeyCode.SEMICOLON    , 0x08_008);
+        BIT_MASKS_ST.put(KeyCode.B            , 0x08_010);
+        BIT_MASKS_ST.put(KeyCode.X            , 0x08_020);
+        BIT_MASKS_ST.put(KeyCode.T            , 0x08_040);
+        BIT_MASKS_ST.put(KeyCode.I            , 0x08_080);
+        BIT_MASKS_ST.put(KeyCode.M            , 0x08_100);
+        BIT_MASKS_ST.put(KeyCode.S            , 0x08_200);
+        BIT_MASKS_ST.put(KeyCode.QUOTE        , 0x08_400);
+        BIT_MASKS_ST.put(KeyCode.Q            , 0x08_800);
+        BIT_MASKS_ST.put(KeyCode.PERIOD       , 0x10_001);
+        BIT_MASKS_ST.put(KeyCode.DECIMAL      , 0x10_001);
+        BIT_MASKS_ST.put(KeyCode.BACK_SLASH   , 0x10_002);
+        BIT_MASKS_ST.put(KeyCode.V            , 0x10_004);
+        BIT_MASKS_ST.put(KeyCode.D            , 0x10_008);
+        BIT_MASKS_ST.put(KeyCode.L            , 0x10_010);
+        BIT_MASKS_ST.put(KeyCode.O            , 0x10_020);
+        BIT_MASKS_ST.put(KeyCode.R            , 0x10_040);
+        BIT_MASKS_ST.put(KeyCode.P            , 0x10_080);
+        BIT_MASKS_ST.put(KeyCode.A            , 0x10_100);
+        BIT_MASKS_ST.put(KeyCode.W            , 0x10_200);
+        BIT_MASKS_ST.put(KeyCode.Y            , 0x10_400);
+        BIT_MASKS_ST.put(KeyCode.F            , 0x10_800);
+        BIT_MASKS_ST.put(KeyCode.EQUALS       , 0x20_001);
+        BIT_MASKS_ST.put(KeyCode.MULTIPLY     , 0x20_001);
+        BIT_MASKS_ST.put(KeyCode.H            , 0x20_002);
+        BIT_MASKS_ST.put(KeyCode.Z            , 0x20_004);
+        BIT_MASKS_ST.put(KeyCode.CLOSE_BRACKET, 0x20_008);
+        BIT_MASKS_ST.put(KeyCode.OPEN_BRACKET , 0x20_010);
+        BIT_MASKS_ST.put(KeyCode.G            , 0x20_020);
+        BIT_MASKS_ST.put(KeyCode.N            , 0x20_040);
+        BIT_MASKS_ST.put(KeyCode.E            , 0x20_080);
+        BIT_MASKS_ST.put(KeyCode.K            , 0x20_100);
+        BIT_MASKS_ST.put(KeyCode.U            , 0x20_200);
+        BIT_MASKS_ST.put(KeyCode.C            , 0x20_400);
+        BIT_MASKS_ST.put(KeyCode.J            , 0x20_800);
+        BIT_MASKS_ST.put(KeyCode.MINUS        , 0x40_001);
+        BIT_MASKS_ST.put(KeyCode.SUBTRACT     , 0x40_001);
+        BIT_MASKS_ST.put(KeyCode.DIGIT0       , 0x40_002);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD0      , 0x40_002);
+        BIT_MASKS_ST.put(KeyCode.DIGIT9       , 0x40_004);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD9      , 0x40_004);
+        BIT_MASKS_ST.put(KeyCode.DIGIT8       , 0x40_008);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD8      , 0x40_008);
+        BIT_MASKS_ST.put(KeyCode.DIGIT7       , 0x40_010);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD7      , 0x40_010);
+        BIT_MASKS_ST.put(KeyCode.DIGIT6       , 0x40_020);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD6      , 0x40_020);
+        BIT_MASKS_ST.put(KeyCode.DIGIT5       , 0x40_040);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD5      , 0x40_040);
+        BIT_MASKS_ST.put(KeyCode.DIGIT4       , 0x40_080);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD4      , 0x40_080);
+        BIT_MASKS_ST.put(KeyCode.DIGIT3       , 0x40_100);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD3      , 0x40_100);
+        BIT_MASKS_ST.put(KeyCode.DIGIT2       , 0x40_200);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD2      , 0x40_200);
+        BIT_MASKS_ST.put(KeyCode.DIGIT1       , 0x40_400);
+        BIT_MASKS_ST.put(KeyCode.NUMPAD1      , 0x40_400);
+        BIT_MASKS_ST.put(KeyCode.BACK_QUOTE   , 0x40_800);
+        BIT_MASKS_ST.put(KeyCode.ADD          , 0x40_800);
+        BIT_MASKS_ST.put(KeyCode.INSERT       , 0x80_001);
+        BIT_MASKS_ST.put(KeyCode.F11          , 0x80_002);
+        BIT_MASKS_ST.put(KeyCode.F10          , 0x80_004);
+        BIT_MASKS_ST.put(KeyCode.F9           , 0x80_008);
+        BIT_MASKS_ST.put(KeyCode.F8           , 0x80_010);
+        BIT_MASKS_ST.put(KeyCode.F7           , 0x80_020);
+        BIT_MASKS_ST.put(KeyCode.F6           , 0x80_040);
+        BIT_MASKS_ST.put(KeyCode.F5           , 0x80_080);
+        BIT_MASKS_ST.put(KeyCode.F4           , 0x80_100);
+        BIT_MASKS_ST.put(KeyCode.F3           , 0x80_200);
+        BIT_MASKS_ST.put(KeyCode.F2           , 0x80_400);
+        BIT_MASKS_ST.put(KeyCode.F1           , 0x80_800);
     }
 
     private int fPA;
