@@ -13,6 +13,7 @@ import ru.avsh.specialist.mx.root.SpecialistMX;
 
 import static javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST;
 import static ru.avsh.specialist.mx.helpers.Constants.INI_SECTION_CONFIG;
+import static ru.avsh.specialist.mx.helpers.Constants.SPMX_NAME;
 
 /**
  * Класс для формирования главного окна приложения (меню, кнопоки обработчики событий).
@@ -38,26 +39,34 @@ public class MainFormFX extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        final Menu  fileMenu = new Menu("Файл");
-        final Menu  viewMenu = new Menu("Просмотр");
-        final Menu aboutMenu = new Menu("О программе");
-
         final      MenuItem  openItem = new      MenuItem("Открыть…");
         final CheckMenuItem   romItem = new CheckMenuItem(ROM_PREF);
         final CheckMenuItem diskAItem = new CheckMenuItem(DISK_A.concat(NO_DISK));
         final CheckMenuItem diskBItem = new CheckMenuItem(DISK_B.concat(NO_DISK));
         final      MenuItem  saveItem = new      MenuItem("Сохранить блок...");
         final      MenuItem resetItem = new      MenuItem("Сбросить");
-        final      MenuItem exitItem  = new      MenuItem("Выход");
-
-        fileMenu.getItems().addAll(
-                openItem,
-                new SeparatorMenuItem(), romItem,
+        final      MenuItem  exitItem = new      MenuItem("Выход");
+        final      Menu      fileMenu = new      Menu    ("Файл", null,
+                                          openItem,
+                new SeparatorMenuItem(),   romItem,
                 new SeparatorMenuItem(), diskAItem, diskBItem,
-                new SeparatorMenuItem(), saveItem,
+                new SeparatorMenuItem(),  saveItem,
                 new SeparatorMenuItem(), resetItem,
-                new SeparatorMenuItem(), exitItem);
+                new SeparatorMenuItem(),  exitItem);
 
+        final      MenuItem   infoItem = new      MenuItem("Состояние CPU/RAM");
+        final      MenuItem  debugItem = new      MenuItem("Запуск отладчика");
+        final CheckMenuItem size11Item = new CheckMenuItem("Размер 1:1");
+        final CheckMenuItem size21Item = new CheckMenuItem("Размер 2:1");
+        final RadioMenuItem modeMXItem = new RadioMenuItem("Клавиатура \"".concat(SPMX_NAME).concat("\""));
+        final RadioMenuItem modeSTItem = new RadioMenuItem("Клавиатура \"Специалист\"");
+        final      Menu       viewMenu = new      Menu    ("Просмотр", null,
+                                           infoItem,  debugItem,
+                new SeparatorMenuItem(), size11Item, size21Item,
+                new SeparatorMenuItem(), modeMXItem, modeSTItem);
+
+        final MenuItem aboutItem = new MenuItem("О программе...");
+        final Menu     aboutMenu = new Menu    ("О программе", null, aboutItem);
 
         final MenuBar menuBar = new MenuBar(fileMenu, viewMenu, aboutMenu);
 
@@ -67,7 +76,7 @@ public class MainFormFX extends Application {
         imageView.setCache(true);
 
         final VBox root = new VBox(menuBar, imageView);
-        final Scene scene = new Scene(root, 800, 600);
+        final Scene scene = new Scene(root, root.getPrefWidth(), root.getPrefHeight());
         primaryStage.setScene(scene);
         //primaryStage.setMinWidth(width);
         //primaryStage.setMinHeight(height);
