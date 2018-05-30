@@ -111,6 +111,11 @@ public class MainFormFX extends Application {
         buttonBar.getButtons().addAll(openBtn, saveBtn, resetBtn, debugBtn);
         buttonBar.setPadding(new Insets(5.0, 5.0, 5.0, 5.0));
 
+         openBtn.setFocusTraversable(false);
+         saveBtn.setFocusTraversable(false);
+        resetBtn.setFocusTraversable(false);
+        debugBtn.setFocusTraversable(false);
+
          openBtn.setTooltip(new Tooltip("Открывает (загружает и запускает) файлы *.rom, *.mon, *.cpu(i80), *.rks, *.odi"));
          saveBtn.setTooltip(new Tooltip("Сохраняет блок данных в файлы *.cpu(i80) и *.rks"));
         resetBtn.setTooltip(new Tooltip("Сбрасывает эмулятор в исходное состояние"));
@@ -177,19 +182,11 @@ public class MainFormFX extends Application {
                     final ButtonType btnB = new ButtonType("[B:]");
                     alert.getButtonTypes().addAll(btnA, btnB, new ButtonType("Отмена", ButtonData.CANCEL_CLOSE));
                     alert.showAndWait().ifPresent(buttonType -> {
-                        final boolean fdd = btnB.equals(buttonType);
-                        diskInsertEject(fdd, file, fdd ? diskBItem : diskAItem);
+                        if (!buttonType.getButtonData().isCancelButton()) {
+                            final boolean   fdd = btnB.equals(buttonType);
+                            diskInsertEject(fdd,  file, fdd ? diskBItem : diskAItem);
+                        }
                     });
-
-/*
-                    Object[] options = {"[A:]", "[B:]"};
-                    final int selected  = JOptionPane.showOptionDialog(null, "В какой дисковод вставить диск?",
-                            "Выбор дисковода", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
-                    if (selected != JOptionPane.CLOSED_OPTION) {
-                        final boolean fdd = selected == JOptionPane.NO_OPTION;
-                        diskInsertEject(fdd, file, fdd ? diskBItem : diskAItem);
-                    }
-*/
                 }
                 setTitle(primaryStage, result ? "" : " (Ошибка загрузки!)");
             }
