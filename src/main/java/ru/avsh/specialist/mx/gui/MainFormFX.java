@@ -7,19 +7,27 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.sub.ScreenFx;
 
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Optional;
 import java.util.Properties;
 
+import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
 import static javafx.scene.control.Alert.AlertType.INFORMATION;
 import static javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
@@ -131,6 +139,62 @@ public class MainFormFX extends Application {
         primaryStage.widthProperty ().addListener((obs, oldValue, newValue) -> imageView.setFitWidth ((Double) newValue - deltaW));
         primaryStage.heightProperty().addListener((obs, oldValue, newValue) -> imageView.setFitHeight((Double) newValue - deltaH));
 
+        // -= Открытие файла =-
+        openBtn.setOnAction(event -> {
+            final FileChooser chooser = new FileChooser();
+            final FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter(
+                    "Файлы: *.rom, *.mon, *.cpu, *.rks, *.odi", "*.rom", "*.mon", "*.cpu", "*.rks", "*.odi");
+            chooser.setTitle(STR_OPEN_FILE);
+            chooser.getExtensionFilters().add(extFilter);
+            chooser.setInitialDirectory(new File(getCurPath()));
+
+            final File file = chooser.showOpenDialog(primaryStage);
+            if (file != null) {
+                final String fileName = file.getName().toLowerCase();
+
+                setCurPath(file.getParent());
+
+                boolean result = true;
+                if (fileName.endsWith("rom")) {
+                    result = fSpMX.loadFileROM(file);
+                    if (result) {
+                        fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, fSpMX.getShortPath(file));
+                        setRomItem(romItem);
+                    }
+                } else if (fileName.endsWith("mon")) {
+                    result = fSpMX.loadFileMON(file);
+                } else if (fileName.endsWith("cpu")) {
+                    result = fSpMX.loadFileCPU(file);
+                } else if (fileName.endsWith("rks")) {
+                    result = fSpMX.loadFileRKS(file);
+                } else if (fileName.endsWith("odi")) {
+                    final Alert alert = new Alert(CONFIRMATION);
+                    alert.setTitle("Выбор дисковода");
+                    alert.setHeaderText("В какой дисковод вставить диск?");
+                    alert.getButtonTypes().clear();
+
+                    final ButtonType btnA = new ButtonType("[A:]");
+                    final ButtonType btnB = new ButtonType("[B:]");
+                    alert.getButtonTypes().addAll(btnA, btnB, new ButtonType("Отмена", ButtonData.CANCEL_CLOSE));
+                    alert.showAndWait().ifPresent(buttonType -> {
+                        final boolean fdd = btnB.equals(buttonType);
+                        diskInsertEject(fdd, file, fdd ? diskBItem : diskAItem);
+                    });
+
+/*
+                    Object[] options = {"[A:]", "[B:]"};
+                    final int selected  = JOptionPane.showOptionDialog(null, "В какой дисковод вставить диск?",
+                            "Выбор дисковода", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+                    if (selected != JOptionPane.CLOSED_OPTION) {
+                        final boolean fdd = selected == JOptionPane.NO_OPTION;
+                        diskInsertEject(fdd, file, fdd ? diskBItem : diskAItem);
+                    }
+*/
+                }
+                setTitle(primaryStage, result ? "" : " (Ошибка загрузки!)");
+            }
+        });
+
         // -= Изменение размеров окна программы =-
         final EventHandler<ActionEvent> sizeEventHandler = event -> {
             final CheckMenuItem checkMenuItem = (CheckMenuItem) event.getSource();
@@ -224,5 +288,66 @@ public class MainFormFX extends Application {
         fSpMX.getMemoryUnitManager().close();
         // Завершаем приложение
         System.exit(0);
+    }
+
+    private void setTitle(final Stage stage, final String title) {
+        stage.setTitle(String.format("[%s]%s%s", fSpMX.getCurMonName(), fSpMX.getProductName(), title));
+    }
+
+    /**
+     * Вставляет или извлекает диск в/из дисковод(а).
+     *
+     * @param fdd            false = "A" / true = "B"
+     * @param file           файл с образом диска, если null, то запускается диалог выбора файла
+     * @param targetMenuItem целевой пункт меню, отображающий состояние диска
+     */
+    private void diskInsertEject(boolean fdd, File file, @NotNull final CheckMenuItem targetMenuItem) {
+        boolean insert = true; // По умолчанию вставка диска
+
+        if (file == null) {
+            final JFileChooser chooser = new JFileChooser(getCurPath());
+            chooser.setDialogTitle(STR_OPEN_FILE);
+            chooser.setFileFilter (new FileNameExtensionFilter("Файлы: *.odi", "odi"));
+            insert = chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION;
+            if (insert) {
+                file = chooser.getSelectedFile() ;
+                setCurPath(file.getParent());
+            }
+        }
+
+        final String diskName = fdd ? DISK_B : DISK_A;
+        if (insert) {
+            final String fileName = "\"".concat(file.getName()).concat("\"");
+            try {
+                fSpMX.insertDisk(fdd, file);
+                targetMenuItem.setSelected(true );
+                targetMenuItem.setText(diskName.concat(fileName));
+            } catch (Exception e) {
+                fSpMX.ejectDisk(fdd);
+                targetMenuItem.setSelected(false);
+                targetMenuItem.setText(diskName.concat(NO_DISK));
+                JOptionPane.showMessageDialog(null, String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            fSpMX.ejectDisk(fdd);
+            targetMenuItem.setSelected(false);
+            targetMenuItem.setText(diskName.concat(NO_DISK));
+        }
+    }
+
+    /**
+     * Устанавливает параметры пункта меню для отображения/управления ROM-файл(а/ом) эмулятора.
+     */
+    private void setRomItem(@NotNull final CheckMenuItem romItem) {
+        final File romFile = fSpMX.getCurRomFile();
+        if ( romFile == null) {
+            romItem.setSelected(false);
+            //romItem.setToolTipText("");
+            romItem.setText(ROM_PREF.concat("встроенный"));
+        } else {
+            romItem.setSelected(true);
+            //romItem.setToolTipText(romFile.getPath());
+            romItem.setText(ROM_PREF.concat("\"").concat(romFile.getName()).concat("\""));
+        }
     }
 }
