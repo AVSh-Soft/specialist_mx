@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Optional;
 import java.util.Properties;
 
 import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
@@ -61,6 +60,8 @@ public class MainFormFX extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
+        //primaryStage.getIcons().addAll()
+
         final      MenuItem  openItem = new      MenuItem("Открыть…");
         final CheckMenuItem   romItem = new CheckMenuItem(ROM_PREF);
         final CheckMenuItem diskAItem = new CheckMenuItem(DISK_A.concat(NO_DISK));
@@ -267,7 +268,7 @@ public class MainFormFX extends Application {
         // Обработчик вызывается, когда окно закрывается - для завершения работы программы
         primaryStage.setOnCloseRequest(event -> {
             // Запоминаем размеры формы в ini-файле
-            fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FORM_WIDTH, primaryStage.getWidth ());
+            fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FORM_WIDTH , primaryStage.getWidth ());
             fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FORM_HEIGHT, primaryStage.getHeight());
             // Сохраняем ini-файл
             fSpMX.storeIni();
