@@ -10,6 +10,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -18,16 +19,14 @@ import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.sub.ScreenFx;
 
-import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Properties;
 
-import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
-import static javafx.scene.control.Alert.AlertType.INFORMATION;
+import static javafx.geometry.Pos.CENTER;
+import static javafx.scene.control.Alert.AlertType.*;
 import static javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
@@ -104,13 +103,15 @@ public class MainFormFX extends Application {
         imageView.setSmooth       (false);
         imageView.setCache        (true );
 
-        final Button      openBtn = new Button("Открыть"  );
-        final Button      saveBtn = new Button("Сохранить");
-        final Button     resetBtn = new Button("Сбросить" );
-        final Button     debugBtn = new Button("Отладчик" );
-        final ButtonBar buttonBar = new ButtonBar();
-        buttonBar.getButtons().addAll(openBtn, saveBtn, resetBtn, debugBtn);
-        buttonBar.setPadding(new Insets(5.0, 5.0, 5.0, 5.0));
+        final Button   openBtn = new Button("Открыть"  );
+        final Button   saveBtn = new Button("Сохранить");
+        final Button  resetBtn = new Button("Сбросить" );
+        final Button  debugBtn = new Button("Отладчик" );
+        final HBox   buttonBox = new HBox();
+        buttonBox.setSpacing(5.0);
+        buttonBox.setAlignment(CENTER);
+        buttonBox.setPadding(new Insets(5.0, 5.0, 5.0, 5.0));
+        buttonBox.getChildren().addAll(openBtn, saveBtn, resetBtn, debugBtn);
 
          openBtn.setFocusTraversable(false);
          saveBtn.setFocusTraversable(false);
@@ -122,7 +123,7 @@ public class MainFormFX extends Application {
         resetBtn.setTooltip(new Tooltip("Сбрасывает эмулятор в исходное состояние"));
         debugBtn.setTooltip(new Tooltip("Запускает отладчик"));
 
-        final VBox  root  = new VBox(menuBar, imageView, buttonBar);
+        final VBox  root  = new VBox(menuBar, imageView, buttonBox);
         final Scene scene = new Scene(root, -1, -1);
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -148,10 +149,10 @@ public class MainFormFX extends Application {
         // -= Открытие файла =-
         openBtn.setOnAction(event -> {
             final FileChooser chooser = new FileChooser();
-            final FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter(
-                    "Файлы: *.rom, *.mon, *.cpu, *.rks, *.odi", "*.rom", "*.mon", "*.cpu", "*.rks", "*.odi");
             chooser.setTitle(STR_OPEN_FILE);
-            chooser.getExtensionFilters().add(extFilter);
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                    "Файлы: *.rom, *.mon, *.cpu, *.rks, *.odi",
+                    "*.rom", "*.mon", "*.cpu", "*.rks", "*.odi"));
             chooser.setInitialDirectory(new File(getCurPath()));
 
             final File file = chooser.showOpenDialog(primaryStage);
@@ -185,12 +186,22 @@ public class MainFormFX extends Application {
                     alert.showAndWait().ifPresent(buttonType -> {
                         if (!buttonType.getButtonData().isCancelButton()) {
                             final boolean   fdd = btnB.equals(buttonType);
-                            diskInsertEject(fdd,  file, fdd ? diskBItem : diskAItem);
+                            diskInsertEject(fdd,  file, fdd ? diskBItem : diskAItem, primaryStage);
                         }
                     });
                 }
                 setTitle(primaryStage, result ? "" : " (Ошибка загрузки!)");
             }
+        });
+
+        // -= Сброс компьютера =-
+        resetBtn.setOnAction(event -> {
+            fSpMX.restart(true, false);
+            setTitle(primaryStage, "");
+            // Режим клавиатуры будем сбрасывать здесь.
+            fSpMX.setKeyboardMode (false);
+            modeMXItem.setSelected(true );
+            modeSTItem.setSelected(false);
         });
 
         // -= Изменение размеров окна программы =-
@@ -298,17 +309,20 @@ public class MainFormFX extends Application {
      * @param fdd            false = "A" / true = "B"
      * @param file           файл с образом диска, если null, то запускается диалог выбора файла
      * @param targetMenuItem целевой пункт меню, отображающий состояние диска
+     * @param stage          родительское окно
      */
-    private void diskInsertEject(boolean fdd, File file, @NotNull final CheckMenuItem targetMenuItem) {
+    private void diskInsertEject(boolean fdd, File file,
+                                 @NotNull final CheckMenuItem targetMenuItem, @NotNull Stage stage) {
         boolean insert = true; // По умолчанию вставка диска
 
         if (file == null) {
-            final JFileChooser chooser = new JFileChooser(getCurPath());
-            chooser.setDialogTitle(STR_OPEN_FILE);
-            chooser.setFileFilter (new FileNameExtensionFilter("Файлы: *.odi", "odi"));
-            insert = chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION;
+            final FileChooser chooser = new FileChooser();
+            chooser.setTitle(STR_OPEN_FILE);
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Файлы: *.odi", "*.odi"));
+            chooser.setInitialDirectory(new File(getCurPath()));
+
+            insert = (file = chooser.showOpenDialog(stage)) != null;
             if (insert) {
-                file = chooser.getSelectedFile() ;
                 setCurPath(file.getParent());
             }
         }
@@ -324,7 +338,12 @@ public class MainFormFX extends Application {
                 fSpMX.ejectDisk(fdd);
                 targetMenuItem.setSelected(false);
                 targetMenuItem.setText(diskName.concat(NO_DISK));
-                JOptionPane.showMessageDialog(null, String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()), "Ошибка", JOptionPane.ERROR_MESSAGE);
+
+                final Alert alert = new Alert(ERROR);
+                alert.setTitle      ("Ошибка");
+                alert.setHeaderText (null);
+                alert.setContentText(String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()));
+                alert.showAndWait   ();
             }
         } else {
             fSpMX.ejectDisk(fdd);

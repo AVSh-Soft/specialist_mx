@@ -1,5 +1,9 @@
 package ru.avsh.specialist.mx.root;
 
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar.ButtonData;
+import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
 import org.ini4j.Wini;
 import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
@@ -14,9 +18,12 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.io.*;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.function.Consumer;
 
+import static javafx.scene.control.Alert.AlertType;
+import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
 import static javax.swing.JOptionPane.*;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
@@ -515,14 +522,21 @@ public final class SpecialistMX {
                     // Проверим контрольную сумму данных
                     if (checksum >= 0) {
                         final int curChecksum = getChecksum(buf, 0, length);
-                        if ((curChecksum != checksum) &&
-                                (showConfirmDialog(fMainFrame,
-                                        String.format("В файле: %s%n" +
-                                                      "Рассчитанная контрольная сумма  данных: [%04X]%n"   +
-                                                      "не равна проверочной контрольной сумме: [%04X]%n%n" +
-                                                      "Загружать файл?", fileName, curChecksum, checksum),
-                                        "Загружать?", YES_NO_OPTION) != YES_OPTION)) {
-                            throw new IOException("Не прошла проверка контрольной суммы в файле: ".concat(fileName));
+                        if (curChecksum != checksum) {
+                            final Alert alert = new Alert(CONFIRMATION);
+                            alert.setTitle("Загружать?");
+                            alert.setHeaderText(String.format("В файле: %s%n" +
+                                    "Рассчитанная контрольная сумма  данных: [%04X]%n"   +
+                                    "не равна проверочной контрольной сумме: [%04X]%n%n" +
+                                    "Загружать файл?", fileName, curChecksum, checksum));
+                            alert.getButtonTypes().clear();
+                            alert.getButtonTypes().addAll(
+                                    new ButtonType("Да" , ButtonData.YES),
+                                    new ButtonType("Нет", ButtonData.NO ));
+                            final Optional<ButtonType> result = alert.showAndWait();
+                            if (!result.isPresent() || result.get().getButtonData().isCancelButton()) {
+                                throw new IOException("Не прошла проверка контрольной суммы в файле: ".concat(fileName));
+                            }
                         }
                     }
                     // Перемещаем данные из буфера в память через менеджер устройств памяти
@@ -627,13 +641,22 @@ public final class SpecialistMX {
     public boolean restart(boolean clearDialog, boolean clear) {
         try {
             if (clearDialog) {
-                final Object[] options = {"Да", "Нет"};
-                int selected = showOptionDialog(fMainFrame, "Очистить память?", "Очистить?", YES_NO_OPTION, QUESTION_MESSAGE, null, options, options[1]);
+                final Alert alert = new Alert(CONFIRMATION);
+                alert.setTitle      ("Очистить?");
+                alert.setHeaderText (null);
+                alert.setContentText("Очистить память?");
+                alert.getButtonTypes().clear();
+                final ButtonType btnYes = new ButtonType("Да" );
+                final ButtonType btnNo  = new ButtonType("Нет");
+                alert.getButtonTypes().addAll(btnYes, btnNo, new ButtonType("Отмена", ButtonData.CANCEL_CLOSE));
+                ((Button) alert.getDialogPane().lookupButton(btnYes)).setDefaultButton(false);
+                ((Button) alert.getDialogPane().lookupButton(btnNo )).setDefaultButton(true );
+                final Optional<ButtonType> result = alert.showAndWait();
                 // Если диалог закрыт крестом - отменяем перезапуск
-                if (selected == CLOSED_OPTION) {
+                if (!result.isPresent() || result.get().getButtonData().isCancelButton()) {
                     return true;
                 } else {
-                    clear = selected == YES_OPTION;
+                    clear = btnYes.equals(result.get());
                 }
             }
             // Приостанавливаем компьютер
@@ -659,7 +682,11 @@ public final class SpecialistMX {
             reset(0x0000, false);
             return true;
         } catch (IOException e) {
-            showMessageDialog(fMainFrame, e.toString(), STR_ERROR, ERROR_MESSAGE);
+            final Alert alert = new Alert(AlertType.ERROR);
+            alert.setTitle      (STR_ERROR);
+            alert.setHeaderText (null);
+            alert.setContentText(e.toString());
+            alert.showAndWait   ();
         }
         return false;
     }
@@ -688,7 +715,11 @@ public final class SpecialistMX {
             reset(0x0000, false);
             return true;
         } catch (NumberFormatException | IOException e) {
-            showMessageDialog(fMainFrame, String.format("Ошибка загрузки ROM-файла: \"%s\"%n%s", fileName, e.toString()), STR_ERROR, ERROR_MESSAGE);
+            final Alert alert = new Alert(AlertType.ERROR);
+            alert.setTitle      (STR_ERROR);
+            alert.setHeaderText (null);
+            alert.setContentText(String.format("Ошибка загрузки ROM-файла: \"%s\"%n%s", fileName, e.toString()));
+            alert.showAndWait   ();
             return false;
         }
     }
@@ -726,7 +757,11 @@ public final class SpecialistMX {
                 reset(address, true);
                 return true;
             } catch (NumberFormatException | IOException e) {
-                showMessageDialog(fMainFrame, String.format("Ошибка загрузки MON-файла: \"%s\"%n%s", fileName, e.toString()), STR_ERROR, ERROR_MESSAGE);
+                final Alert alert = new Alert(AlertType.ERROR);
+                alert.setTitle      (STR_ERROR);
+                alert.setHeaderText (null);
+                alert.setContentText(String.format("Ошибка загрузки MON-файла: \"%s\"%n%s", fileName, e.toString()));
+                alert.showAndWait   ();
             }
         }
         return false;
