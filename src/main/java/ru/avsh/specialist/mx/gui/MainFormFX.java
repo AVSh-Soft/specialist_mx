@@ -16,6 +16,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.gui.lib.PixelatedImageView;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.sub.ScreenFx;
 
@@ -98,7 +99,7 @@ public class MainFormFX extends Application {
 
         final MenuBar menuBar = new MenuBar(fileMenu, viewMenu, aboutMenu);
 
-        final ImageView imageView = new ImageView(fSpMX.getScreen());
+        final ImageView imageView = new PixelatedImageView(fSpMX.getScreen());
         imageView.setPreserveRatio(true );
         imageView.setSmooth       (false);
         imageView.setCache        (true );
