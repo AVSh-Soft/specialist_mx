@@ -7,6 +7,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
 import org.ini4j.Wini;
 import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.lib.AlertUtil;
 import ru.avsh.specialist.mx.helpers.FileFinder;
 import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
@@ -25,6 +26,7 @@ import java.util.function.Consumer;
 import static javafx.scene.control.Alert.AlertType;
 import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
 import static javax.swing.JOptionPane.*;
+import static ru.avsh.specialist.mx.gui.lib.AlertUtil.showMessageDialog;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
@@ -388,7 +390,7 @@ public final class SpecialistMX {
         try {
             fIni.store();
         } catch (IOException e) {
-            showMessageDialog(fMainFrame, e.toString(), STR_ERROR, ERROR_MESSAGE);
+            showMessageDialog(e.toString(), STR_ERROR, AlertType.ERROR);
         }
     }
 
@@ -641,17 +643,9 @@ public final class SpecialistMX {
     public boolean restart(boolean clearDialog, boolean clear) {
         try {
             if (clearDialog) {
-                final Alert alert = new Alert(CONFIRMATION);
-                alert.setTitle      ("Очистить?");
-                alert.setHeaderText (null);
-                alert.setContentText("Очистить память?");
-                alert.getButtonTypes().clear();
                 final ButtonType btnYes = new ButtonType("Да" );
                 final ButtonType btnNo  = new ButtonType("Нет");
-                alert.getButtonTypes().addAll(btnYes, btnNo, new ButtonType("Отмена", ButtonData.CANCEL_CLOSE));
-                ((Button) alert.getDialogPane().lookupButton(btnYes)).setDefaultButton(false);
-                ((Button) alert.getDialogPane().lookupButton(btnNo )).setDefaultButton(true );
-                final Optional<ButtonType> result = alert.showAndWait();
+                final Optional<ButtonType> result = AlertUtil.showOptionDialog("Очистить память?", "Очистить?", CONFIRMATION, btnNo, btnYes, btnNo);
                 // Если диалог закрыт крестом - отменяем перезапуск
                 if (!result.isPresent() || result.get().getButtonData().isCancelButton()) {
                     return true;
@@ -682,11 +676,7 @@ public final class SpecialistMX {
             reset(0x0000, false);
             return true;
         } catch (IOException e) {
-            final Alert alert = new Alert(AlertType.ERROR);
-            alert.setTitle      (STR_ERROR);
-            alert.setHeaderText (null);
-            alert.setContentText(e.toString());
-            alert.showAndWait   ();
+            showMessageDialog(e.toString(), STR_ERROR, AlertType.ERROR);
         }
         return false;
     }
@@ -715,11 +705,7 @@ public final class SpecialistMX {
             reset(0x0000, false);
             return true;
         } catch (NumberFormatException | IOException e) {
-            final Alert alert = new Alert(AlertType.ERROR);
-            alert.setTitle      (STR_ERROR);
-            alert.setHeaderText (null);
-            alert.setContentText(String.format("Ошибка загрузки ROM-файла: \"%s\"%n%s", fileName, e.toString()));
-            alert.showAndWait   ();
+            showMessageDialog(String.format("Ошибка загрузки ROM-файла: \"%s\"%n%s", fileName, e.toString()), STR_ERROR, AlertType.ERROR);
             return false;
         }
     }
@@ -757,11 +743,7 @@ public final class SpecialistMX {
                 reset(address, true);
                 return true;
             } catch (NumberFormatException | IOException e) {
-                final Alert alert = new Alert(AlertType.ERROR);
-                alert.setTitle      (STR_ERROR);
-                alert.setHeaderText (null);
-                alert.setContentText(String.format("Ошибка загрузки MON-файла: \"%s\"%n%s", fileName, e.toString()));
-                alert.showAndWait   ();
+                showMessageDialog(String.format("Ошибка загрузки MON-файла: \"%s\"%n%s", fileName, e.toString()), STR_ERROR, AlertType.ERROR);
             }
         }
         return false;
@@ -839,7 +821,11 @@ public final class SpecialistMX {
         try {
             int  loadAdr = 0;
             int startAdr = 0;
-            int selected = 0;
+
+            final ButtonType btnRun   = new ButtonType("Загрузить и запустить");
+            final ButtonType btnLoad  = new ButtonType("Только загрузить");
+                  ButtonType selected = btnRun;
+
             // Читаем CPU-файл
             try (BufferedReader cpuFile = new BufferedReader(new FileReader(file))) {
                 String line;
@@ -853,19 +839,20 @@ public final class SpecialistMX {
                         case 1: // Читаем стартовый адрес
                             startAdr = Integer.parseInt(line, 16);
                             // Выводим диалог загрузки
-                            final Object[] options = {"Загрузить и запустить", "Только загрузить"};
-                            selected = showOptionDialog(fMainFrame,
+
+                            final Optional<ButtonType> option = AlertUtil.showOptionDialog(
                                     String.format("Файл: \"%s\"%n" +
                                                   "Адрес  начала: [%04X]%n" +
                                                   "Адрес запуска: [%04X]%n" , file.getName(), loadAdr, startAdr),
-                                    "Что делать?", YES_NO_OPTION, QUESTION_MESSAGE, null, options, options[0]);
+                                    "Что делать?", CONFIRMATION, btnRun, btnRun, btnLoad);
                             // Если диалог закрыт крестом - отменяем загрузку
-                            if (selected == CLOSED_OPTION) {
+                            if (!option.isPresent() || option.get().getButtonData().isCancelButton()) {
                                 return false;
                             }
+                            selected = option.get();
                             break;
                         case 2: // Проверяем соответствие монитора
-                            if ((selected == YES_OPTION) && (line.length() > 0) && !fCurMonName.equals(line)) {
+                            if (btnRun.equals(selected) && (line.length() > 0) && !fCurMonName.equals(line)) {
                                 final boolean result;
                                 if (SPMX_ROM_FILE.toLowerCase().endsWith(line)) {
                                     // Запускаем стандартный BIOS
@@ -908,10 +895,10 @@ public final class SpecialistMX {
                 }
             }
             // Выполняем загрузку I80-файла
-            loadHelper(new File(file.getPath().substring(0, file.getPath().length() - 3).concat("i80")), loadAdr, startAdr, 0, 0, -1, selected == YES_OPTION);
+            loadHelper(new File(file.getPath().substring(0, file.getPath().length() - 3).concat("i80")), loadAdr, startAdr, 0, 0, -1, btnRun.equals(selected));
             return true;
         } catch (NumberFormatException | IOException e) {
-            showMessageDialog(fMainFrame, String.format("Ошибка загрузки файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, ERROR_MESSAGE);
+            showMessageDialog(String.format("Ошибка загрузки файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, AlertType.ERROR);
         }
         return false;
     }
@@ -969,7 +956,7 @@ public final class SpecialistMX {
             loadHelper(file, begAdr, begAdr, 4, length, checksum, selected == YES_OPTION);
             return true;
         } catch (IOException e) {
-            showMessageDialog(fMainFrame, String.format("Ошибка загрузки файла: %s%n%s", fileName, e.toString()), STR_ERROR, ERROR_MESSAGE);
+            showMessageDialog(String.format("Ошибка загрузки файла: %s%n%s", fileName, e.toString()), STR_ERROR, AlertType.ERROR);
         }
         return false;
     }
@@ -989,7 +976,7 @@ public final class SpecialistMX {
             (beginAddress < 0) || (beginAddress > 0xFFFF) ||
             (endAddress   < 0) || (endAddress   > 0xFFFF) ||
             (startAddress < 0) || (startAddress > 0xFFFF)   ) {
-            showMessageDialog(fMainFrame, "Некоторые параметры переданы неверно - сохранение невозможно!", STR_ERROR, ERROR_MESSAGE);
+            showMessageDialog("Некоторые параметры переданы неверно - сохранение невозможно!", STR_ERROR, AlertType.ERROR);
             return false;
         }
         try {
@@ -1020,7 +1007,7 @@ public final class SpecialistMX {
             }
             return true;
         } catch (IOException e) {
-            showMessageDialog(fMainFrame, String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, ERROR_MESSAGE);
+            showMessageDialog(String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, AlertType.ERROR);
         }
         return false;
     }
@@ -1038,7 +1025,7 @@ public final class SpecialistMX {
         if ((file   ==   null) ||
             (beginAddress < 0) || (beginAddress > 0xFFFF) ||
             (endAddress   < 0) || (endAddress   > 0xFFFF)   ) {
-            showMessageDialog(fMainFrame, "Некоторые параметры переданы неверно - сохранение невозможно!", STR_ERROR, ERROR_MESSAGE);
+            showMessageDialog("Некоторые параметры переданы неверно - сохранение невозможно!", STR_ERROR, AlertType.ERROR);
             return false;
         }
         try {
@@ -1068,7 +1055,7 @@ public final class SpecialistMX {
             }
             return true;
         } catch (IOException e) {
-            showMessageDialog(fMainFrame, String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, ERROR_MESSAGE);
+            showMessageDialog(String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), STR_ERROR, AlertType.ERROR);
         }
         return false;
     }
