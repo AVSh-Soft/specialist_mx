@@ -7,7 +7,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.ButtonBar.ButtonData;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
@@ -29,6 +29,8 @@ import java.util.Properties;
 import static javafx.geometry.Pos.CENTER;
 import static javafx.scene.control.Alert.AlertType.*;
 import static javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST;
+import static ru.avsh.specialist.mx.gui.lib.AlertUtil.showMessageDialog;
+import static ru.avsh.specialist.mx.gui.lib.AlertUtil.showOptionDialog;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
@@ -60,7 +62,7 @@ public class MainFormFX extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        //primaryStage.getIcons().addAll()
+        primaryStage.getIcons().add(new Image(getResourceAsStream(SPMX_ICON_FILE)));
 
         final      MenuItem  openItem = new      MenuItem("Открыть…");
         final CheckMenuItem   romItem = new CheckMenuItem(ROM_PREF);
@@ -176,20 +178,14 @@ public class MainFormFX extends Application {
                 } else if (fileName.endsWith("rks")) {
                     result = fSpMX.loadFileRKS(file);
                 } else if (fileName.endsWith("odi")) {
-                    final Alert alert = new Alert(CONFIRMATION);
-                    alert.setTitle("Выбор дисковода");
-                    alert.setHeaderText("В какой дисковод вставить диск?");
-                    alert.getButtonTypes().clear();
-
-                    final ButtonType btnA = new ButtonType("[A:]");
-                    final ButtonType btnB = new ButtonType("[B:]");
-                    alert.getButtonTypes().addAll(btnA, btnB, new ButtonType("Отмена", ButtonData.CANCEL_CLOSE));
-                    alert.showAndWait().ifPresent(buttonType -> {
-                        if (!buttonType.getButtonData().isCancelButton()) {
-                            final boolean   fdd = btnB.equals(buttonType);
-                            diskInsertEject(fdd,  file, fdd ? diskBItem : diskAItem, primaryStage);
-                        }
-                    });
+                    final ButtonType     btnA = new ButtonType("[A:]");
+                    final ButtonType     btnB = new ButtonType("[B:]");
+                    final ButtonType selected = showOptionDialog("В какой дисковод вставить диск?",
+                            getResourceAsStream(SPMX_ICON_FILE), "Выбор дисковода", CONFIRMATION, btnA, btnA, btnB);
+                    if (!selected.getButtonData().isCancelButton()) {
+                        final boolean   fdd = btnB.equals(selected);
+                        diskInsertEject(fdd,  file, fdd ? diskBItem : diskAItem, primaryStage);
+                    }
                 }
                 setTitle(primaryStage, result ? "" : " (Ошибка загрузки!)");
             }
@@ -244,11 +240,8 @@ public class MainFormFX extends Application {
                     //
                 }
             }
-            final Alert alert = new Alert(INFORMATION);
-            alert.setTitle      ("Информация");
-            alert.setHeaderText (null);
-            alert.setContentText(String.format("%s v%s%n%n%s", name, version, copyright));
-            alert.showAndWait   ();
+            showMessageDialog(String.format("%s v%s%n%n%s", name, version, copyright),
+                    getResourceAsStream(SPMX_ICON_FILE), "Информация", INFORMATION);
         });
 
         // -= Обработка событий клавиатуры (нажатие) =-
@@ -340,11 +333,8 @@ public class MainFormFX extends Application {
                 targetMenuItem.setSelected(false);
                 targetMenuItem.setText(diskName.concat(NO_DISK));
 
-                final Alert alert = new Alert(ERROR);
-                alert.setTitle      ("Ошибка");
-                alert.setHeaderText (null);
-                alert.setContentText(String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()));
-                alert.showAndWait   ();
+                showMessageDialog(String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()),
+                        getResourceAsStream(SPMX_ICON_FILE), "Ошибка", ERROR);
             }
         } else {
             fSpMX.ejectDisk(fdd);

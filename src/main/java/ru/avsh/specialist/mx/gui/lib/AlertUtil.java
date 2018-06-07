@@ -4,7 +4,10 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.image.Image;
+import javafx.stage.Stage;
 
+import java.io.InputStream;
 import java.util.Arrays;
 
 import static javafx.scene.control.ButtonBar.ButtonData;
@@ -21,11 +24,18 @@ public final class AlertUtil {
      * Выводит диалог с сообщением.
      *
      * @param message   сообщение
+     * @param icon      поток для загрузки инконки
      * @param title     текст для заголовка окна
      * @param alertType тип диалога
      */
-    public static void showMessageDialog(final String message, final String title, final AlertType alertType) {
+    public static void showMessageDialog(final String message,
+                                         final InputStream icon,
+                                         final String title,
+                                         final AlertType alertType) {
         final Alert alert = new Alert(alertType, message);
+        if (icon != null) {
+            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(new Image(icon));
+        }
         alert.setTitle      (title);
         alert.setHeaderText (null );
         alert.getButtonTypes().clear();
@@ -37,6 +47,7 @@ public final class AlertUtil {
      * Формирует диалог с возможностью выбора варианта ответа.
      *
      * @param message           сообщение
+     * @param icon              поток для загрузки инконки
      * @param title             текст для заголовка окна
      * @param alertType         тип диалога
      * @param defaultButtonType тип кнопки по умолчанию
@@ -44,11 +55,15 @@ public final class AlertUtil {
      * @return выбранный тип кнопки
      */
     public static ButtonType showOptionDialog(final String message,
+                                              final InputStream icon,
                                               final String title,
                                               final AlertType alertType,
                                               final ButtonType defaultButtonType,
                                               final ButtonType... buttonTypes) {
         final Alert alert = new Alert(alertType, message);
+        if (icon != null) {
+            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(new Image(icon));
+        }
         alert.setTitle      (title);
         alert.setHeaderText (null );
         alert.getButtonTypes().clear ();
