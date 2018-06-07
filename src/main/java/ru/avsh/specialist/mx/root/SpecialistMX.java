@@ -1,13 +1,11 @@
 package ru.avsh.specialist.mx.root;
 
 import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
 import org.ini4j.Wini;
 import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
-import ru.avsh.specialist.mx.gui.lib.AlertUtil;
 import ru.avsh.specialist.mx.helpers.FileFinder;
 import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
@@ -25,8 +23,8 @@ import java.util.function.Consumer;
 
 import static javafx.scene.control.Alert.AlertType;
 import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
-import static javax.swing.JOptionPane.*;
 import static ru.avsh.specialist.mx.gui.lib.AlertUtil.showMessageDialog;
+import static ru.avsh.specialist.mx.gui.lib.AlertUtil.showOptionDialog;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
@@ -645,13 +643,12 @@ public final class SpecialistMX {
             if (clearDialog) {
                 final ButtonType btnYes = new ButtonType("Да" );
                 final ButtonType btnNo  = new ButtonType("Нет");
-                final Optional<ButtonType> result = AlertUtil.showOptionDialog("Очистить память?", "Очистить?", CONFIRMATION, btnNo, btnYes, btnNo);
+                final ButtonType result = showOptionDialog("Очистить память?", "Очистить?", CONFIRMATION, btnNo, btnYes, btnNo);
                 // Если диалог закрыт крестом - отменяем перезапуск
-                if (!result.isPresent() || result.get().getButtonData().isCancelButton()) {
+                if (result.getButtonData().isCancelButton()) {
                     return true;
-                } else {
-                    clear = btnYes.equals(result.get());
                 }
+                clear = btnYes.equals(result);
             }
             // Приостанавливаем компьютер
             pause(true, true);
@@ -839,17 +836,15 @@ public final class SpecialistMX {
                         case 1: // Читаем стартовый адрес
                             startAdr = Integer.parseInt(line, 16);
                             // Выводим диалог загрузки
-
-                            final Optional<ButtonType> option = AlertUtil.showOptionDialog(
+                            selected = showOptionDialog(
                                     String.format("Файл: \"%s\"%n" +
                                                   "Адрес  начала: [%04X]%n" +
                                                   "Адрес запуска: [%04X]%n" , file.getName(), loadAdr, startAdr),
                                     "Что делать?", CONFIRMATION, btnRun, btnRun, btnLoad);
                             // Если диалог закрыт крестом - отменяем загрузку
-                            if (!option.isPresent() || option.get().getButtonData().isCancelButton()) {
+                            if (selected.getButtonData().isCancelButton()) {
                                 return false;
                             }
-                            selected = option.get();
                             break;
                         case 2: // Проверяем соответствие монитора
                             if (btnRun.equals(selected) && (line.length() > 0) && !fCurMonName.equals(line)) {
@@ -943,17 +938,18 @@ public final class SpecialistMX {
                 checksum = (buf[4] & 0xFF) | ((buf[5] & 0xFF) << 8);
             }
             // Выводим диалог загрузки
-            final Object[] options = {"Загрузить и запустить", "Только загрузить"};
-            final int selected = showOptionDialog(fMainFrame,
+            final ButtonType btnRun   = new ButtonType("Загрузить и запустить");
+            final ButtonType btnLoad  = new ButtonType("Только загрузить");
+            final ButtonType selected = showOptionDialog(
                     String.format("Файл: %s%n" +
                                   "Адреса загрузки: [%04X..%04X]%n", fileName, begAdr, endAdr),
-                    "Что делать?", YES_NO_OPTION, QUESTION_MESSAGE, null, options, options[0]);
+                    "Что делать?", CONFIRMATION, btnRun, btnRun, btnLoad);
             // Если диалог закрыт крестом - отменяем загрузку
-            if (selected == CLOSED_OPTION) {
+            if (selected.getButtonData().isCancelButton()) {
                 return false;
             }
             // Выполняем загрузку RKS-файла
-            loadHelper(file, begAdr, begAdr, 4, length, checksum, selected == YES_OPTION);
+            loadHelper(file, begAdr, begAdr, 4, length, checksum, btnRun.equals(selected));
             return true;
         } catch (IOException e) {
             showMessageDialog(String.format("Ошибка загрузки файла: %s%n%s", fileName, e.toString()), STR_ERROR, AlertType.ERROR);
