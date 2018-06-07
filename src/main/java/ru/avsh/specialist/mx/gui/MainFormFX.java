@@ -10,6 +10,7 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
@@ -63,6 +64,7 @@ public class MainFormFX extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         primaryStage.getIcons().add(new Image(getResourceAsStream(SPMX_ICON_FILE)));
+        setTitle(primaryStage, "");
 
         final      MenuItem  openItem = new      MenuItem("Открыть…");
         final CheckMenuItem   romItem = new CheckMenuItem(ROM_PREF);
@@ -150,7 +152,7 @@ public class MainFormFX extends Application {
         primaryStage.heightProperty().addListener((obs, oldValue, newValue) -> imageView.setFitHeight((Double) newValue - deltaH));
 
         // -= Открытие файла =-
-        openBtn.setOnAction(event -> {
+        final EventHandler<ActionEvent> openEventHandler = event -> {
             final FileChooser chooser = new FileChooser();
             chooser.setTitle(STR_OPEN_FILE);
             chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
@@ -187,19 +189,23 @@ public class MainFormFX extends Application {
                         diskInsertEject(fdd,  file, fdd ? diskBItem : diskAItem, primaryStage);
                     }
                 }
-                setTitle(primaryStage, result ? "" : " (Ошибка загрузки!)");
+                setTitle(primaryStage, result ? "" : "(Ошибка загрузки!)");
             }
-        });
+        };
+         openBtn.setOnAction(openEventHandler);
+        openItem.setOnAction(openEventHandler);
 
         // -= Сброс компьютера =-
-        resetBtn.setOnAction(event -> {
-            fSpMX.restart(true, false);
+        final EventHandler<ActionEvent> resetEventHandler = event -> {
+            fSpMX.reset(true, false);
             setTitle(primaryStage, "");
             // Режим клавиатуры будем сбрасывать здесь.
             fSpMX.setKeyboardMode (false);
             modeMXItem.setSelected(true );
             modeSTItem.setSelected(false);
-        });
+        };
+         resetBtn.setOnAction(resetEventHandler);
+        resetItem.setOnAction(resetEventHandler);
 
         // -= Изменение размеров окна программы =-
         final EventHandler<ActionEvent> sizeEventHandler = event -> {
@@ -245,30 +251,42 @@ public class MainFormFX extends Application {
         });
 
         // -= Обработка событий клавиатуры (нажатие) =-
-        scene.setOnKeyPressed(event -> {
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.isConsumed()) {
+                return;
+            }
+
             final KeyCode keyCode = event.getCode();
             switch (keyCode) {
                 // Нажатие на клавишу "Pause" приостанавливает компьютер
                 case PAUSE:
                     if (fSpMX.isPaused()) {
                         fSpMX.pause(false, true);
-                        primaryStage.setTitle("");
+                        setTitle(primaryStage, "");
                     } else {
                         fSpMX.pause(true, true);
-                        primaryStage.setTitle(" (пауза)");
+                        setTitle(primaryStage, "(пауза)");
                     }
+                    event.consume();
                     break;
                 // Нажатие на клавишу "Scroll Lock" запускает отладчик
                 case SCROLL_LOCK:
                     fSpMX.startDebugger();
+                    event.consume      ();
                     break;
                 default:
-                    fSpMX.keyCodeReceiver(true, keyCode);
+                    if (fSpMX.keyCodeReceiver(true, keyCode)) {
+                        event.consume();
+                    }
             }
         });
 
         // -= Обработка событий клавиатуры (отпускание) =-
-        scene.setOnKeyReleased(event -> fSpMX.keyCodeReceiver(false, event.getCode()));
+        scene.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
+            if (!event.isConsumed() && fSpMX.keyCodeReceiver(false, event.getCode())) {
+                 event.consume   ();
+            }
+        });
 
         // Обработчик вызывается, когда окно закрывается - для завершения работы программы
         primaryStage.setOnCloseRequest(event -> {
@@ -293,8 +311,8 @@ public class MainFormFX extends Application {
         System.exit(0);
     }
 
-    private void setTitle(final Stage stage, final String title) {
-        stage.setTitle(String.format("[%s]%s%s", fSpMX.getCurMonName(), fSpMX.getProductName(), title));
+    private void setTitle(@NotNull final Stage stage, @NotNull final String title) {
+        stage.setTitle(String.format("[%s] - %s %s", fSpMX.getCurMonName(), fSpMX.getProductName(), title));
     }
 
     /**
@@ -305,8 +323,7 @@ public class MainFormFX extends Application {
      * @param targetMenuItem целевой пункт меню, отображающий состояние диска
      * @param stage          родительское окно
      */
-    private void diskInsertEject(boolean fdd, File file,
-                                 @NotNull final CheckMenuItem targetMenuItem, @NotNull Stage stage) {
+    private void diskInsertEject(boolean fdd, File file, @NotNull final CheckMenuItem targetMenuItem, @NotNull Stage stage) {
         boolean insert = true; // По умолчанию вставка диска
 
         if (file == null) {

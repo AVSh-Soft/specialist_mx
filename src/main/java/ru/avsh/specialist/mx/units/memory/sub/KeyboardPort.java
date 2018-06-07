@@ -481,20 +481,26 @@ public final class KeyboardPort implements MemoryUnit {
      *
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
      * @param keyCode        код клавиши
+     * @return true = событие клавиатуры обработано
      */
-    public void keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
+    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
+        // Обработка клавиши Shift
         if (KeyCode.SHIFT.equals(keyCode)) {
             fShiftKey = flagKeyPressed;
-        } else {
-            int bitMask = fKeyboardMode ? BIT_MASKS_ST.getOrDefault(keyCode, 0)
-                                        : BIT_MASKS_MX.getOrDefault(keyCode, 0);
-            if (flagKeyPressed) {
-                if (fKeyBuffer.indexOf(bitMask) == -1) {
-                    fKeyBuffer.add    (bitMask);
-                }
-            } else {
-                fKeyBuffer.remove((Integer) bitMask);
-            }
+            return true;
         }
+        // Обработка остальных клавиш
+        final Integer bitMask = fKeyboardMode ? BIT_MASKS_ST.get(keyCode) : BIT_MASKS_MX.get(keyCode);
+        if (bitMask == null) {
+            return false;
+        }
+        if (flagKeyPressed) {
+            if (fKeyBuffer.indexOf(bitMask) == -1) {
+                fKeyBuffer.add    (bitMask);
+            }
+        } else {
+                fKeyBuffer.remove (bitMask);
+        }
+        return true;
     }
 }

@@ -197,7 +197,7 @@ public final class MainFrame extends JFrame {
             if ((curRomFile != null) && (JOptionPane.showConfirmDialog(this,
                     "Заменить текущий ROM-файл на встроенный?", "Что делать?", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION)) {
                 fSpMX.putIni (INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, "");
-                fSpMX.restart(false, false);
+                fSpMX.reset(false, false);
             } else {
                 final JFileChooser chooser = new JFileChooser((curRomFile != null) ? curRomFile.getParent() : getCurPath());
                 chooser.setDialogTitle(STR_OPEN_FILE);
@@ -243,7 +243,7 @@ public final class MainFrame extends JFrame {
 
         // -= Сброс компьютера =-
         resetBtn.addActionListener(e -> {
-            fSpMX.restart(true, false);
+            fSpMX.reset(true, false);
             setTitle("");
             // Режим клавиатуры будем сбрасывать здесь.
             fSpMX.setKeyboardMode (false);

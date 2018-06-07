@@ -1,6 +1,5 @@
 package ru.avsh.specialist.mx.root;
 
-import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
@@ -17,7 +16,6 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.io.*;
 import java.util.List;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.function.Consumer;
 
@@ -40,11 +38,9 @@ public final class SpecialistMX {
     private final CPUi8080 fCPU;
     private final MainMemory fRAM;
     private final KeyboardPort fKey;
-    private final ClockSpeedGenerator fGen;
+    private final ClockSpeedGenerator  fGen;
     private final FloppyDiskController fFDC;
     private final MemoryUnitManager fMemoryUnitManager;
-    /* Пока не используем!
-    private final MemoryUnitManager fInOutUnitManager; */
 
     private Wini    fIni;
     private Speaker fSpc;
@@ -75,10 +71,10 @@ public final class SpecialistMX {
 
         // Создаем тактовый генератор
         fGen = new ClockSpeedGenerator();
-        // Создаем диспетчер устройств памяти
+        // Создаем диспетчер запоминающих устройств
         fMemoryUnitManager = new MemoryUnitManager();
         // Создаем CPU
-        fCPU = new CPUi8080(this, fMemoryUnitManager, null); // fInOutUnitManager - пока не используем!
+        fCPU = new CPUi8080(this, fMemoryUnitManager, null);
         // Создаем Speaker
         try {
             fSpc = new Speaker(fGen);
@@ -118,6 +114,7 @@ public final class SpecialistMX {
         fCurMonName = "";
 
         // Русифицируем JFileChooser
+/*
         UIManager.put("FileChooser.openButtonText"         , "Открыть"  );
         UIManager.put("FileChooser.saveButtonText"         , "Сохранить");
         UIManager.put("FileChooser.cancelButtonText"       , "Отменить" );
@@ -147,16 +144,19 @@ public final class SpecialistMX {
         UIManager.put("FileChooser.fileAttrHeaderText", "Атрибуты");
 
         UIManager.put("FileChooser.acceptAllFileFilterText", "Все файлы");
+*/
 
         // Русифицируем JOptionPane
+/*
         UIManager.put("OptionPane.yesButtonText"   , "Да"      );
         UIManager.put("OptionPane.noButtonText"    , "Нет"     );
         UIManager.put("OptionPane.cancelButtonText", "Отменить");
+*/
 
         // Запускаем тактовый генератор
         new Thread(fGen).start();
         // Запускаем эмулятор
-        restart(false, true);
+        reset(false, true);
     }
 
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -347,9 +347,10 @@ public final class SpecialistMX {
      *
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
      * @param keyCode        код клавиши
+     * @return true = событие клавиатуры обработано
      */
-    public void keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
-        fKey.keyCodeReceiver(flagKeyPressed, keyCode);
+    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
+        return fKey.keyCodeReceiver(flagKeyPressed, keyCode);
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -426,7 +427,7 @@ public final class SpecialistMX {
                 //
             }
         }
-        return String.format(" - \"%s\" v%s", appName, version);
+        return String.format("\"%s\" v%s", appName, version);
     }
 
     /**
@@ -627,20 +628,20 @@ public final class SpecialistMX {
     }
 
     /**
-     * Перезапускает компьютер "Специалист MX".
+     * Сбрасывает компьютер "Специалист MX".
      *
      * @param clearDialog true = выводится диалог очистки памяти
      * @param clear       true = выполняется очистка памяти (перекрывается параметром clearDialog)
-     * @return false = перезапуск не удался
+     * @return false = сброс не удался
      */
-    public boolean restart(boolean clearDialog, boolean clear) {
+    public boolean reset(boolean clearDialog, boolean clear) {
         try {
             if (clearDialog) {
                 final ButtonType btnYes = new ButtonType("Да" );
                 final ButtonType btnNo  = new ButtonType("Нет");
-                final ButtonType result = showOptionDialog("Очистить память?",
+                final ButtonType result = showOptionDialog("При выполнении сброса очистить память?",
                         getResourceAsStream(SPMX_ICON_FILE), "Очистить?", CONFIRMATION, btnNo, btnYes, btnNo);
-                // Если диалог закрыт крестом - отменяем перезапуск
+                // Если диалог закрыт крестом - отменяем сброс
                 if (result.getButtonData().isCancelButton()) {
                     return true;
                 }
@@ -650,11 +651,6 @@ public final class SpecialistMX {
             pause(true, true);
             // Сбрасываем устройства памяти (с полной очисткой или нет)
             fMemoryUnitManager.reset(clear);
-            // Сбрасываем устройства ввода/вывода (с полной очисткой или нет)
-            /* Пока не используем!
-            if (fInOutUnitManager != null) {
-                fInOutUnitManager.reset(clear);
-            } */
             // Очищаем все ловушки, если выбрана полная очистка
             if (clear) {
                 fCPU.debugClearTraps();
@@ -691,7 +687,7 @@ public final class SpecialistMX {
             // Включаем ROM-диск
             setPage(MainMemory.ROM_DISK);
             // Загружаем ROM-файл в страницу ROM-диска (в случае ошибки загрузки выполняем сброс)
-            loadFile(file, 0x0000, 0, 0, -1, e -> restart(false, false));
+            loadFile(file, 0x0000, 0, 0, -1, e -> reset(false, false));
             // Запоминаем ROM-файл
             fCurRomFile = file;
             // Сбрасываем CPU с адреса 0x0000 (сброс устройств памяти устанавливает страницу памяти 0, что здесь не подходит)
@@ -849,7 +845,7 @@ public final class SpecialistMX {
                                 final boolean result;
                                 if (SPMX_ROM_FILE.toLowerCase().endsWith(line)) {
                                     // Запускаем стандартный BIOS
-                                    result = restart(false, false);
+                                    result = reset(false, false);
                                 } else {
                                     // Ищем, загружаем и запускаем необходимый монитор
                                     final FileFinder fileFinder = new FileFinder();
