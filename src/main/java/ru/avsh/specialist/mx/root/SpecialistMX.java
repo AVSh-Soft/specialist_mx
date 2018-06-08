@@ -1,6 +1,5 @@
 package ru.avsh.specialist.mx.root;
 
-import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
 import org.ini4j.Wini;
@@ -22,8 +21,8 @@ import java.util.function.Consumer;
 import static javafx.scene.control.Alert.AlertType;
 import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
 import static javafx.scene.control.Alert.AlertType.WARNING;
-import static ru.avsh.specialist.mx.gui.lib.AlertUtil.showMessageDialog;
-import static ru.avsh.specialist.mx.gui.lib.AlertUtil.showOptionDialog;
+import static ru.avsh.specialist.mx.gui.lib.AlertUtil.Option.YES_NO_OPTION;
+import static ru.avsh.specialist.mx.gui.lib.AlertUtil.*;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
@@ -38,7 +37,7 @@ public final class SpecialistMX {
     private final CPUi8080 fCPU;
     private final MainMemory fRAM;
     private final KeyboardPort fKey;
-    private final ClockSpeedGenerator  fGen;
+    private final ClockSpeedGenerator fGen;
     private final FloppyDiskController fFDC;
     private final MemoryUnitManager fMemoryUnitManager;
 
@@ -524,14 +523,12 @@ public final class SpecialistMX {
                     // Проверим контрольную сумму данных
                     if (checksum >= 0) {
                         final int curChecksum = getChecksum(buf, 0, length);
-                        if ((curChecksum != checksum) && showOptionDialog(String.format(
-                                        "В файле: %s%n" +
-                                        "Рассчитанная контрольная сумма данных: [%04X]%n"    +
-                                        "не равна проверочной контрольной сумме: [%04X]%n%n" +
-                                        "Загружать файл?", fileName, curChecksum, checksum)  ,
-                                getResourceAsStream(SPMX_ICON_FILE), "Загружать?", WARNING, null,
-                                new ButtonType("Да", ButtonData.YES),
-                                new ButtonType("Нет", ButtonData.NO)).getButtonData().isCancelButton()) {
+                        if ((curChecksum != checksum) && showConfirmDialog(getResourceAsStream(SPMX_ICON_FILE),
+                                String.format("В файле: %s%n" +
+                                              "Рассчитанная контрольная сумма  данных: [%04X]%n"   +
+                                              "не равна проверочной контрольной сумме: [%04X]%n%n" +
+                                              "Загружать файл?", fileName, curChecksum, checksum)  ,
+                                "Загружать?", WARNING, YES_NO_OPTION).isCancelButton()) {
                             throw new IOException("Не прошла проверка контрольной суммы в файле: ".concat(fileName));
                         }
                     }
