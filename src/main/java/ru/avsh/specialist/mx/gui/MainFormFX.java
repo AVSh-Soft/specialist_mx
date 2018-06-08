@@ -7,7 +7,6 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
@@ -50,8 +49,6 @@ public class MainFormFX extends Application {
     private static final String DISK_B   =   "[B:] - ";
     private static final String NO_DISK  = "нет диска";
     private static final String ROM_PREF =  "[ROM] - ";
-
-    private static final Image ICON = new Image(getResourceAsStream(SPMX_ICON_FILE));
 
     private final SpecialistMX fSpMX;
 
@@ -185,7 +182,7 @@ public class MainFormFX extends Application {
                 } else if (fileName.endsWith("odi")) {
                     final ButtonType     btnA = new ButtonType("[A:]");
                     final ButtonType     btnB = new ButtonType("[B:]");
-                    final ButtonType selected = showOptionDialog(ICON, "Выбор дисковода",
+                    final ButtonType selected = showOptionDialog(ICON, "Выбор дисковода", null,
                             "В какой дисковод вставить диск?", CONFIRMATION, btnA, btnA, btnB);
                     if (!selected.getButtonData().isCancelButton()) {
                         final boolean   fdd = btnB.equals(selected);
@@ -201,7 +198,7 @@ public class MainFormFX extends Application {
         // -= Управление ROM-файлами =-
         romItem.setOnAction(event -> {
             final File curRomFile = fSpMX.getCurRomFile();
-            if ((curRomFile != null) && !showConfirmDialog(ICON, "Что делать?",
+            if ((curRomFile != null) && !showConfirmDialog(ICON, "Что делать?", null,
                     "Заменить текущий ROM-файл на встроенный?", YES_NO_OPTION).isCancelButton()) {
                 fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, "");
                 fSpMX.reset (false, false);
@@ -267,7 +264,7 @@ public class MainFormFX extends Application {
             // Выполняем мгновенный останов всех устройств
             fSpMX.pause(true , true);
             // Выводим информацию
-            showMessageDialog(ICON, "Информация", String.format("%s%n%s%n%n%s",
+            showMessageDialog(ICON, "Информация", FONT_MONOSPACED, String.format("%s%n%s%n%n%s",
                     fSpMX.getGen().toString(), fSpMX.getCPU().toString(), fSpMX.getRAM().toString()), INFORMATION);
             // Запускаем все устройства
             fSpMX.pause(false, true);
@@ -312,7 +309,8 @@ public class MainFormFX extends Application {
                     //
                 }
             }
-            showMessageDialog(ICON, "Информация", String.format("%s v%s%n%n%s", name, version, copyright), INFORMATION);
+            showMessageDialog(ICON, "Информация", null,
+                    String.format("%s v%s%n%n%s", name, version, copyright), INFORMATION);
         });
 
         // -= Обработка событий клавиатуры "нажатие" (перехватваем события до всех обработчиков) =-
@@ -424,7 +422,8 @@ public class MainFormFX extends Application {
                 targetMenuItem.setSelected(false);
                 targetMenuItem.setText(diskName.concat(NO_DISK));
 
-                showMessageDialog(ICON, "Ошибка", String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()), ERROR);
+                showMessageDialog(ICON, "Ошибка", null,
+                        String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()), ERROR);
             }
         } else {
             fSpMX.ejectDisk(fdd);
