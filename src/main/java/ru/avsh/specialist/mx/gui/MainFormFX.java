@@ -9,7 +9,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -30,8 +29,8 @@ import java.util.Properties;
 import static javafx.geometry.Pos.CENTER;
 import static javafx.scene.control.Alert.AlertType.*;
 import static javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST;
-import static ru.avsh.specialist.mx.gui.lib.AlertUtil.showMessageDialog;
-import static ru.avsh.specialist.mx.gui.lib.AlertUtil.showOptionDialog;
+import static ru.avsh.specialist.mx.gui.lib.AlertUtil.Option.YES_NO_OPTION;
+import static ru.avsh.specialist.mx.gui.lib.AlertUtil.*;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
@@ -52,6 +51,8 @@ public class MainFormFX extends Application {
     private static final String NO_DISK  = "нет диска";
     private static final String ROM_PREF =  "[ROM] - ";
 
+    private static final Image ICON = new Image(getResourceAsStream(SPMX_ICON_FILE));
+
     private final SpecialistMX fSpMX;
 
     /**
@@ -63,7 +64,7 @@ public class MainFormFX extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        primaryStage.getIcons().add(new Image(getResourceAsStream(SPMX_ICON_FILE)));
+        primaryStage.getIcons().add(ICON);
         setTitle(primaryStage, "");
 
         final      MenuItem  openItem = new      MenuItem("Открыть…");
@@ -128,6 +129,8 @@ public class MainFormFX extends Application {
         resetBtn.setTooltip(new Tooltip("Сбрасывает эмулятор в исходное состояние"));
         debugBtn.setTooltip(new Tooltip("Запускает отладчик"));
 
+        setRomItem(romItem);
+
         final VBox  root  = new VBox(menuBar, imageView, buttonBox);
         final Scene scene = new Scene(root, -1, -1);
         primaryStage.setScene(scene);
@@ -182,8 +185,8 @@ public class MainFormFX extends Application {
                 } else if (fileName.endsWith("odi")) {
                     final ButtonType     btnA = new ButtonType("[A:]");
                     final ButtonType     btnB = new ButtonType("[B:]");
-                    final ButtonType selected = showOptionDialog("В какой дисковод вставить диск?",
-                            getResourceAsStream(SPMX_ICON_FILE), "Выбор дисковода", CONFIRMATION, btnA, btnA, btnB);
+                    final ButtonType selected = showOptionDialog(ICON, "Выбор дисковода",
+                            "В какой дисковод вставить диск?", CONFIRMATION, btnA, btnA, btnB);
                     if (!selected.getButtonData().isCancelButton()) {
                         final boolean   fdd = btnB.equals(selected);
                         diskInsertEject(fdd,  file, fdd ? diskBItem : diskAItem, primaryStage);
@@ -194,6 +197,58 @@ public class MainFormFX extends Application {
         };
          openBtn.setOnAction(openEventHandler);
         openItem.setOnAction(openEventHandler);
+
+        // -= Управление ROM-файлами =-
+        romItem.setOnAction(event -> {
+            final File curRomFile = fSpMX.getCurRomFile();
+            if ((curRomFile != null) && !showConfirmDialog(ICON, "Что делать?",
+                    "Заменить текущий ROM-файл на встроенный?", YES_NO_OPTION).isCancelButton()) {
+                fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, "");
+                fSpMX.reset (false, false);
+            } else {
+                final FileChooser chooser = new FileChooser();
+                chooser.setTitle(STR_OPEN_FILE);
+                chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Файлы: *.rom", "*.rom"));
+                chooser.setInitialDirectory(new File((curRomFile != null) ? curRomFile.getParent() : getCurPath()));
+
+                final File file = chooser.showOpenDialog(primaryStage);
+                if (file != null) {
+                    setCurPath(file.getParent());
+                    if (fSpMX.loadFileROM(file)) {
+                        fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_ROM_FILE, fSpMX.getShortPath(file));
+                    }
+                }
+            }
+            setRomItem((CheckMenuItem) event.getSource());
+        });
+
+        // -= Вставка или извлечение диска "A" =-
+        diskAItem.setOnAction(event -> diskInsertEject(false, null, (CheckMenuItem) event.getSource(), primaryStage));
+
+        // -= Вставка или извлечение диска "B" =-
+        diskBItem.setOnAction(event -> diskInsertEject(true , null, (CheckMenuItem) event.getSource(), primaryStage));
+
+        // -= Сохранение файла =-
+        saveBtn.setOnAction(event -> {
+            final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(null);
+
+            boolean result = true;
+            if (blockSaveDialog.getResult()) {
+                final File   file     = blockSaveDialog.getFile   ();
+                final String fileName = file.getName().toLowerCase();
+                if        (fileName.endsWith("cpu")) {
+                    result = fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress());
+                } else if (fileName.endsWith("rks")) {
+                    result = fSpMX.saveFileRKS(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress());
+                }
+            }
+            blockSaveDialog.getContentPane().removeAll();
+            blockSaveDialog.dispose();
+
+            if (!result) {
+                setTitle(primaryStage, "(Ошибка сохранения!)");
+            }
+        });
 
         // -= Сброс компьютера =-
         final EventHandler<ActionEvent> resetEventHandler = event -> {
@@ -206,6 +261,17 @@ public class MainFormFX extends Application {
         };
          resetBtn.setOnAction(resetEventHandler);
         resetItem.setOnAction(resetEventHandler);
+
+        // -= Информация =-
+        infoItem.setOnAction(event -> {
+            // Выполняем мгновенный останов всех устройств
+            fSpMX.pause(true , true);
+            // Выводим информацию
+            showMessageDialog(ICON, "Информация", String.format("%s%n%s%n%n%s",
+                    fSpMX.getGen().toString(), fSpMX.getCPU().toString(), fSpMX.getRAM().toString()), INFORMATION);
+            // Запускаем все устройства
+            fSpMX.pause(false, true);
+        });
 
         // -= Изменение размеров окна программы =-
         final EventHandler<ActionEvent> sizeEventHandler = event -> {
@@ -246,25 +312,37 @@ public class MainFormFX extends Application {
                     //
                 }
             }
-            showMessageDialog(String.format("%s v%s%n%n%s", name, version, copyright),
-                    getResourceAsStream(SPMX_ICON_FILE), "Информация", INFORMATION);
+            showMessageDialog(ICON, "Информация", String.format("%s v%s%n%n%s", name, version, copyright), INFORMATION);
         });
 
-        // -= Обработка событий клавиатуры (нажатие) =-
+        // -= Обработка событий клавиатуры "нажатие" (перехватваем события до всех обработчиков) =-
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (!event.isConsumed() && fSpMX.keyCodeReceiver(true , event.getCode())) {
+                 event.consume   ();
+            }
+        });
+
+        // -= Обработка событий клавиатуры "отпускание" (перехватваем события до всех обработчиков) =-
+        scene.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
+            if (!event.isConsumed() && fSpMX.keyCodeReceiver(false, event.getCode())) {
+                 event.consume   ();
+            }
+        });
+
+        // -= Обработка событий клавиатуры "нажатие" =-
+        scene.onKeyPressedProperty().setValue(event -> {
             if (event.isConsumed()) {
                 return;
             }
 
-            final KeyCode keyCode = event.getCode();
-            switch (keyCode) {
+            switch (event.getCode()) {
                 // Нажатие на клавишу "Pause" приостанавливает компьютер
                 case PAUSE:
                     if (fSpMX.isPaused()) {
                         fSpMX.pause(false, true);
                         setTitle(primaryStage, "");
                     } else {
-                        fSpMX.pause(true, true);
+                        fSpMX.pause(true , true);
                         setTitle(primaryStage, "(пауза)");
                     }
                     event.consume();
@@ -275,16 +353,6 @@ public class MainFormFX extends Application {
                     event.consume      ();
                     break;
                 default:
-                    if (fSpMX.keyCodeReceiver(true, keyCode)) {
-                        event.consume();
-                    }
-            }
-        });
-
-        // -= Обработка событий клавиатуры (отпускание) =-
-        scene.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
-            if (!event.isConsumed() && fSpMX.keyCodeReceiver(false, event.getCode())) {
-                 event.consume   ();
             }
         });
 
@@ -311,6 +379,12 @@ public class MainFormFX extends Application {
         System.exit(0);
     }
 
+    /**
+     * Формирует заголовок главного окна.
+     *
+     * @param stage главная сцена
+     * @param title заголовок
+     */
     private void setTitle(@NotNull final Stage stage, @NotNull final String title) {
         stage.setTitle(String.format("[%s] - %s %s", fSpMX.getCurMonName(), fSpMX.getProductName(), title));
     }
@@ -321,7 +395,7 @@ public class MainFormFX extends Application {
      * @param fdd            false = "A" / true = "B"
      * @param file           файл с образом диска, если null, то запускается диалог выбора файла
      * @param targetMenuItem целевой пункт меню, отображающий состояние диска
-     * @param stage          родительское окно
+     * @param stage          главная сцена
      */
     private void diskInsertEject(boolean fdd, File file, @NotNull final CheckMenuItem targetMenuItem, @NotNull Stage stage) {
         boolean insert = true; // По умолчанию вставка диска
@@ -350,8 +424,7 @@ public class MainFormFX extends Application {
                 targetMenuItem.setSelected(false);
                 targetMenuItem.setText(diskName.concat(NO_DISK));
 
-                showMessageDialog(String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()),
-                        getResourceAsStream(SPMX_ICON_FILE), "Ошибка", ERROR);
+                showMessageDialog(ICON, "Ошибка", String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()), ERROR);
             }
         } else {
             fSpMX.ejectDisk(fdd);
