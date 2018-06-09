@@ -7,17 +7,23 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.layout.Region;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Optional;
 
 import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
 import static javafx.scene.control.ButtonBar.ButtonData;
 import static javafx.scene.control.ButtonType.CANCEL;
 import static javafx.scene.control.ButtonType.OK;
 
+/**
+ * Утилиты для формирования различных диалогов.
+ *
+ * @author -=AVSh=-
+ */
 public final class AlertUtil {
     private static final String TEXT_YES    = "Да";
     private static final String TEXT_NO     = "Нет";
@@ -30,51 +36,69 @@ public final class AlertUtil {
     /**
      * Выводит диалог с сообщением.
      *
-     * @param message   текст сообщения
-     * @param icon      поток для загрузки инконки
+     * @param icon      иконка
      * @param title     текст для заголовка окна
+     * @param font      шрифт сообщения
+     * @param message   текст сообщения
      * @param alertType тип диалога
      */
-    public static void showMessageDialog(final      String message,
-                                         final InputStream icon   ,
-                                         final      String title  ,
-                                         final   AlertType alertType) {
+    public static void showMessageDialog(final     Image icon   ,
+                                         final    String title  ,
+                                         final      Font font   ,
+                                         final    String message,
+                                         final AlertType alertType) {
         final Alert alert = new Alert(alertType, message);
         // Добавляем иконку
         if (icon != null) {
-            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(new Image(icon));
+            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(icon);
         }
+        // Устанавливаем автоматический подбор ширины диалога (по contentText) и шрифт
+        getAlertLabel(alert).ifPresent(label -> {
+            label.setPrefWidth(Region.USE_COMPUTED_SIZE);
+
+            if (font != null) {
+                label.setFont(font);
+            }
+        });
         alert.setTitle      (title);
         alert.setHeaderText (null );
         alert.getButtonTypes().clear();
         alert.getButtonTypes().add(OK);
-
-           autoWidth(alert);
-        alert.showAndWait();
+        alert.showAndWait   ();
     }
 
     /**
      * Формирует диалог с возможностью выбора варианта ответа.
      *
-     * @param message       текст сообщения
-     * @param icon          поток для загрузки инконки
+     * @param icon          иконка
      * @param title         текст для заголовка окна
+     * @param font          шрифт сообщения
+     * @param message       текст сообщения
      * @param alertType     тип диалога
      * @param defaultButton кнопка по умолчанию
      * @param buttons       конопки
      * @return выбранный тип кнопки
      */
-    public static ButtonType showOptionDialog(final      String    message  ,
-                                              final InputStream    icon     ,
-                                              final      String    title    ,
-                                              final   AlertType    alertType,
-                                              final  ButtonType    defaultButton,
-                                              final  ButtonType... buttons) {
+    public static ButtonType showOptionDialog(final      Image    icon   ,
+                                              final     String    title  ,
+                                              final       Font    font   ,
+                                              final     String    message,
+                                              final  AlertType    alertType  ,
+                                              final ButtonType    defaultButton,
+                                              final ButtonType... buttons) {
         final Alert alert = new Alert(alertType, message, buttons);
         // Добавляем иконку
         if (icon != null) {
-            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(new Image(icon));
+            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(icon);
         }
+        // Устанавливаем автоматический подбор ширины диалога (по contentText) и шрифт
+        getAlertLabel(alert).ifPresent(label -> {
+            label.setPrefWidth(Region.USE_COMPUTED_SIZE);
+
+            if (font != null) {
+                label.setFont(font);
+            }
+        });
         alert.setTitle      (title);
         alert.setHeaderText (null );
         // Добавляем кнопку "Отмена", если нет отменяющих кнопок в диалоге.
@@ -88,58 +112,61 @@ public final class AlertUtil {
             Arrays.stream(buttons).forEach(buttonType ->
                     ((Button) alert.getDialogPane().lookupButton(buttonType)).setDefaultButton(defaultButton.equals(buttonType)));
         }
-
-        autoWidth(alert);
         return alert.showAndWait().orElse(CANCEL);
     }
 
     /**
      * Формирует подтверждающий диалог.
      *
-     * @param icon    поток для загрузки инконки
-     * @param message текст сообщения
+     * @param icon    иконка
      * @param title   текст для заголовка окна
+     * @param font    шрифт сообщения
+     * @param message текст сообщения
      * @param option  варианты кнопок для диалога
      * @return аннотация выбранной кнопки
      */
-    public static ButtonData showConfirmDialog(final InputStream icon,
+    public static ButtonData showConfirmDialog(final  Image icon   ,
+                                               final String title  ,
+                                               final   Font font   ,
                                                final String message,
-                                               final String title,
                                                final Option option) {
-        return showOptionDialog(message, icon, title, CONFIRMATION,
+        return showOptionDialog(icon, title, font, message, CONFIRMATION,
                 null, (option != null) ? option.getButtonTypes() : null).getButtonData();
     }
 
     /**
      * Формирует подтверждающий диалог.
      *
-     * @param icon      поток для загрузки инконки
-     * @param message   текст сообщения
+     * @param icon      иконка
      * @param title     текст для заголовка окна
+     * @param font      шрифт сообщения
+     * @param message   текст сообщения
      * @param alertType тип диалога
      * @param option    варианты кнопок для диалога
      * @return аннотация выбранной кнопки
      */
-    public static ButtonData showConfirmDialog(final InputStream icon,
-                                               final String message,
-                                               final String title,
+    public static ButtonData showConfirmDialog(final     Image icon     ,
+                                               final    String title    ,
+                                               final      Font font     ,
+                                               final    String message  ,
                                                final AlertType alertType,
-                                               final Option option) {
-        return showOptionDialog(message, icon, title, alertType,
+                                               final    Option option)  {
+        return showOptionDialog(icon, title, font, message, alertType,
                 null, (option != null) ? option.getButtonTypes() : null).getButtonData();
     }
 
     /**
-     * Устанавливает автоматический подбор ширины диалога (по ).
+     * Извлекает Label из диалога.
      *
      * @param alert диалог
+     * @return объект Label в Optional
      */
-    private static void autoWidth(@NotNull final Alert alert) {
-        alert.getDialogPane().getChildren()
-                .stream    ()
-                .filter    (node -> node instanceof Label)
-                .findFirst ()
-                .ifPresent (node -> ((Label) node).setPrefWidth(Region.USE_COMPUTED_SIZE));
+    private static Optional<Label> getAlertLabel(@NotNull final Alert alert) {
+        return alert.getDialogPane().getChildren()
+                .stream   ()
+                .filter   (node -> node instanceof Label)
+                .map      (node ->          (Label) node)
+                .findFirst();
     }
 
     /**
