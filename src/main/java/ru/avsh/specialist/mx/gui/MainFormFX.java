@@ -24,10 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.InvocationTargetException;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static javafx.geometry.Pos.CENTER;
 import static javafx.scene.control.Alert.AlertType.*;
@@ -60,7 +58,7 @@ public class MainFormFX extends Application {
      * Конструктор.
      */
     public MainFormFX() {
-        fSpMX = new SpecialistMX();
+        this.fSpMX = new SpecialistMX();
     }
 
     @Override
@@ -230,30 +228,26 @@ public class MainFormFX extends Application {
         diskBItem.setOnAction(event -> diskInsertEject(true , null, (CheckMenuItem) event.getSource(), primaryStage));
 
         // -= Сохранение файла =-
-        saveBtn.setOnAction(event -> {
-/*
-            SwingUtilities.invokeLater(() -> {
-                boolean result = true;
+        saveBtn.setOnAction(event -> SwingUtilities.invokeLater(() -> {
+            boolean result = true;
 
-                final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(null);
-                if (blockSaveDialog.getResult()) {
-                    final File   file     = blockSaveDialog.getFile   ();
-                    final String fileName = file.getName().toLowerCase();
-                    if        (fileName.endsWith("cpu")) {
-                        result = fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress());
-                    } else if (fileName.endsWith("rks")) {
-                        result = fSpMX.saveFileRKS(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress());
-                    }
+            final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(JOptionPane.getRootFrame());
+            if (blockSaveDialog.getResult()) {
+                final   File file     = blockSaveDialog.getFile   ();
+                final String fileName = file.getName().toLowerCase();
+                if (fileName.endsWith("cpu")) {
+                    result = fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress());
+                } else if (fileName.endsWith("rks")) {
+                    result = fSpMX.saveFileRKS(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress());
                 }
-                blockSaveDialog.getContentPane().removeAll();
-                blockSaveDialog.dispose();
+            }
+            blockSaveDialog.getContentPane().removeAll();
+            blockSaveDialog.dispose();
 
-                if (!result) {
-                    setTitle(primaryStage, "(Ошибка сохранения!)");
-                }
-            });
-*/
-        });
+            if (!result) {
+                setTitle(primaryStage, "(Ошибка сохранения!)");
+            }
+        }));
 
         // -= Сброс компьютера =-
         final EventHandler<ActionEvent> resetEventHandler = event -> {
@@ -307,7 +301,7 @@ public class MainFormFX extends Application {
 
             final InputStream is = getResourceAsStream(SPMX_PROP_FILE);
             if (is != null) {
-                try (InputStreamReader isr = new InputStreamReader(is, "UTF-8")) {
+                try (InputStreamReader isr    = new InputStreamReader(is, StandardCharsets.UTF_8)) {
                     final Properties property = new Properties();
                     property.load(isr);
                     name      = property.getProperty("productName"  , name     );
