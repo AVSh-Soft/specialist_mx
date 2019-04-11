@@ -1,7 +1,9 @@
 package ru.avsh.specialist.mx.root;
 
+import javafx.application.Platform;
 import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
+import javafx.stage.Stage;
 import org.ini4j.Wini;
 import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.FileFinder;
@@ -17,6 +19,8 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static javafx.scene.control.Alert.AlertType;
@@ -44,10 +48,12 @@ public final class SpecialistMX {
 
     private Wini    fIni;
     private Speaker fSpc;
-    private boolean fDebugRun;
     private JFrame  fMainFrame;
     private String  fCurMonName;
     private File    fCurRomFile;
+
+    private final AtomicBoolean fDebugRun = new AtomicBoolean(false);
+    private final AtomicReference<Stage> fPrimaryStageRef = new AtomicReference<>();
 
     /**
      * Конструктор.
@@ -137,6 +143,36 @@ public final class SpecialistMX {
      */
     public JFrame getMainFrame() {
         return fMainFrame;
+    }
+
+    /**
+     * Запоминает ссылку на главное окно приложения.
+     *
+     * @param primaryStage ссылка на главное окно
+     */
+    public void setPrimaryStage(final Stage primaryStage) {
+        this.fPrimaryStageRef.getAndSet(primaryStage);
+    }
+
+    /**
+     * Возвращает ссылку на главное окно приложения.
+     *
+     * @return ссылка на главное окно
+     */
+    public Stage getPrimaryStage() {
+        return fPrimaryStageRef.get();
+    }
+
+    /**
+     * Блокирует/разблокирует главное окно приложения.
+     *
+     * @param enabled - true = окно разблокированно
+     */
+    public void setPrimaryStagePeerEnabled(final boolean enabled) {
+        final Stage primaryStage = fPrimaryStageRef.get();
+        if (primaryStage != null) {
+            primaryStage.impl_getPeer().setEnabled(enabled);
+        }
     }
 
     /**
@@ -1018,29 +1054,36 @@ public final class SpecialistMX {
      * Запускает отладчик.
      */
     public void startDebugger() {
-        if (!fDebugRun) {
+        if (!fDebugRun.get()) {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
-             fDebugRun = true;
+            fDebugRun.getAndSet(true);
 
-            try {
-                // Выполняем мгновенный останов всех устройств с остановкой тактового генератора
-                pause(true, true);
+            // Отладчик написан под Swing
+            SwingUtilities.invokeLater(() -> {
                 try {
-                    // Отменяем режим "Пауза" только для CPU
-                    fCPU.hold(false);
-                    // Выводим окно отладчика
-                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(this);
-                    // После окончания работы - убиваем отладчик
-                    debug.getContentPane().removeAll();
-                    debug.dispose();
-                } finally {
-                    // Запускаем тактовый генератор и устройства памяти
-                    pause(false, true);
+                    // Выполняем мгновенный останов всех устройств с остановкой тактового генератора
+                    pause(true, true);
+                    try {
+                        // Отменяем режим "Пауза" только для CPU
+                        fCPU.hold(false);
 
+                        // Блокируем главное окно
+                        Platform.runLater(() -> setPrimaryStagePeerEnabled(false));
+                        // Выводим окно отладчика
+                        final DebuggerCPUi8080 debug = new DebuggerCPUi8080(this);
+                        // После окончания работы - убиваем отладчик
+                        debug.getContentPane().removeAll();
+                        debug.dispose();
+                    } finally {
+                        // Отменяем блокировку главного окна
+                        Platform.runLater(() -> setPrimaryStagePeerEnabled(true));
+                        // Запускаем тактовый генератор и устройства памяти
+                        pause(false, true);
+                    }
+                } finally {
+                    fDebugRun.getAndSet(false);
                 }
-            } finally {
-                fDebugRun = false;
-            }
+            });
         }
     }
 

@@ -63,7 +63,9 @@ public class MainFormFX extends Application {
     }
 
     @Override
-    public void start(Stage primaryStage) throws Exception {
+    public void start(  Stage primaryStage) throws Exception {
+        fSpMX.setPrimaryStage(primaryStage);
+
         primaryStage.getIcons().add(ICON);
         setTitle(primaryStage, "");
 
@@ -154,6 +156,10 @@ public class MainFormFX extends Application {
         primaryStage.widthProperty ().addListener((obs, oldValue, newValue) -> imageView.setFitWidth ((Double) newValue - deltaW));
         primaryStage.heightProperty().addListener((obs, oldValue, newValue) -> imageView.setFitHeight((Double) newValue - deltaH));
 
+        // Украшаем окна Swing
+         JFrame.setDefaultLookAndFeelDecorated(true);
+        JDialog.setDefaultLookAndFeelDecorated(true);
+
         // -= Открытие файла =-
         final EventHandler<ActionEvent> openEventHandler = event -> {
             final FileChooser chooser = new FileChooser();
@@ -229,27 +235,37 @@ public class MainFormFX extends Application {
         diskBItem.setOnAction(event -> diskInsertEject(true , null, (CheckMenuItem) event.getSource(), primaryStage));
 
         // -= Сохранение файла =-
-        saveBtn.setOnAction(event -> SwingUtilities.invokeLater(() -> {
-            final AtomicBoolean result = new AtomicBoolean(true);
-            final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(JOptionPane.getRootFrame());
-            if (blockSaveDialog.getResult()) {
-                final   File file     = blockSaveDialog.getFile   ();
-                final String fileName = file.getName().toLowerCase();
-                if (fileName.endsWith("cpu")) {
-                    result.getAndSet(fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress()));
-                } else if (fileName.endsWith("rks")) {
-                    result.getAndSet(fSpMX.saveFileRKS(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress()));
-                }
-            }
-            blockSaveDialog.getContentPane().removeAll();
-            blockSaveDialog.dispose();
+        final EventHandler<ActionEvent> saveEventHandler = event -> {
+            // Блокируем главное окно
+            fSpMX.setPrimaryStagePeerEnabled(false);
 
-            Platform.runLater(() -> {
-                if (!result.get()) {
-                    setTitle(primaryStage, "(Ошибка сохранения!)");
+            SwingUtilities.invokeLater(() -> {
+                final AtomicBoolean result = new AtomicBoolean(true);
+                final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(JOptionPane.getRootFrame());
+                if (blockSaveDialog.getResult()) {
+                    final   File file     = blockSaveDialog.getFile   ();
+                    final String fileName = file.getName().toLowerCase();
+                    if (fileName.endsWith("cpu")) {
+                        result.getAndSet(fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress()));
+                    } else if (fileName.endsWith("rks")) {
+                        result.getAndSet(fSpMX.saveFileRKS(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress()));
+                    }
                 }
+                blockSaveDialog.getContentPane().removeAll();
+                blockSaveDialog.dispose();
+
+                Platform.runLater(() -> {
+                    // Отменяем блокировку главного окна
+                    fSpMX.setPrimaryStagePeerEnabled(true);
+
+                    if (!result.get()) {
+                        setTitle(primaryStage, "(Ошибка сохранения!)");
+                    }
+                });
             });
-        }));
+        };
+         saveBtn.setOnAction(saveEventHandler);
+        saveItem.setOnAction(saveEventHandler);
 
         // -= Сброс компьютера =-
         final EventHandler<ActionEvent> resetEventHandler = event -> {
@@ -273,6 +289,9 @@ public class MainFormFX extends Application {
             // Запускаем все устройства
             fSpMX.pause(false, true);
         });
+
+        // -= Запуск отладчика =-
+        debugBtn.setOnAction(event -> fSpMX.startDebugger());
 
         // -= Изменение размеров окна программы =-
         final EventHandler<ActionEvent> sizeEventHandler = event -> {
