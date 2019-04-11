@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static javafx.geometry.Pos.CENTER;
 import static javafx.scene.control.Alert.AlertType.*;
@@ -229,24 +230,25 @@ public class MainFormFX extends Application {
 
         // -= Сохранение файла =-
         saveBtn.setOnAction(event -> SwingUtilities.invokeLater(() -> {
-            boolean result = true;
-
+            final AtomicBoolean result = new AtomicBoolean(true);
             final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(JOptionPane.getRootFrame());
             if (blockSaveDialog.getResult()) {
                 final   File file     = blockSaveDialog.getFile   ();
                 final String fileName = file.getName().toLowerCase();
                 if (fileName.endsWith("cpu")) {
-                    result = fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress());
+                    result.getAndSet(fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress()));
                 } else if (fileName.endsWith("rks")) {
-                    result = fSpMX.saveFileRKS(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress());
+                    result.getAndSet(fSpMX.saveFileRKS(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress()));
                 }
             }
             blockSaveDialog.getContentPane().removeAll();
             blockSaveDialog.dispose();
 
-            if (!result) {
-                setTitle(primaryStage, "(Ошибка сохранения!)");
-            }
+            Platform.runLater(() -> {
+                if (!result.get()) {
+                    setTitle(primaryStage, "(Ошибка сохранения!)");
+                }
+            });
         }));
 
         // -= Сброс компьютера =-

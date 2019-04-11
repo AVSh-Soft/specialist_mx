@@ -14,6 +14,7 @@ import ru.avsh.specialist.mx.units.memory.sub.*;
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Consumer;
@@ -376,7 +377,7 @@ public final class SpecialistMX {
 
         final InputStream is = getResourceAsStream(SPMX_PROP_FILE);
         if (is != null) {
-            try (InputStreamReader isr = new InputStreamReader(is, "UTF-8")) {
+            try (InputStreamReader isr = new InputStreamReader(is, StandardCharsets.UTF_8)) {
                 final Properties property = new Properties();
                 property.load(isr);
 
