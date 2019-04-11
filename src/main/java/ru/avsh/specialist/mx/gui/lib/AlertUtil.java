@@ -48,20 +48,7 @@ public final class AlertUtil {
                                          final    String message,
                                          final AlertType alertType) {
         final Alert alert = new Alert(alertType, message);
-        // Добавляем иконку
-        if (icon != null) {
-            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(icon);
-        }
-        // Устанавливаем автоматический подбор ширины диалога (по contentText) и шрифт
-        getAlertLabel(alert).ifPresent(label -> {
-            label.setPrefWidth(Region.USE_COMPUTED_SIZE);
-
-            if (font != null) {
-                label.setFont(font);
-            }
-        });
-        alert.setTitle      (title);
-        alert.setHeaderText (null );
+        setBasicParams(alert, icon, title, font);
         alert.getButtonTypes().clear();
         alert.getButtonTypes().add(OK);
         alert.showAndWait   ();
@@ -87,20 +74,7 @@ public final class AlertUtil {
                                               final ButtonType    defaultButton,
                                               final ButtonType... buttons) {
         final Alert alert = new Alert(alertType, message, buttons);
-        // Добавляем иконку
-        if (icon != null) {
-            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(icon);
-        }
-        // Устанавливаем автоматический подбор ширины диалога (по contentText) и шрифт
-        getAlertLabel(alert).ifPresent(label -> {
-            label.setPrefWidth(Region.USE_COMPUTED_SIZE);
-
-            if (font != null) {
-                label.setFont(font);
-            }
-        });
-        alert.setTitle      (title);
-        alert.setHeaderText (null );
+        setBasicParams(alert, icon, title, font);
         // Добавляем кнопку "Отмена", если нет отменяющих кнопок в диалоге.
         if (   (buttons !=    null)
             && (buttons.length > 0)
@@ -153,6 +127,34 @@ public final class AlertUtil {
                                                final    Option option)  {
         return showOptionDialog(icon, title, font, message, alertType,
                 null, (option != null) ? option.getButtonTypes() : null).getButtonData();
+    }
+
+    /**
+     * Устанавливает базовые параметры диалога.
+     *
+     * @param alert диалог
+     * @param icon  иконка
+     * @param title текст для заголовка окна
+     * @param font  шрифт сообщения
+     */
+    private static void setBasicParams(final  Alert alert,
+                                       final  Image icon ,
+                                       final String title,
+                                       final   Font font ) {
+        // Добавляем иконку
+        if (icon != null) {
+            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(icon);
+        }
+        // Устанавливаем автоматический подбор ширины диалога (по contentText) и шрифт
+        getAlertLabel(alert).ifPresent(label -> {
+            label.setPrefWidth(Region.USE_COMPUTED_SIZE);
+
+            if (font != null) {
+                label.setFont(font);
+            }
+        });
+        alert.setTitle     (title);
+        alert.setHeaderText(null );
     }
 
     /**
