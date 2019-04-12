@@ -4,10 +4,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>ru.avsh.specialistmx</groupId>
+    <groupId>ru.avsh.specialist.mx</groupId>
     <artifactId>specialist_mx</artifactId>
     <!-- Major.Minor.Release -->
-    <version>1.7.1</version>
+    <version>1.8.0</version>
     <name>Specialist MX</name>
     <description>The emulator of the computer "${project.name}"</description>
     <packaging>jar</packaging>
@@ -15,12 +15,13 @@
     <properties>
         <jdkVersion>1.8</jdkVersion>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- Мои свойства -->
+        <!-- Название -->
         <product.name>The emulator "${project.name}"</product.name>
         <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
-        <copyright>Copyright © 2017 ${company.name}</copyright>
+        <copyright>Copyright © 2019 ${company.name}</copyright>
+        <!-- Прочее -->
         <lib.dir>lib</lib.dir>
-        <resources.dir>ru/avsh/specialistmx/resources</resources.dir>
+        <resources.dir>resources</resources.dir>
         <GitHub.username>AVSh-Soft</GitHub.username>
     </properties>
 
@@ -46,7 +47,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.0.2</version>
+                <version>3.1.0</version>
             </plugin>
 
             <plugin>
@@ -78,8 +79,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.1</version>
+                <version>3.8.0</version>
                 <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
                     <source>${jdkVersion}</source>
                     <target>${jdkVersion}</target>
                 </configuration>
@@ -88,7 +90,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.0.2</version>
+                <version>3.1.1</version>
                 <configuration>
                     <archive>
                         <manifest>
@@ -109,7 +111,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.0.1</version>
+                <version>3.1.1</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -132,7 +134,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -153,7 +155,7 @@
             <plugin>
                 <groupId>com.akathist.maven.plugins.launch4j</groupId>
                 <artifactId>launch4j-maven-plugin</artifactId>
-                <version>1.7.18</version>
+                <version>1.7.25</version>
                 <executions>
                     <execution>
                         <id>l4j-clui</id>
@@ -200,18 +202,16 @@
 
         <resources>
             <resource>
-                <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
                 <filtering>false</filtering>
-                <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
+                <directory>${project.build.sourceDirectory}/../${resources.dir}</directory>
                 <includes>
                     <include>**/*.rom</include>
                     <include>**/*.png</include>
                 </includes>
             </resource>
             <resource>
-                <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
                 <filtering>true</filtering>
-                <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
+                <directory>${project.build.sourceDirectory}/../${resources.dir}</directory>
                 <includes>
                     <include>**/*.properties</include>
                 </includes>
@@ -223,12 +223,12 @@
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
-            <version>15.0</version>
+            <version>LATEST</version>
         </dependency>
         <dependency>
             <groupId>org.ini4j</groupId>
             <artifactId>ini4j</artifactId>
-            <version>0.5.4</version>
+            <version>LATEST</version>
         </dependency>
     </dependencies>
 </project>

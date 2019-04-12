@@ -1,6 +1,14 @@
-target
-src/main/resources/
-src/test/
-.idea
+# all files in .idea directory
+.idea/
+
+# target directories
+**/target/
+**/logs/
+**log/
+
+# IntelliJ
+out/
 *.iml
+
+# other
 *.ini

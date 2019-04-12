@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>ru.avsh.specialistmx</groupId>
+  <groupId>ru.avsh.specialist.mx</groupId>
   <artifactId>specialist_mx</artifactId>
   <name>Specialist MX</name>
-  <version>1.7.1</version>
+  <version>1.8.0</version>
   <description>The emulator of the computer "${project.name}"</description>
   <scm>
     <connection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git</connection>
@@ -14,17 +14,15 @@
   <build>
     <resources>
       <resource>
-        <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
-        <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
+        <directory>${project.build.sourceDirectory}/../${resources.dir}</directory>
         <includes>
           <include>**/*.rom</include>
           <include>**/*.png</include>
         </includes>
       </resource>
       <resource>
-        <targetPath>${project.build.outputDirectory}/${resources.dir}</targetPath>
         <filtering>true</filtering>
-        <directory>${project.build.sourceDirectory}/${resources.dir}</directory>
+        <directory>${project.build.sourceDirectory}/../${resources.dir}</directory>
         <includes>
           <include>**/*.properties</include>
         </includes>
@@ -33,7 +31,7 @@
     <plugins>
       <plugin>
         <artifactId>maven-resources-plugin</artifactId>
-        <version>3.0.2</version>
+        <version>3.1.0</version>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -59,15 +57,16 @@
       </plugin>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.6.1</version>
+        <version>3.8.0</version>
         <configuration>
+          <encoding>${project.build.sourceEncoding}</encoding>
           <source>${jdkVersion}</source>
           <target>${jdkVersion}</target>
         </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>3.0.2</version>
+        <version>3.1.1</version>
         <configuration>
           <archive>
             <manifest>
@@ -82,7 +81,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-dependency-plugin</artifactId>
-        <version>3.0.1</version>
+        <version>3.1.1</version>
         <executions>
           <execution>
             <id>copy-dependencies</id>
@@ -103,7 +102,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.0.0</version>
+        <version>3.2.1</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -123,7 +122,7 @@
       <plugin>
         <groupId>com.akathist.maven.plugins.launch4j</groupId>
         <artifactId>launch4j-maven-plugin</artifactId>
-        <version>1.7.18</version>
+        <version>1.7.25</version>
         <executions>
           <execution>
             <id>l4j-clui</id>
@@ -169,9 +168,9 @@
     </plugins>
   </build>
   <properties>
-    <resources.dir>ru/avsh/specialistmx/resources</resources.dir>
+    <resources.dir>resources</resources.dir>
     <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
-    <copyright>Copyright © 2017 ${company.name}</copyright>
+    <copyright>Copyright © 2019 ${company.name}</copyright>
     <lib.dir>lib</lib.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jdkVersion>1.8</jdkVersion>
@@ -179,4 +178,3 @@
     <product.name>The emulator "${project.name}"</product.name>
   </properties>
 </project>
-
