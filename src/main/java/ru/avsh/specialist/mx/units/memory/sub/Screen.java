@@ -1,11 +1,13 @@
 package ru.avsh.specialist.mx.units.memory.sub;
 
+import javafx.animation.AnimationTimer;
+import javafx.scene.image.PixelFormat;
+import javafx.scene.image.PixelWriter;
+import javafx.scene.image.WritableImage;
 import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.awt.image.WritableRaster;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -14,104 +16,68 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * @author -=AVSh=-
  */
-public final class Screen extends JPanel implements MemoryUnit {
-    private static final long serialVersionUID = 1612671161249875581L;
+public class Screen extends WritableImage implements MemoryUnit {
+    // Таблица цветов A_R_G_B
+    private static final int[] COLORS = {
+            0xFF_00_00_00, 0xFF_00_00_80, 0xFF_00_80_00, 0xFF_00_80_80,
+            0xFF_80_00_00, 0xFF_80_00_80, 0xFF_80_80_00, 0xFF_C0_C0_C0,
+            0xFF_80_80_80, 0xFF_00_00_FF, 0xFF_00_FF_00, 0xFF_00_FF_FF,
+            0xFF_FF_00_00, 0xFF_FF_00_FF, 0xFF_FF_FF_00, 0xFF_FF_FF_FF
+    };
 
-    public  static final int   SCREEN_WIDTH  = 384;
-    public  static final int   SCREEN_HEIGHT = 256;
-    private static final float ASPECT_RATIO  = (float) SCREEN_WIDTH / (float) SCREEN_HEIGHT;
-
-    private static final Color CL_BLACK   = new Color(0x00,0x00,0x00);
-    private static final Color CL_NAVY    = new Color(0x00,0x00,0x80);
-    private static final Color CL_GREEN   = new Color(0x00,0x80,0x00);
-    private static final Color CL_TEAL    = new Color(0x00,0x80,0x80);
-    private static final Color CL_MAROON  = new Color(0x80,0x00,0x00);
-    private static final Color CL_PURPLE  = new Color(0x80,0x00,0x80);
-    private static final Color CL_OLIVE   = new Color(0x80,0x80,0x00);
-    private static final Color CL_SILVER  = new Color(0xC0,0xC0,0xC0);
-    private static final Color CL_GRAY    = new Color(0x80,0x80,0x80);
-    private static final Color CL_BLUE    = new Color(0x00,0x00,0xFF);
-    private static final Color CL_LIME    = new Color(0x00,0xFF,0x00);
-    private static final Color CL_AQUA    = new Color(0x00,0xFF,0xFF);
-    private static final Color CL_RED     = new Color(0xFF,0x00,0x00);
-    private static final Color CL_FUCHSIA = new Color(0xFF,0x00,0xFF);
-    private static final Color CL_YELLOW  = new Color(0xFF,0xFF,0x00);
-    private static final Color CL_WHITE   = new Color(0xFF,0xFF,0xFF);
-
-    private static final int[] COLOR_TABLE =
-            {CL_BLACK.getRGB(),    CL_NAVY.getRGB(),  CL_GREEN.getRGB(),  CL_TEAL.getRGB(), CL_MAROON.getRGB(), CL_PURPLE.getRGB(),
-             CL_OLIVE.getRGB(),  CL_SILVER.getRGB(),   CL_GRAY.getRGB(),  CL_BLUE.getRGB(),   CL_LIME.getRGB(),   CL_AQUA.getRGB(),
-               CL_RED.getRGB(), CL_FUCHSIA.getRGB(), CL_YELLOW.getRGB(), CL_WHITE.getRGB()};
-
+    public static final int SCREEN_WIDTH  =  384;
+    public static final int SCREEN_HEIGHT =  256;
     public static final int DEFAULT_COLOR = 0xF0; // CL_WHITE / CL_BLACK по умолчанию
 
-    private final int fStorageSize;
+    private static final int BUFFER_SIZE  = SCREEN_HEIGHT * SCREEN_WIDTH;
+    private static final int STORAGE_SIZE = BUFFER_SIZE >> 3;
+
+    private volatile boolean fEnable;
+    private volatile byte    fFgColor;
+    private volatile byte    fBgColor;
+
+    private final byte[] fImageBuffer;
     private final AtomicBoolean fChanges;
-    private final transient BufferedImage  fBufImg;
-    private final transient WritableRaster fRaster;
+    private final AnimationTimer fAnimationTimer;
 
-    private volatile  boolean  fEnable;
-    private transient volatile Object fColData  ;
-    private transient volatile Object fColDataBg;
-
-    /**
-     * Конструктор.
-     */
     public Screen() {
-        fStorageSize = (SCREEN_HEIGHT * SCREEN_WIDTH) / 8; // Размер экранной области в байтах (каждый пиксел = 1 бит)
+        super(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-        fChanges = new AtomicBoolean(false);
-        fBufImg  = new BufferedImage(SCREEN_WIDTH, SCREEN_HEIGHT, BufferedImage.TYPE_INT_RGB);
-        fRaster  = fBufImg.getRaster();
-        
+        fImageBuffer = new byte[BUFFER_SIZE];
+            fChanges = new AtomicBoolean(false);
+
         setColor(DEFAULT_COLOR);
-        
+
         fEnable = true;
 
-        setLayout(null);
-        setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
+        final PixelWriter             pixelWriter = this.getPixelWriter();
+        final PixelFormat<ByteBuffer> pixelFormat = PixelFormat.createByteIndexedInstance(COLORS);
 
-        // Экран обновляется по таймеру - значение 33 миллисекунд = обновлению экрана 30 раз в секунду
-        new Timer(33, e -> repaintScreen()).start();
-    }
-
-    @Override
-    public void paint(Graphics g) {
-        int w = getWidth ();
-        int h = getHeight();
-
-        if ((float) w / (float) h > ASPECT_RATIO) {
-            w = (int) (h * ASPECT_RATIO);
-        } else {
-            h = (int) (w / ASPECT_RATIO);
-        }
-
-        if ((w > 0) && (h > 0)) {
-            g.drawImage(fBufImg.getScaledInstance(w, h, Image.SCALE_FAST), 0, 0, null);
-            super.paintChildren(g);
-            super.paintBorder  (g);
-        }
+        fAnimationTimer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                if (fChanges.getAndSet(false)) {
+                    pixelWriter.setPixels(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, pixelFormat, fImageBuffer, 0, SCREEN_WIDTH);
+                }
+            }
+        };
+        fAnimationTimer.start();
     }
 
     @Override
     public int storageSize() {
-        return fStorageSize;
+        return STORAGE_SIZE;
     }
 
     @Override
     public void writeByte(int address, int value) {
-        if (fEnable && (address >= 0) && (address < fStorageSize)) {
+        if (fEnable && (address >= 0) && (address < STORAGE_SIZE)) {
             fChanges.getAndSet(true);
 
-            int x = (address / 256) * 8;
-            int y =  address % 256;
-            for (int j = 0; j < 8; j++) {
-                if ((value & 0x80) != 0) {
-                    fRaster.setDataElements(x + j, y, fColData  ); // Здесь без EventQueue.invokeLater для скорости!
-                } else {
-                    fRaster.setDataElements(x + j, y, fColDataBg); // Здесь без EventQueue.invokeLater для скорости!
-                }
-                value <<= 1;
+            for (int idx  = (SCREEN_WIDTH * (address & 0xFF)) + ((address >> 5) & 0xFFFFFFF8),
+                     end  = idx + 8,
+                     mask = 0x80; idx < end; idx++, mask >>= 1) {
+                fImageBuffer[idx] = ((value & mask) != 0) ? fFgColor : fBgColor;
             }
         }
     }
@@ -124,30 +90,30 @@ public final class Screen extends JPanel implements MemoryUnit {
         fChanges.getAndSet(false);
 
         if (clear) {
-            fBufImg.getGraphics().clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT); // Здесь без EventQueue.invokeLater для скорости!
+            Arrays.fill(fImageBuffer, (byte) 0);
         }
+    }
+
+    @Override
+    public void close() {
+        fAnimationTimer.stop();
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Screen that = (Screen) o;
-        return Objects.equals(this.fStorageSize, that.fStorageSize);
+        if (this == o) {
+            return true;
+        }
+        if ((o == null) || (getClass() != o.getClass())) {
+            return false;
+        }
+        Screen screen = (Screen) o;
+        return (fFgColor == screen.fFgColor) && (fBgColor == screen.fBgColor);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fStorageSize);
-    }
-
-    /**
-     * Перерисовывает экран.
-     */
-    private void repaintScreen() {
-        if (fChanges.getAndSet(false)) {
-            repaint();
-        }
+        return Objects.hash(fFgColor, fBgColor);
     }
 
     /**
@@ -156,8 +122,8 @@ public final class Screen extends JPanel implements MemoryUnit {
      * @param color старший полубайт - цвет изображения, младший полубайт - цвет фона
      */
     public void setColor(int color) {
-        fColData   = fBufImg.getColorModel().getDataElements(COLOR_TABLE[(color & 0xF0) >> 4], null);
-        fColDataBg = fBufImg.getColorModel().getDataElements(COLOR_TABLE[ color & 0x0F      ], null);
+        fFgColor = (byte) ((color & 0xF0) >> 4);
+        fBgColor = (byte)  (color & 0x0F);
     }
 
     /**

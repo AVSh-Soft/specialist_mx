@@ -2538,7 +2538,9 @@ public final class DebuggerCPUi8080 extends JDialog {
             }
         }
     }
+
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    // Не доведено до ума!!!
     private class SelectionModelsContainer {
         private static final int IND_TOP      = 0;
         private static final int IND_MIDDLE   = 1;
@@ -2550,7 +2552,6 @@ public final class DebuggerCPUi8080 extends JDialog {
         private final ListSelectionModel[] columnSelectionModels;
 
         private ListSelectionModel currentColumnSelectionModel;
-        //private
 
         SelectionModelsContainer() {
                this.rowSelectionModel = new    RowSelectionModel();
@@ -2563,7 +2564,6 @@ public final class DebuggerCPUi8080 extends JDialog {
 
             });
 */
-
             this.columnSelectionModels = new ListSelectionModel[TOTAL_MODELS];
             for (int i = 0; i < this.columnSelectionModels.length; i++) {
                 this.columnSelectionModels[i] = new DefaultListSelectionModel();

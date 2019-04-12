@@ -20,7 +20,7 @@ public final class MainMemory implements MemoryUnit {
     public static final int ROM_DISK = MAX_NUMBER_PAGES;
 
     private final byte[] fRAM;
-    private final ScreenFx fScreen;
+    private final Screen fScreen;
     private final int fNumberPages;
     private volatile int fCurrentPage;
     private volatile int fCurrentOffset;
@@ -31,7 +31,7 @@ public final class MainMemory implements MemoryUnit {
      * @param numberPages количество страниц памяти (не считая ROM-диск)
      * @param screen      ссылка на объект класса Screen - "Экран 'Специалиста MX'"
      */
-    public MainMemory(int numberPages, ScreenFx screen) {
+    public MainMemory(int numberPages, Screen screen) {
          numberPages = Math.min(Math.max(numberPages, MIN_NUMBER_PAGES), MAX_NUMBER_PAGES);
         fNumberPages = numberPages;
              fScreen = screen;

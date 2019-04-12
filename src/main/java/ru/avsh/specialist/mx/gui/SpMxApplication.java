@@ -17,7 +17,7 @@ import javafx.stage.WindowEvent;
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.gui.lib.PixelatedImageView;
 import ru.avsh.specialist.mx.root.SpecialistMX;
-import ru.avsh.specialist.mx.units.memory.sub.ScreenFx;
+import ru.avsh.specialist.mx.units.memory.sub.Screen;
 
 import javax.swing.*;
 import java.io.File;
@@ -40,11 +40,11 @@ import static ru.avsh.specialist.mx.helpers.Constants.*;
  *
  * @author -=AVSh=-
  */
-public class MainFormFX extends Application {
-    private static final double IMAGE_WIDTH         = ScreenFx.SCREEN_WIDTH ;
-    private static final double IMAGE_HEIGHT        = ScreenFx.SCREEN_HEIGHT;
-    private static final double IMAGE_DOUBLE_WIDTH  = ScreenFx.SCREEN_WIDTH  << 1;
-    private static final double IMAGE_DOUBLE_HEIGHT = ScreenFx.SCREEN_HEIGHT << 1;
+public class SpMxApplication extends Application {
+    private static final double IMAGE_WIDTH         = Screen.SCREEN_WIDTH ;
+    private static final double IMAGE_HEIGHT        = Screen.SCREEN_HEIGHT;
+    private static final double IMAGE_DOUBLE_WIDTH  = Screen.SCREEN_WIDTH  << 1;
+    private static final double IMAGE_DOUBLE_HEIGHT = Screen.SCREEN_HEIGHT << 1;
 
     private static final String INI_OPTION_FORM_WIDTH  = "MainFormWidth" ;
     private static final String INI_OPTION_FORM_HEIGHT = "MainFormHeight";
@@ -58,7 +58,7 @@ public class MainFormFX extends Application {
     /**
      * Конструктор.
      */
-    public MainFormFX() {
+    public SpMxApplication() {
         this.fSpMX = new SpecialistMX();
     }
 
@@ -139,26 +139,40 @@ public class MainFormFX extends Application {
         primaryStage.show();
         //--------------------------------------------------------------------------------------------------------------
 
+        imageView.setFitWidth (IMAGE_WIDTH );
+        imageView.setFitHeight(IMAGE_HEIGHT);
+
         primaryStage.setMinWidth (primaryStage.getWidth ());
         primaryStage.setMinHeight(primaryStage.getHeight());
 
         final double deltaW = primaryStage.getWidth () - IMAGE_WIDTH ;
         final double deltaH = primaryStage.getHeight() - IMAGE_HEIGHT;
 
-        imageView.fitWidthProperty().addListener((obs, oldValue, newValue) -> {
-            size11Item.setSelected((double) newValue == IMAGE_WIDTH       );
-            size21Item.setSelected((double) newValue == IMAGE_DOUBLE_WIDTH);
-        });
-
-        imageView.setFitWidth (IMAGE_WIDTH );
-        imageView.setFitHeight(IMAGE_HEIGHT);
-
-        primaryStage.widthProperty ().addListener((obs, oldValue, newValue) -> imageView.setFitWidth ((Double) newValue - deltaW));
-        primaryStage.heightProperty().addListener((obs, oldValue, newValue) -> imageView.setFitHeight((Double) newValue - deltaH));
-
         // Украшаем окна Swing
          JFrame.setDefaultLookAndFeelDecorated(true);
         JDialog.setDefaultLookAndFeelDecorated(true);
+
+        size11Item.setSelected(true );
+        size21Item.setSelected(false);
+
+        // -= Обработчик отображения галки на пунктах меню: "Размер 1:1"/"Размер 2:1" =-
+        imageView.fitWidthProperty().addListener((obs, oldValue, newValue) -> {
+            size11Item.setSelected(Math.round((double) newValue) == IMAGE_WIDTH       );
+            size21Item.setSelected(Math.round((double) newValue) == IMAGE_DOUBLE_WIDTH);
+        });
+
+        // -= Обработчик изменения размеров главного окна =-
+        primaryStage.widthProperty ().addListener((obs, oldValue, newValue) -> imageView.setFitWidth ((Double) newValue - deltaW));
+        primaryStage.heightProperty().addListener((obs, oldValue, newValue) -> imageView.setFitHeight((Double) newValue - deltaH));
+
+        // Восстанавливаем размеры главного окна из ini-файла
+        final Double iniWidth  = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FORM_WIDTH , Double.class);
+        final Double iniHeight = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FORM_HEIGHT, Double.class);
+        if ((iniWidth != null) && (iniHeight != null)) {
+            primaryStage.setWidth (iniWidth );
+            primaryStage.setHeight(iniHeight);
+        }
+        primaryStage.centerOnScreen();
 
         // -= Открытие файла =-
         final EventHandler<ActionEvent> openEventHandler = event -> {
@@ -468,13 +482,13 @@ public class MainFormFX extends Application {
      */
     private void setRomItem(@NotNull final CheckMenuItem romItem) {
         final File romFile = fSpMX.getCurRomFile();
-        if ( romFile == null) {
+        if (romFile == null) {
             romItem.setSelected(false);
-            //romItem.setToolTipText("");
+            //romItem.setToolTipText("") - нет этого в FX
             romItem.setText(ROM_PREF.concat("встроенный"));
         } else {
             romItem.setSelected(true);
-            //romItem.setToolTipText(romFile.getPath());
+            //romItem.setToolTipText(romFile.getPath()) - нет этого в FX
             romItem.setText(ROM_PREF.concat("\"").concat(romFile.getName()).concat("\""));
         }
     }

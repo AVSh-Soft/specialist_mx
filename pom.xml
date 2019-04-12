@@ -7,7 +7,7 @@
     <groupId>ru.avsh.specialist.mx</groupId>
     <artifactId>specialist_mx</artifactId>
     <!-- Major.Minor.Release -->
-    <version>1.7.2</version>
+    <version>1.8.0</version>
     <name>Specialist MX</name>
     <description>The emulator of the computer "${project.name}"</description>
     <packaging>jar</packaging>
@@ -18,7 +18,7 @@
         <!-- Название -->
         <product.name>The emulator "${project.name}"</product.name>
         <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
-        <copyright>Copyright © 2018 ${company.name}</copyright>
+        <copyright>Copyright © 2019 ${company.name}</copyright>
         <!-- Прочее -->
         <lib.dir>lib</lib.dir>
         <resources.dir>resources</resources.dir>
@@ -47,7 +47,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.0.2</version>
+                <version>3.1.0</version>
             </plugin>
 
             <plugin>
@@ -79,7 +79,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.7.0</version>
+                <version>3.8.0</version>
                 <configuration>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <source>${jdkVersion}</source>
@@ -90,7 +90,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.0.2</version>
+                <version>3.1.1</version>
                 <configuration>
                     <archive>
                         <manifest>
@@ -111,7 +111,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.0.2</version>
+                <version>3.1.1</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -134,7 +134,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -155,7 +155,7 @@
             <plugin>
                 <groupId>com.akathist.maven.plugins.launch4j</groupId>
                 <artifactId>launch4j-maven-plugin</artifactId>
-                <version>1.7.21</version>
+                <version>1.7.25</version>
                 <executions>
                     <execution>
                         <id>l4j-clui</id>

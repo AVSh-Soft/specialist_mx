@@ -39,7 +39,7 @@ import static ru.avsh.specialist.mx.helpers.Constants.*;
 public final class SpecialistMX {
     private final Wini                 fIni;
     private final Speaker              fSpc;
-    private final ScreenFx             fScr;
+    private final Screen               fScr;
     private final CPUi8080             fCPU;
     private final MainMemory           fRAM;
     private final KeyboardPort         fKey;
@@ -78,7 +78,7 @@ public final class SpecialistMX {
         }
         fSpc = speaker;
         // Создаем запоминающие устройства
-        fScr = new ScreenFx();
+        fScr = new Screen();
         fRAM = new MainMemory(NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
         fKey = new KeyboardPort(fSpc);
         fFDC = new FloppyDiskController(fGen, fCPU);
@@ -208,7 +208,7 @@ public final class SpecialistMX {
      *
      * @return ссылка на экран
      */
-    public ScreenFx getScreen() {
+    public Screen getScreen() {
         return fScr;
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-

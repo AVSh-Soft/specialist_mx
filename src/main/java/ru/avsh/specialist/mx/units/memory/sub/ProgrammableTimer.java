@@ -507,7 +507,6 @@ public final class ProgrammableTimer implements MemoryUnit, ClockedUnit {
                 default:
                     break;
             }
-
         }
     }
 
