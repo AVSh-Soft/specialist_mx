@@ -44,7 +44,7 @@ public class Screen extends WritableImage implements MemoryUnit {
         super(SCREEN_WIDTH, SCREEN_HEIGHT);
 
         fImageBuffer = new byte[BUFFER_SIZE];
-        fChanges = new AtomicBoolean(false);
+            fChanges = new AtomicBoolean(false);
 
         setColor(DEFAULT_COLOR);
 
@@ -75,8 +75,8 @@ public class Screen extends WritableImage implements MemoryUnit {
             fChanges.getAndSet(true);
 
             for (int idx  = (SCREEN_WIDTH * (address & 0xFF)) + ((address >> 5) & 0xFFFFFFF8),
-                 end  = idx + 8,
-                 mask = 0x80; idx < end; idx++, mask >>= 1) {
+                     end  = idx + 8,
+                     mask = 0x80; idx < end; idx++, mask >>= 1) {
                 fImageBuffer[idx] = ((value & mask) != 0) ? fFgColor : fBgColor;
             }
         }
