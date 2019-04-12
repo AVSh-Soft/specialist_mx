@@ -1,5 +1,6 @@
 package ru.avsh.specialist.mx.units;
 
+import javafx.application.Platform;
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
@@ -76,8 +77,8 @@ public final class CPUi8080 implements ClockedUnit {
     private final Trap fCompareTrap;
     private final SpecialistMX fSpMX;
     private final AtomicInteger fCycles;
-    private final AtomicBoolean fDebugRun;
     private final AtomicInteger fHoldPhase;
+    private final AtomicBoolean fIsDebugRun;
 
     private final SortedSet<Trap> fTraps;
     private final MemoryUnitManager fMUM;
@@ -105,7 +106,7 @@ public final class CPUi8080 implements ClockedUnit {
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
 
              fCycles = new AtomicInteger();
-           fDebugRun = new AtomicBoolean();
+           fIsDebugRun = new AtomicBoolean();
           fHoldPhase = new AtomicInteger();
         fCompareTrap = new Trap(0,0);
               fTraps = new ConcurrentSkipListSet<>();
@@ -1117,37 +1118,39 @@ public final class CPUi8080 implements ClockedUnit {
      */
     private void startDebugger() {
         // Вызов возможен только для потока тактового генератора (блокирует вызов из потока Swing)
-        if (!fDebugRun.get() && Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
+        if (!fIsDebugRun.get() && Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
-             fDebugRun.getAndSet(true);
+             fIsDebugRun.getAndSet(true);
             // Останавливаем CPU и запоминающие устройства
                         hold(true);
             pauseMemoryUnits(true);
             // Далее работаем в потоке Swing
             EventQueue.invokeLater(() -> {
+                // Останавливаем тактовый генератор
+                fSpMX.pause(true, false);
                 try {
-                    // Останавливаем тактовый генератор
-                    fSpMX.pause(true, false);
-                    try {
-                        // Отменяем режим "Пауза" только для CPU
-                        hold(false);
-                        // Удаляем StepOver ловушку, если она вызвала отладчик
-                        final int page    = fSpMX.getPage();
-                        final int address = debugGetValRegPair(DebugRegPair.PC);
-                        if (debugIsStepOverTrap(page, address)) {
-                                   debugRemTrap(page, address);
-                        }
-                        // Выводим окно отладчика
-                        final DebuggerCPUi8080 debug = new DebuggerCPUi8080(fSpMX);
-                        // После окончания работы - убиваем отладчик
-                        debug.getContentPane().removeAll();
-                        debug.dispose();
-                    } finally {
-                        // Запускаем тактовый генератор и запоминающие устройства
-                        fSpMX.pause(false, true);
+                    // Отменяем режим "Пауза" только для CPU
+                    hold(false);
+                    // Удаляем StepOver ловушку, если она вызвала отладчик
+                    final int page    = fSpMX.getPage();
+                    final int address = debugGetValRegPair(DebugRegPair.PC);
+                    if (debugIsStepOverTrap(page, address)) {
+                               debugRemTrap(page, address);
                     }
+                    // Блокируем главное окно
+                    Platform.runLater(() -> fSpMX.setPrimaryStagePeerEnabled(false));
+                    // Выводим окно отладчика
+                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(fSpMX);
+                    // После окончания работы - убиваем отладчик
+                    debug.getContentPane().removeAll();
+                    debug.dispose();
                 } finally {
-                    fDebugRun.getAndSet(false);
+                    // Отменяем блокировку главного окна
+                    Platform.runLater(() -> fSpMX.setPrimaryStagePeerEnabled(true));
+                    // Запускаем тактовый генератор и запоминающие устройства
+                    fSpMX.pause(false, true);
+                    // Разрешаем запускать отладчик
+                    fIsDebugRun.getAndSet(false);
                 }
             });
         }

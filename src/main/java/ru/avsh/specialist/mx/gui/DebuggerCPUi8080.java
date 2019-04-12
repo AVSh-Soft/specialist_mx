@@ -256,7 +256,7 @@ public final class DebuggerCPUi8080 extends JDialog {
      * @param spMX ссылка на главный класс эмулятора.
      */
     public DebuggerCPUi8080(@NotNull SpecialistMX spMX) {
-        super(spMX.getMainFrame(), true);
+        super(JOptionPane.getRootFrame(), true);
 
         // Запоминаем ссылку на главный класс эмулятора
         fSpMX = spMX;
@@ -1230,7 +1230,7 @@ public final class DebuggerCPUi8080 extends JDialog {
          *
          * @param page номер страницы
          */
-        void setCpuPage(final int page) {
+        void setCpuPage(final int  page) {
             if (fSpMX.getPage() != page) {
                 fSpMX.setPage(page);
                 sendEvent(EventType.PAGE, MemoryPageType.CPU);

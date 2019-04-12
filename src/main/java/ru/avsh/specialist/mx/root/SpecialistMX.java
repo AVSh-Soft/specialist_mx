@@ -5,6 +5,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 import org.ini4j.Wini;
+import org.jetbrains.annotations.Nullable;
 import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.FileFinder;
 import ru.avsh.specialist.mx.units.CPUi8080;
@@ -36,42 +37,29 @@ import static ru.avsh.specialist.mx.helpers.Constants.*;
  * @author -=AVSh=-
  */
 public final class SpecialistMX {
-    private final String fProductName;
-
-    private final ScreenFx fScr;
-    private final CPUi8080 fCPU;
-    private final MainMemory fRAM;
-    private final KeyboardPort fKey;
-    private final ClockSpeedGenerator fGen;
+    private final Wini                 fIni;
+    private final Speaker              fSpc;
+    private final ScreenFx             fScr;
+    private final CPUi8080             fCPU;
+    private final MainMemory           fRAM;
+    private final KeyboardPort         fKey;
+    private final ClockSpeedGenerator  fGen;
     private final FloppyDiskController fFDC;
-    private final MemoryUnitManager fMemoryUnitManager;
+    private final String               fProductName;
+    private final MemoryUnitManager    fMemoryUnitManager;
 
-    private Wini    fIni;
-    private Speaker fSpc;
-    private JFrame  fMainFrame;
-    private String  fCurMonName;
-    private File    fCurRomFile;
+    private final AtomicBoolean          fIsDebugRun;
+    private final AtomicReference<Stage> fPrimaryStageRef;
 
-    private final AtomicBoolean fDebugRun = new AtomicBoolean(false);
-    private final AtomicReference<Stage> fPrimaryStageRef = new AtomicReference<>();
+    private File   fCurRomFile;
+    private String fCurMonName;
 
     /**
      * Конструктор.
      */
     public SpecialistMX() {
         // Создаем объект для работы с ini-файлом настроек
-        fIni = new Wini();
-        fIni.setFile(new File(INI_FILE));
-        try {
-            if (fIni.getFile().exists()) {
-                fIni.load (); // читаем настроки
-            } else {
-                fIni.store(); // создаем ini-файл
-            }
-        } catch (IOException e) {
-            fIni = null;
-        }
-
+        fIni = getWini();
         // Читаем номер версии эмулятора из внутренних настроек
         fProductName = readProductName();
 
@@ -82,11 +70,13 @@ public final class SpecialistMX {
         // Создаем CPU
         fCPU = new CPUi8080(this, fMemoryUnitManager, null);
         // Создаем Speaker
+        Speaker speaker;
         try {
-            fSpc = new Speaker(fGen);
+            speaker = new Speaker(fGen);
         } catch (LineUnavailableException e) {
-            fSpc = null;
+            speaker = null;
         }
+        fSpc = speaker;
         // Создаем запоминающие устройства
         fScr = new ScreenFx();
         fRAM = new MainMemory(NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
@@ -116,6 +106,9 @@ public final class SpecialistMX {
         fMemoryUnitManager.addMemoryUnit(0xFFF8, colPort);
         fMemoryUnitManager.addMemoryUnit(0xFFFC, ramPort);
 
+        fIsDebugRun      = new AtomicBoolean(false);
+        fPrimaryStageRef = new AtomicReference<>();
+
         // Инициализируем переменную под имя текущего MON-файла
         fCurMonName = "";
 
@@ -125,25 +118,24 @@ public final class SpecialistMX {
         reset(false, true);
     }
 
-    // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-    // Методы для связи между объектами
-    /**
-     * Запоминает ссылку на главный фрейм приложения.
-     *
-     * @param frame ссылка на главный фрейм
-     */
-    public void setMainFrame(final JFrame frame) {
-        fMainFrame = frame;
+    @Nullable
+    private Wini getWini() {
+        Wini ini =  new Wini();
+        ini.setFile(new File(INI_FILE));
+        try {
+            if (ini.getFile().exists()) {
+                ini.load (); // читаем настроки
+            } else {
+                ini.store(); // создаем ini-файл
+            }
+        } catch (IOException e) {
+            ini = null;
+        }
+        return ini;
     }
 
-    /**
-     * Возвращает ссылку на главный фрейм приложения.
-     *
-     * @return ссылка на главный фрейм
-     */
-    public JFrame getMainFrame() {
-        return fMainFrame;
-    }
+    // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // Методы для связи между объектами
 
     /**
      * Запоминает ссылку на главное окно приложения.
@@ -164,12 +156,12 @@ public final class SpecialistMX {
     }
 
     /**
-     * Блокирует/разблокирует главное окно приложения.
+     * Блокирует/разблокирует главное окно приложения (для имитации модальности между окном FX и Swing).
      *
      * @param enabled - true = окно разблокированно
      */
     public void setPrimaryStagePeerEnabled(final boolean enabled) {
-        final Stage primaryStage = fPrimaryStageRef.get();
+        final Stage primaryStage = getPrimaryStage();
         if (primaryStage != null) {
             primaryStage.impl_getPeer().setEnabled(enabled);
         }
@@ -1054,34 +1046,31 @@ public final class SpecialistMX {
      * Запускает отладчик.
      */
     public void startDebugger() {
-        if (!fDebugRun.get()) {
+        if (!fIsDebugRun.get()) {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
-            fDebugRun.getAndSet(true);
+            fIsDebugRun.getAndSet(true);
 
             // Отладчик написан под Swing
             SwingUtilities.invokeLater(() -> {
+                // Выполняем мгновенный останов всех устройств с остановкой тактового генератора
+                pause(true, true);
                 try {
-                    // Выполняем мгновенный останов всех устройств с остановкой тактового генератора
-                    pause(true, true);
-                    try {
-                        // Отменяем режим "Пауза" только для CPU
-                        fCPU.hold(false);
-
-                        // Блокируем главное окно
-                        Platform.runLater(() -> setPrimaryStagePeerEnabled(false));
-                        // Выводим окно отладчика
-                        final DebuggerCPUi8080 debug = new DebuggerCPUi8080(this);
-                        // После окончания работы - убиваем отладчик
-                        debug.getContentPane().removeAll();
-                        debug.dispose();
-                    } finally {
-                        // Отменяем блокировку главного окна
-                        Platform.runLater(() -> setPrimaryStagePeerEnabled(true));
-                        // Запускаем тактовый генератор и устройства памяти
-                        pause(false, true);
-                    }
+                    // Отменяем режим "Пауза" только для CPU
+                    fCPU.hold(false);
+                    // Блокируем главное окно
+                    Platform.runLater(() -> setPrimaryStagePeerEnabled(false));
+                    // Выводим окно отладчика
+                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(this);
+                    // После окончания работы - убиваем отладчик
+                    debug.getContentPane().removeAll();
+                    debug.dispose();
                 } finally {
-                    fDebugRun.getAndSet(false);
+                    // Отменяем блокировку главного окна
+                    Platform.runLater(() -> setPrimaryStagePeerEnabled(true));
+                    // Запускаем тактовый генератор и устройства памяти
+                    pause(false, true);
+                    // Разрешаем запускать отладчик
+                    fIsDebugRun.getAndSet(false);
                 }
             });
         }

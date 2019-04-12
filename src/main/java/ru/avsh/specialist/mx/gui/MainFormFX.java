@@ -238,30 +238,37 @@ public class MainFormFX extends Application {
         final EventHandler<ActionEvent> saveEventHandler = event -> {
             // Блокируем главное окно
             fSpMX.setPrimaryStagePeerEnabled(false);
-
+            // Диалог сохранения реализован в Swing
             SwingUtilities.invokeLater(() -> {
                 final AtomicBoolean result = new AtomicBoolean(true);
-                final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(JOptionPane.getRootFrame());
-                if (blockSaveDialog.getResult()) {
-                    final   File file     = blockSaveDialog.getFile   ();
-                    final String fileName = file.getName().toLowerCase();
-                    if (fileName.endsWith("cpu")) {
-                        result.getAndSet(fSpMX.saveFileCPU(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress(), blockSaveDialog.getStartAddress()));
-                    } else if (fileName.endsWith("rks")) {
-                        result.getAndSet(fSpMX.saveFileRKS(file, blockSaveDialog.getBeginAddress(), blockSaveDialog.getEndAddress()));
+                try {
+                    final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(JOptionPane.getRootFrame());
+                    if (blockSaveDialog.getResult()) {
+                        final   File file     = blockSaveDialog.getFile   ();
+                        final String fileName = file.getName().toLowerCase();
+                               if (fileName.endsWith("cpu")) {
+                            result.getAndSet(fSpMX.saveFileCPU(file,
+                                    blockSaveDialog.getBeginAddress(),
+                                    blockSaveDialog.getEndAddress  (),
+                                    blockSaveDialog.getStartAddress()));
+                        } else if (fileName.endsWith("rks")) {
+                            result.getAndSet(fSpMX.saveFileRKS(file,
+                                    blockSaveDialog.getBeginAddress(),
+                                    blockSaveDialog.getEndAddress  ()));
+                        }
                     }
+                    blockSaveDialog.getContentPane().removeAll();
+                    blockSaveDialog.dispose();
+                } finally {
+                    Platform.runLater(() -> {
+                        // Отменяем блокировку главного окна
+                        fSpMX.setPrimaryStagePeerEnabled(true);
+
+                        if (!result.get()) {
+                            setTitle(primaryStage, "(Ошибка сохранения!)");
+                        }
+                    });
                 }
-                blockSaveDialog.getContentPane().removeAll();
-                blockSaveDialog.dispose();
-
-                Platform.runLater(() -> {
-                    // Отменяем блокировку главного окна
-                    fSpMX.setPrimaryStagePeerEnabled(true);
-
-                    if (!result.get()) {
-                        setTitle(primaryStage, "(Ошибка сохранения!)");
-                    }
-                });
             });
         };
          saveBtn.setOnAction(saveEventHandler);
@@ -291,7 +298,8 @@ public class MainFormFX extends Application {
         });
 
         // -= Запуск отладчика =-
-        debugBtn.setOnAction(event -> fSpMX.startDebugger());
+         debugBtn.setOnAction(event -> fSpMX.startDebugger());
+        debugItem.setOnAction(event -> fSpMX.startDebugger());
 
         // -= Изменение размеров окна программы =-
         final EventHandler<ActionEvent> sizeEventHandler = event -> {
