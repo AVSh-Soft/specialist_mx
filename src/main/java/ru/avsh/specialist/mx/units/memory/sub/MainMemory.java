@@ -4,6 +4,7 @@ import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Адресуемое запоминающее устройство "Оперативная память 'Специалист MX'".
@@ -21,9 +22,10 @@ public final class MainMemory implements MemoryUnit {
 
     private final byte[] fRAM;
     private final Screen fScreen;
-    private final int fNumberPages;
-    private volatile int fCurrentPage;
-    private volatile int fCurrentOffset;
+    private final int    fNumberPages;
+
+    private final AtomicInteger fCurrentPage;
+    private final AtomicInteger fCurrentOffset;
 
     /**
      * Конструктор.
@@ -36,6 +38,9 @@ public final class MainMemory implements MemoryUnit {
         fNumberPages = numberPages;
              fScreen = screen;
                 fRAM = new byte[STORAGE_SIZE * numberPages + ROM_DISK_SIZE];
+
+        fCurrentPage   = new AtomicInteger(0);
+        fCurrentOffset = new AtomicInteger(0);
     }
 
     @Override
@@ -45,9 +50,9 @@ public final class MainMemory implements MemoryUnit {
 
     @Override
     public int readByte(int address) {
-        if ((fCurrentOffset >= 0) && (address >= 0) && (address < STORAGE_SIZE)) {
-            if ((fCurrentPage < fNumberPages) || (address < ROM_DISK_SIZE)) {
-                address += fCurrentOffset;
+        if ((fCurrentOffset.get() >= 0) && (address >= 0) && (address < STORAGE_SIZE)) {
+            if ((fCurrentPage.get() < fNumberPages) || (address < ROM_DISK_SIZE)) {
+                address += fCurrentOffset.get();
             }
             return (int) fRAM[address] & 0xFF;
         }
@@ -56,9 +61,9 @@ public final class MainMemory implements MemoryUnit {
 
     @Override
     public void writeByte(int address, int value) {
-        if ((fCurrentOffset >= 0) && (address >= 0) && (address < STORAGE_SIZE)) {
-            if ((fCurrentPage < fNumberPages) || (address < ROM_DISK_SIZE)) {
-                address += fCurrentOffset;
+        if ((fCurrentOffset.get() >= 0) && (address >= 0) && (address < STORAGE_SIZE)) {
+            if ((fCurrentPage.get() < fNumberPages) || (address < ROM_DISK_SIZE)) {
+                address += fCurrentOffset.get();
             }
             fRAM[address] = (byte) value;
         }
@@ -66,20 +71,20 @@ public final class MainMemory implements MemoryUnit {
 
     @Override
     public void reset(boolean clear) {
-        fCurrentPage   = 0;
-        fCurrentOffset = 0;
+          fCurrentPage.getAndSet(0);
+        fCurrentOffset.getAndSet(0);
         if (clear) {
             Arrays.fill(fRAM, (byte) 0);
         }
     }
 
     @Override
-    public synchronized String toString() {
+    public String toString() {
         return String.format("Информация о памяти:%n" +
                              "Размер  (RAM + RAM-диск + ROM-диск): %.4fКб;%n" +
                              "Страниц (RAM + RAM-диск + ROM-диск): %d;%n"     +
                              "Активная страница памяти: %d",
-                fRAM.length / 1024F, fNumberPages + 1, fCurrentPage);
+                fRAM.length / 1024F, fNumberPages + 1, fCurrentPage.get());
     }
 
     @Override
@@ -106,15 +111,15 @@ public final class MainMemory implements MemoryUnit {
             pageNumber = 0;
         }
         if (pageNumber < MAX_NUMBER_PAGES) {
-            fCurrentPage   =  pageNumber;
-            fCurrentOffset = (pageNumber < fNumberPages) ? STORAGE_SIZE * pageNumber : -1;
+              fCurrentPage.getAndSet( pageNumber);
+            fCurrentOffset.getAndSet((pageNumber < fNumberPages) ? STORAGE_SIZE * pageNumber : -1);
         } else {
-            fCurrentPage   = ROM_DISK; // ROM-диск
-            fCurrentOffset = STORAGE_SIZE * fNumberPages;
+              fCurrentPage.getAndSet(ROM_DISK); // ROM-диск
+            fCurrentOffset.getAndSet(STORAGE_SIZE * fNumberPages);
         }
         // Изображение выводится на экран только из страницы 0
         if (fScreen != null) {
-            fScreen.setEnable(fCurrentPage == 0);
+            fScreen.setEnable(fCurrentPage.get() == 0);
         }
     }
 
@@ -124,6 +129,6 @@ public final class MainMemory implements MemoryUnit {
      * @return номер страницы
      */
     public int getPage() {
-        return fCurrentPage;
+        return fCurrentPage.get();
     }
 }

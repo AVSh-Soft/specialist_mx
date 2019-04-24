@@ -6,7 +6,7 @@ import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 import org.ini4j.Wini;
 import org.jetbrains.annotations.Nullable;
-import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.debugger.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.FileFinder;
 import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;

@@ -3,7 +3,7 @@ package ru.avsh.specialist.mx.units;
 import javafx.application.Platform;
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.root.SpecialistMX;
-import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.debugger.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.units.memory.MemoryUnitManager;
 import ru.avsh.specialist.mx.units.types.ClockedUnit;
