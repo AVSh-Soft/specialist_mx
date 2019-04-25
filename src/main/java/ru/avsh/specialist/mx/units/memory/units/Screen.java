@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.units.memory.sub;
+package ru.avsh.specialist.mx.units.memory.units;
 
 import javafx.animation.AnimationTimer;
 import javafx.scene.image.PixelFormat;

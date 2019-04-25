@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.units.memory.sub;
+package ru.avsh.specialist.mx.units.memory.units;
 
 import javafx.scene.input.KeyCode;
 import ru.avsh.specialist.mx.units.Speaker;

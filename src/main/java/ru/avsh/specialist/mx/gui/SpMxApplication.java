@@ -15,9 +15,10 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.gui.lib.PixelatedImageView;
+import ru.avsh.specialist.mx.gui.swing.BlockSaveDialog;
+import ru.avsh.specialist.mx.gui.utils.PixelatedImageView;
 import ru.avsh.specialist.mx.root.SpecialistMX;
-import ru.avsh.specialist.mx.units.memory.sub.Screen;
+import ru.avsh.specialist.mx.units.memory.units.Screen;
 
 import javax.swing.*;
 import java.io.File;
@@ -31,8 +32,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static javafx.geometry.Pos.CENTER;
 import static javafx.scene.control.Alert.AlertType.*;
 import static javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST;
-import static ru.avsh.specialist.mx.gui.lib.AlertUtil.Option.YES_NO_OPTION;
-import static ru.avsh.specialist.mx.gui.lib.AlertUtil.*;
+import static ru.avsh.specialist.mx.gui.utils.AlertUtil.Option.YES_NO_OPTION;
+import static ru.avsh.specialist.mx.gui.utils.AlertUtil.*;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
@@ -417,7 +418,7 @@ public class SpMxApplication extends Application {
         // Останавливаем компьютер
         fSpMX.pause(true, true);
         // Закрываем открытые ресурсы запоминающих устройств
-        fSpMX.getMemoryUnitManager().close();
+        fSpMX.getMemoryManager().close();
         // Завершаем приложение
         System.exit(0);
     }

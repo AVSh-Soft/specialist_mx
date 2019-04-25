@@ -3,9 +3,9 @@ package ru.avsh.specialist.mx.units;
 import javafx.application.Platform;
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.root.SpecialistMX;
-import ru.avsh.specialist.mx.gui.debugger.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.Trap;
-import ru.avsh.specialist.mx.units.memory.MemoryUnitManager;
+import ru.avsh.specialist.mx.units.memory.MemoryManager;
 import ru.avsh.specialist.mx.units.types.ClockedUnit;
 
 import java.awt.*;
@@ -81,8 +81,8 @@ public final class CPUi8080 implements ClockedUnit {
     private final AtomicBoolean fIsDebugRun;
 
     private final SortedSet<Trap> fTraps;
-    private final MemoryUnitManager fMUM;
-    private final MemoryUnitManager fIoUM;
+    private final MemoryManager fMemManager;
+    private final MemoryManager  fIoManager;
 
     private int fOpCode;
     private boolean fTestResult;
@@ -94,13 +94,13 @@ public final class CPUi8080 implements ClockedUnit {
      * Конструктор.
      *
      * @param spMX ссылка на объект класса SpecialistMX - "Компьютер 'Специалист MX'"
-     * @param mUM  ссылка на объект класса MemoryUnitManager - "Быстрый диспетчер запоминающих устройств" (запоминающие устройства)
-     * @param ioUM ссылка на объект класса MemoryUnitManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода)
+     * @param memManager  ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (запоминающие устройства)
+     * @param ioManager ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода)
      */
-    public CPUi8080(@NotNull SpecialistMX spMX, @NotNull MemoryUnitManager mUM, MemoryUnitManager ioUM) {
-        fSpMX = spMX;
-        fMUM  =  mUM;
-        fIoUM = ioUM;
+    public CPUi8080(@NotNull SpecialistMX spMX, @NotNull MemoryManager memManager, MemoryManager ioManager) {
+              fSpMX = spMX;
+        fMemManager = memManager;
+         fIoManager =  ioManager;
                                 // 0, 1, 2, 3, 4, 5, 6, 7,  8,  9
         fRegs    = new int[10]; // B, C, D, E, H, L, F, A, SP, PC
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
@@ -118,11 +118,11 @@ public final class CPUi8080 implements ClockedUnit {
                              "Память с адреса PC: %02X, %02X, %02X, %02X, %02X, ...",
                 Integer.parseInt(Integer.toBinaryString(fRegs[F])),
                 fRegs[A], fRegs[B], fRegs[C], fRegs[D], fRegs[E], fRegs[H], fRegs[L], fRegs[SP], fRegs[PC],
-                fMUM.readByte((fRegs[PC]    ) & 0xFFFF),
-                fMUM.readByte((fRegs[PC] + 1) & 0xFFFF),
-                fMUM.readByte((fRegs[PC] + 2) & 0xFFFF),
-                fMUM.readByte((fRegs[PC] + 3) & 0xFFFF),
-                fMUM.readByte((fRegs[PC] + 4) & 0xFFFF));
+                fMemManager.readByte((fRegs[PC]    ) & 0xFFFF),
+                fMemManager.readByte((fRegs[PC] + 1) & 0xFFFF),
+                fMemManager.readByte((fRegs[PC] + 2) & 0xFFFF),
+                fMemManager.readByte((fRegs[PC] + 3) & 0xFFFF),
+                fMemManager.readByte((fRegs[PC] + 4) & 0xFFFF));
     }
 
     /**
@@ -132,7 +132,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @return значение регистра
      */
     private int getReg(int codeReg) {
-        return codeReg == M ? fMUM.readByte(getRegPair(P_HL)) : fRegs[codeReg];
+        return codeReg == M ? fMemManager.readByte(getRegPair(P_HL)) : fRegs[codeReg];
     }
 
     /**
@@ -143,7 +143,7 @@ public final class CPUi8080 implements ClockedUnit {
      */
     private void setReg(int codeReg, int value) {
         if (codeReg == M) {
-            fMUM.writeByte(getRegPair(P_HL), value);
+            fMemManager.writeByte(getRegPair(P_HL), value);
         } else {
             fRegs[codeReg] = value & 0xFF;
         }
@@ -369,8 +369,8 @@ public final class CPUi8080 implements ClockedUnit {
      * @param value значение
      */
     private void pushWord(int value) {
-        fRegs[SP]  =  (fRegs[SP] - 2) & 0xFFFF;
-        fMUM.writeWord(fRegs[SP], value);
+        fRegs[SP] = (fRegs[SP] - 2) & 0xFFFF;
+        fMemManager.writeWord(fRegs[SP], value);
     }
 
     /**
@@ -379,7 +379,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @return значение
      */
     private int popWord() {
-        int v = fMUM.readWord(fRegs[SP]);
+        int v = fMemManager.readWord(fRegs[SP]);
         fRegs[SP] = (fRegs[SP] + 2) & 0xFFFF;
         return v;
     }
@@ -391,7 +391,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @return считанный из памяти байт
      */
     private int nextBytePC() {
-        int v = fMUM.readByte(fRegs[PC]);
+        int v = fMemManager.readByte(fRegs[PC]);
         fRegs[PC] = (fRegs[PC] + 1) & 0xFFFF;
         return v;
     }
@@ -403,7 +403,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @return считанное из памяти слово
      */
     private int nextWordPC() {
-        int v = fMUM.readWord(fRegs[PC]);
+        int v = fMemManager.readWord(fRegs[PC]);
         fRegs[PC] = (fRegs[PC] + 2) & 0xFFFF;
         return v;
     }
@@ -463,7 +463,7 @@ public final class CPUi8080 implements ClockedUnit {
             // rr - 00 (BC), 01 (DE)
             case 0x02: // STAX B
             case 0x12: // STAX D
-                fMUM.writeByte(getRegPair(fOpCode >> 3), getReg(A));
+                fMemManager.writeByte(getRegPair(fOpCode >> 3), getReg(A));
                 break;
 
             // INX, 0x03, 00rr0011
@@ -556,7 +556,7 @@ public final class CPUi8080 implements ClockedUnit {
             // rr - 00 (BC), 01 (DE)
             case 0x0A: // LDAX B
             case 0x1A: // LDAX D
-                setReg(A, fMUM.readByte(getRegPair((fOpCode & 0b0011_0000) >> 3)));
+                setReg(A, fMemManager.readByte(getRegPair((fOpCode & 0b0011_0000) >> 3)));
                 break;
 
             // DCX, 0x0B, 00rr1011
@@ -611,7 +611,7 @@ public final class CPUi8080 implements ClockedUnit {
                 break;
 
             case 0x22: // SHLD addr
-                fMUM.writeWord(nextWordPC(), getRegPair(P_HL));
+                fMemManager.writeWord(nextWordPC(), getRegPair(P_HL));
                 break;
 
             case 0x27: // DAA
@@ -619,7 +619,7 @@ public final class CPUi8080 implements ClockedUnit {
                 break;
 
             case 0x2A: // LHLD addr
-                setRegPair(P_HL, fMUM.readWord(nextWordPC()));
+                setRegPair(P_HL, fMemManager.readWord(nextWordPC()));
                 break;
 
             case 0x2F: // CMA
@@ -627,7 +627,7 @@ public final class CPUi8080 implements ClockedUnit {
                 break;
 
             case 0x32: // STA addr
-                fMUM.writeByte(nextWordPC(), getReg(A));
+                fMemManager.writeByte(nextWordPC(), getReg(A));
                 break;
 
             case 0x37: // STC
@@ -635,7 +635,7 @@ public final class CPUi8080 implements ClockedUnit {
                 break;
 
             case 0x3A: // LDA addr
-                setReg(A, fMUM.readByte(nextWordPC()));
+                setReg(A, fMemManager.readByte(nextWordPC()));
                 break;
 
             case 0x3F: // CMC
@@ -952,10 +952,10 @@ public final class CPUi8080 implements ClockedUnit {
 
             case 0xD3: // OUT port8
                 v = nextBytePC();
-                if (fIoUM == null) {
-                    fMUM.writeByte(v | (v << 8), getReg(A)); // На "Специалисте_MX" как запись по адресу (port, port)
+                if ( fIoManager == null) {
+                    fMemManager.writeByte(v | (v << 8), getReg(A)); // На "Специалисте_MX" как запись по адресу (port, port)
                 } else {
-                    fIoUM.writeByte(v, getReg(A));
+                     fIoManager.writeByte(v, getReg(A));
                 }
                 break;
 
@@ -965,10 +965,10 @@ public final class CPUi8080 implements ClockedUnit {
 
             case 0xDB: // IN port8
                 v = nextBytePC();
-                if (fIoUM == null) {
-                    setReg(A, fMUM.readByte(v | (v << 8))); // На "Специалисте_MX" как запись по адресу (port, port)
+                if (fIoManager == null) {
+                    setReg(A, fMemManager.readByte(v | (v << 8))); // На "Специалисте_MX" как запись по адресу (port, port)
                 } else {
-                    setReg(A, fIoUM.readByte(v));
+                    setReg(A,  fIoManager.readByte(v));
                 }
                 break;
 
@@ -977,8 +977,8 @@ public final class CPUi8080 implements ClockedUnit {
                 break;
 
             case 0xE3: // XTHL
-                v = fMUM.readWord(getSP());
-                fMUM.writeWord(getSP(), getRegPair(P_HL));
+                v = fMemManager.readWord(getSP());
+                fMemManager.writeWord(getSP(), getRegPair(P_HL));
                 setRegPair(P_HL, v);
                 break;
 
@@ -1081,9 +1081,9 @@ public final class CPUi8080 implements ClockedUnit {
      * @param mode true/false = установить/снять режим "Пауза"
      */
     public void pauseMemoryUnits(boolean mode) {
-        fMUM.pause(mode);
-        if (fIoUM != null) {
-            fIoUM.pause(mode);
+        fMemManager.pause(mode);
+        if (fIoManager != null) {
+            fIoManager.pause(mode);
         }
     }
 
@@ -1106,9 +1106,9 @@ public final class CPUi8080 implements ClockedUnit {
         reset(true);
         setPC(address);
         if (resetMemoryUnits) {
-            fMUM.reset(false);
-            if (fIoUM != null) {
-                fIoUM.reset(false);
+            fMemManager.reset(false);
+            if (fIoManager != null) {
+                fIoManager.reset(false);
             }
         }
     }
@@ -1380,12 +1380,12 @@ public final class CPUi8080 implements ClockedUnit {
         if ((o == null) || (getClass() != o.getClass())) return false;
         CPUi8080 i8080 = (CPUi8080) o;
         return Objects.equals(fSpMX, i8080.fSpMX) &&
-               Objects.equals(fMUM , i8080.fMUM ) &&
-               Objects.equals(fIoUM, i8080.fIoUM);
+               Objects.equals(fMemManager, i8080.fMemManager) &&
+               Objects.equals(fIoManager, i8080.fIoManager);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fSpMX, fMUM, fIoUM);
+        return Objects.hash(fSpMX, fMemManager, fIoManager);
     }
 }

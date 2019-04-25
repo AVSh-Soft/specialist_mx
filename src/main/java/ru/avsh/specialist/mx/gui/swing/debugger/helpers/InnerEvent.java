@@ -1,4 +1,6 @@
-package ru.avsh.specialist.mx.gui.debugger.lib;
+package ru.avsh.specialist.mx.gui.swing.debugger.helpers;
+
+import ru.avsh.specialist.mx.gui.swing.debugger.types.EventType;
 
 import java.util.Objects;
 

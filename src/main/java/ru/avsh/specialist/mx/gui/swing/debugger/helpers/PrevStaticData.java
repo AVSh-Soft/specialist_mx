@@ -1,11 +1,12 @@
-package ru.avsh.specialist.mx.gui.debugger.lib;
+package ru.avsh.specialist.mx.gui.swing.debugger.helpers;
 
 import ru.avsh.specialist.mx.units.CPUi8080;
 
 import java.awt.*;
 
-public final class PreviousStaticData {
-    private PreviousStaticData() {
+public final class PrevStaticData {
+
+    private PrevStaticData() {
         //
     }
 

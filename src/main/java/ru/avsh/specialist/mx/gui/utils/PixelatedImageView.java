@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.gui.lib;
+package ru.avsh.specialist.mx.gui.utils;
 
 import com.sun.javafx.sg.prism.NGImageView;
 import com.sun.javafx.sg.prism.NGNode;

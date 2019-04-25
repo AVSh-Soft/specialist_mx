@@ -1,7 +1,9 @@
-package ru.avsh.specialist.mx.gui.debugger.lib;
+package ru.avsh.specialist.mx.gui.swing.debugger.helpers;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.gui.debugger.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.swing.debugger.types.EventType;
+import ru.avsh.specialist.mx.gui.swing.debugger.types.MemoryPageType;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
@@ -10,9 +12,9 @@ import ru.avsh.specialist.mx.units.CPUi8080;
 import java.util.Observable;
 
 /**
- * Класс "Слой для взаимодействия отладчика с CPU и памятью".
+ * Класс "Слой для взаимодействия отладчика с CPU и памятью эмулятора".
  */
-public class Layer extends Observable {
+public class EmulatorLayer extends Observable {
     private final SpecialistMX fSpMX;
 
     private boolean fDisableEvents;
@@ -22,7 +24,7 @@ public class Layer extends Observable {
     /**
      * Конструктор.
      */
-    public Layer(@NotNull SpecialistMX spMX) {
+    public EmulatorLayer(@NotNull SpecialistMX spMX) {
         // Запоминаем ссылку на главный класс эмулятора
         fSpMX = spMX;
         // Заполняем пустой массив предыдущих значений регистровых пар
@@ -32,7 +34,7 @@ public class Layer extends Observable {
         // Установим страницу памяти для просмотра кода = странице, в которой работает CPU
         fCodePage = fSpMX.getPage();
         // Восстановим номер страницы для просмотра данных
-        fDataPage = PreviousStaticData.getPrevDataPage();
+        fDataPage = PrevStaticData.getPrevDataPage();
     }
 
     /**
@@ -126,7 +128,7 @@ public class Layer extends Observable {
     public void setValRegPair(final CPUi8080.DebugRegPair regPair, final int value) {
         final CPUi8080 cpu = fSpMX.getCPU();
         // Сохраняем предыдущее значение регистровой пары
-        PreviousStaticData.setPrevRegPairs(regPair, cpu.debugGetValRegPair(regPair));
+        PrevStaticData.setPrevRegPairs(regPair, cpu.debugGetValRegPair(regPair));
         // Устанавливаем новое значение
         cpu.debugSetValRegPair(regPair, value);
         // Отправляем событие наблюдателям
@@ -140,7 +142,7 @@ public class Layer extends Observable {
      * @return значение
      */
     public int getPrevValRegPair(final CPUi8080.DebugRegPair regPair) {
-        return PreviousStaticData.getPrevRegPairs(regPair);
+        return PrevStaticData.getPrevRegPairs(regPair);
     }
 
     /**
@@ -148,7 +150,7 @@ public class Layer extends Observable {
      */
     public void saveAllRegPairs() {
         for (CPUi8080.DebugRegPair regPair : CPUi8080.DebugRegPair.values()) {
-            PreviousStaticData.setPrevRegPairs(regPair, getValRegPair(regPair));
+            PrevStaticData.setPrevRegPairs(regPair, getValRegPair(regPair));
         }
     }
 

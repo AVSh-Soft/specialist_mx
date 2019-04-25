@@ -1,13 +1,15 @@
-package ru.avsh.specialist.mx.gui.debugger;
+package ru.avsh.specialist.mx.gui.swing.debugger;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.gui.debugger.lib.*;
+import ru.avsh.specialist.mx.gui.swing.debugger.helpers.*;
+import ru.avsh.specialist.mx.gui.swing.debugger.types.EventType;
+import ru.avsh.specialist.mx.gui.swing.debugger.types.MemoryPageType;
 import ru.avsh.specialist.mx.root.SpecialistMX;
-import ru.avsh.specialist.mx.gui.lib.JFormattedTextFieldExt;
+import ru.avsh.specialist.mx.gui.swing.utils.JFormattedTextFieldExt;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.units.CPUi8080.DebugRegPair;
-import ru.avsh.specialist.mx.units.memory.sub.MainMemory;
+import ru.avsh.specialist.mx.units.memory.units.MainMemory;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -23,7 +25,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import static javax.swing.JOptionPane.*;
 import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharAt;
@@ -175,7 +177,7 @@ public final class DebuggerCPUi8080 extends JDialog {
     private static final String EDITING_OR_NAVIGATING = "EditingOrNavigating";
 
     private final transient SpecialistMX fSpMX ;
-    private final transient Layer        fLayer;
+    private final transient EmulatorLayer fEmulatorLayer;
 
     private final DisAsmTable fDisAsmTable;
     private final MemDatTable fMemDatTable;
@@ -193,10 +195,10 @@ public final class DebuggerCPUi8080 extends JDialog {
         // Запоминаем ссылку на главный класс эмулятора
         fSpMX = spMX;
         // Инициализируем слой для взаимодействия с CPU и памятью
-        fLayer = new Layer(spMX);
+        fEmulatorLayer = new EmulatorLayer(spMX);
         // Инициализируем модели и таблицы для просмотра кода и данных
-        fDisAsmTable = new DisAsmTable(new DisAsmTableModel());
-        fMemDatTable = new MemDatTable(new MemDatTableModel());
+        fDisAsmTable   = new DisAsmTable(new DisAsmTableModel());
+        fMemDatTable   = new MemDatTable(new MemDatTableModel());
 
         fFocusedAddress = -1;
         // Инициализируем остальные компоненты и обработчики событий
@@ -656,11 +658,11 @@ public final class DebuggerCPUi8080 extends JDialog {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
                 final int rowM = getFocusedRowModel((JTable) actionEvent.getSource());
-                if ((rowM != -1) && (rowM < fLayer.getTrapCount())) {
-                    final Trap trap = fLayer.getTrap(rowM);
+                if ((rowM != -1) && (rowM < fEmulatorLayer.getTrapCount())) {
+                    final Trap trap = fEmulatorLayer.getTrap(rowM);
                     // Переходим на ловушку в таблице с кодом
-                          fLayer.setCodePage(trap.getPage());
-                    fDisAsmTable.gotoAddress(trap.getAddress(), DA_COL_ADR);
+                    fEmulatorLayer.setCodePage(trap.getPage());
+                      fDisAsmTable.gotoAddress(trap.getAddress(), DA_COL_ADR);
                 }
             }
         });
@@ -684,11 +686,11 @@ public final class DebuggerCPUi8080 extends JDialog {
             public void mouseClicked(MouseEvent mouseEvent) {
                 if (mouseEvent.getClickCount() == 2) {
                     final int rowM = getFocusedRowModel((JTable) mouseEvent.getComponent());
-                    if ((rowM != -1) && (rowM < fLayer.getTrapCount())) {
-                        Trap trap = fLayer.getTrap(rowM);
+                    if ((rowM != -1) && (rowM < fEmulatorLayer.getTrapCount())) {
+                        Trap trap = fEmulatorLayer.getTrap(rowM);
                         // Переходим на ловушку в таблице с кодом
-                        fLayer.setCodePage(trap.getPage());
-                        fDisAsmTable.gotoAddress(trap.getAddress(), DA_COL_ADR);
+                        fEmulatorLayer.setCodePage(trap.getPage());
+                          fDisAsmTable.gotoAddress(trap.getAddress(), DA_COL_ADR);
                     }
                 }
             }
@@ -700,7 +702,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 final int index = FLAGS.indexOf(actionEvent.getActionCommand());
                 if (index != -1) {
                     // Инвертируем бит, соответствующий названию кнопки
-                    fLayer.setValRegPair(DebugRegPair.AF, fLayer.getValRegPair(DebugRegPair.AF) ^ (1 << (7 - index)));
+                    fEmulatorLayer.setValRegPair(DebugRegPair.AF, fEmulatorLayer.getValRegPair(DebugRegPair.AF) ^ (1 << (7 - index)));
                 }
             };
             // Добавляем в компоненты
@@ -714,21 +716,21 @@ public final class DebuggerCPUi8080 extends JDialog {
         // Обработчик событий для кнопки удаления ловушки
         deleteTrapButton.addActionListener(actionEvent -> {
             final int rowM = getFocusedRowModel(trapsTable);
-            if ((rowM != -1) && (rowM < fLayer.getTrapCount())) {
-                Trap trap = fLayer.getTrap(rowM);
-                fLayer.remTrap(trap.getPage(), trap.getAddress());
+            if ((rowM != -1) && (rowM < fEmulatorLayer.getTrapCount())) {
+                Trap trap = fEmulatorLayer.getTrap(rowM);
+                fEmulatorLayer.remTrap(trap.getPage(), trap.getAddress());
             }
         });
 
         // Обработчик событий для кнопки очистки ловушек
-        clearTrapsButton.addActionListener(actionEvent -> fLayer.clearTraps());
+        clearTrapsButton.addActionListener(actionEvent -> fEmulatorLayer.clearTraps());
 
         // Обработчик выбора страницы памяти Code RAM
         codeMemPagesComboBox.addItemListener (itemEvent -> {
             if (itemEvent.getStateChange() == ItemEvent.SELECTED) {
                 final int index = ((JComboBox) itemEvent.getSource()).getSelectedIndex();
                 // Учитываются особенности класса MainMemory
-                fLayer.setCodePage((index == (fLayer.getNumPages() - 1)) ? MainMemory.ROM_DISK : index);
+                fEmulatorLayer.setCodePage((index == (fEmulatorLayer.getNumPages() - 1)) ? MainMemory.ROM_DISK : index);
             }
         });
 
@@ -737,20 +739,20 @@ public final class DebuggerCPUi8080 extends JDialog {
             if (itemEvent.getStateChange() == ItemEvent.SELECTED) {
                 final int index = ((JComboBox) itemEvent.getSource()).getSelectedIndex();
                 // Учитываются особенности класса MainMemory
-                fLayer.setDataPage((index == (fLayer.getNumPages() - 1)) ? MainMemory.ROM_DISK : index);
+                fEmulatorLayer.setDataPage((index == (fEmulatorLayer.getNumPages() - 1)) ? MainMemory.ROM_DISK : index);
             }
         });
 
         // Определяем обработчики кнопок
         gotoButton.addActionListener(actionEvent -> gotoAddress());
         toPCButton.addActionListener(actionEvent -> {
-                  fLayer.setCodePage(fLayer.getCpuPage());
-            fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
+                  fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
+            fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
 
         });
          runButton.addActionListener(actionEvent -> runToCursor());
           okButton.addActionListener(actionEvent -> {
-            fLayer.saveAllRegPairs();
+            fEmulatorLayer.saveAllRegPairs();
             setVisible(false);
         });
         findButton.addActionListener(actionEvent -> findData());
@@ -760,18 +762,18 @@ public final class DebuggerCPUi8080 extends JDialog {
             @Override
             public void windowClosing(WindowEvent e) {
                 // Срабатывает при нажатии по [X] (срабатывает раньше, чем получит управление вызвавшая отладчик программа)
-                fLayer.saveAllRegPairs();
+                fEmulatorLayer.saveAllRegPairs();
             }
 
             // Срабатывает всегда после закрытия окна отладчика (срабатывает позже, чем получит управление вызвавшая отладчик программа)
             @Override
             public void windowClosed(WindowEvent e) {
                 // Запоминаем номер страницы Data RAM
-                PreviousStaticData.setPrevDataPage(fLayer.getDataPage());
+                PrevStaticData.setPrevDataPage(fEmulatorLayer.getDataPage());
                 // Запоминаем адрес, выбранный в таблице данных памяти
-                PreviousStaticData.setPrevDataAddress(fMemDatTable.getAddress());
+                PrevStaticData.setPrevDataAddress(fMemDatTable.getAddress());
                 // Запоминаем положение окна отладчика
-                PreviousStaticData.setPrevLocation(getLocation());
+                PrevStaticData.setPrevLocation(getLocation());
                 // Запоминаем размеры фрейма в ini-файл
                 fSpMX.putIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
                 fSpMX.putIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
@@ -793,11 +795,11 @@ public final class DebuggerCPUi8080 extends JDialog {
         }
 
         // Устанавливаем курсор на адрес = fPrevDataAddress
-        fMemDatTable.gotoAddress(PreviousStaticData.getPrevDataAddress());
+        fMemDatTable.gotoAddress(PrevStaticData.getPrevDataAddress());
         // Устанавливаем курсор на адрес = PC в таблице fDisAsmTable
-        fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
+        fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
 
-        final Point prevLocation = PreviousStaticData.getPrevLocation();
+        final Point prevLocation = PrevStaticData.getPrevLocation();
         if ((prevLocation.getX() < 1.0D) && (prevLocation.getY() < 1.0D)) {
             // Выводим окно отладчика в центре родительского окна
             setLocationRelativeTo(getOwner());
@@ -851,21 +853,21 @@ public final class DebuggerCPUi8080 extends JDialog {
          * @param codeAddress адрес точного начала кода
          */
         private void fillBuffer(final int[][] buf, final int codeAddress) {
-            final int page =  fLayer.getCodePage();
-            final int pc   = (fLayer.getCpuPage () == page) ? fLayer.getValRegPair(DebugRegPair.PC) : 0;
+            final int page =  fEmulatorLayer.getCodePage();
+            final int pc   = (fEmulatorLayer.getCpuPage () == page) ? fEmulatorLayer.getValRegPair(DebugRegPair.PC) : 0;
 
             int address = codeAddress;
             for (int i  = 0; i < BUF_SIZE; i++) {
                                      buf[i][IND_ADR] = address;
-                int cmdLen = CMD_LEN[buf[i][IND_CMD] = fLayer.debugReadByte(page,   address)];
+                int cmdLen = CMD_LEN[buf[i][IND_CMD] = fEmulatorLayer.debugReadByte(page,   address)];
                 if ((pc   <= address)   ||  (pc >= address + cmdLen)) {
-                    buf[i][IND_BT1] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : EMPTY;
-                    buf[i][IND_BT2] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : EMPTY;
+                    buf[i][IND_BT1] = (--cmdLen > 0) ? fEmulatorLayer.debugReadByte(page, ++address) : EMPTY;
+                    buf[i][IND_BT2] = (--cmdLen > 0) ? fEmulatorLayer.debugReadByte(page, ++address) : EMPTY;
                 } else {
                     // Устраняем коллизии
                     cmdLen = pc - address;
-                    buf[i][IND_BT1] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : WRONG;
-                    buf[i][IND_BT2] = (--cmdLen > 0) ? fLayer.debugReadByte(page, ++address) : WRONG;
+                    buf[i][IND_BT1] = (--cmdLen > 0) ? fEmulatorLayer.debugReadByte(page, ++address) : WRONG;
+                    buf[i][IND_BT2] = (--cmdLen > 0) ? fEmulatorLayer.debugReadByte(page, ++address) : WRONG;
                 }
                 address++;
             }
@@ -901,8 +903,8 @@ public final class DebuggerCPUi8080 extends JDialog {
                         }
                         // Пытаемся выполнить выравнивание кода (в надежде, что повезет :-)
                         //noinspection StatementWithEmptyBody
-                        for (  int page = fLayer.getCodePage(), endAddress  = movedStart + FOR_ALIGNMENT,  len;
-                             movedStart + (len = CMD_LEN[fLayer.debugReadByte(page, endAddress)]) < endAddress;
+                        for (int page = fEmulatorLayer.getCodePage(), endAddress = movedStart + FOR_ALIGNMENT, len;
+                             movedStart + (len = CMD_LEN[fEmulatorLayer.debugReadByte(page, endAddress)]) < endAddress;
                              movedStart += len) {
                             //
                         }
@@ -1027,7 +1029,7 @@ public final class DebuggerCPUi8080 extends JDialog {
             if (record.length == REC_SIZE) {
                 switch (columnIndex) {
                     case DA_COL_TRP:
-                        return fLayer.isTrap(fLayer.getCodePage(), rowIndex);
+                        return fEmulatorLayer.isTrap(fEmulatorLayer.getCodePage(), rowIndex);
                     case DA_COL_ADR:
                         return String.format("%04X:", record[IND_ADR]);
                     case DA_COL_BT0:
@@ -1079,13 +1081,13 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         @Override
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-            int page = fLayer.getCodePage();
+            int page = fEmulatorLayer.getCodePage();
             switch (columnIndex) {
                 case DA_COL_TRP:
                     if ((Boolean) aValue) {
-                        fLayer.addTrap(page, rowIndex, false);
+                        fEmulatorLayer.addTrap(page, rowIndex, false);
                     } else {
-                        fLayer.remTrap(page, rowIndex);
+                        fEmulatorLayer.remTrap(page, rowIndex);
                     }
                     return;
                 case DA_COL_ADR:
@@ -1094,7 +1096,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 case DA_COL_BT1:
                 case DA_COL_BT2:
                     try {
-                        fLayer.writeByte(page,rowIndex + columnIndex - DA_COL_BT0, Integer.parseInt((String) aValue, 16));
+                        fEmulatorLayer.writeByte(page,rowIndex + columnIndex - DA_COL_BT0, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
                         showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
@@ -1131,14 +1133,19 @@ public final class DebuggerCPUi8080 extends JDialog {
             }
 
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            public Component getTableCellRendererComponent(JTable  table,
+                                                           Object  value,
+                                                           boolean isSelected,
+                                                           boolean hasFocus  ,
+                                                           int     row,
+                                                           int     column) {
                 if (table == null) {
                     return this;
                 }
 
                 final boolean booleanValue =    (value != null) && (boolean) value;
-                final boolean     equalsPC =    (fLayer.getCodePage() == fLayer.getCpuPage())
-                                             && (table.convertRowIndexToModel(row) == fLayer.getValRegPair(DebugRegPair.PC));
+                final boolean     equalsPC =    (fEmulatorLayer.getCodePage() == fEmulatorLayer.getCpuPage())
+                                             && (table.convertRowIndexToModel(row) == fEmulatorLayer.getValRegPair(DebugRegPair.PC));
 
                 if (isSelected) {
                     setForeground(table.getSelectionForeground());
@@ -1181,7 +1188,13 @@ public final class DebuggerCPUi8080 extends JDialog {
             private static final long serialVersionUID = 1263217420662494640L;
 
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            public Component getTableCellRendererComponent(JTable  table,
+                                                           Object  value,
+                                                           boolean isSelected,
+                                                           boolean hasFocus  ,
+                                                           int     row,
+                                                           int     column) {
+
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (table == null) {
                     return this;
@@ -1191,7 +1204,7 @@ public final class DebuggerCPUi8080 extends JDialog {
 
                 final int address = table.convertRowIndexToModel   (row   );
                 final int columnM = table.convertColumnIndexToModel(column);
-                final int pc      = fLayer.getValRegPair(DebugRegPair.PC  );
+                final int pc      = fEmulatorLayer.getValRegPair(DebugRegPair.PC  );
 
                 if (columnM == DA_COL_CMD) {
                     setHorizontalAlignment(LEFT);
@@ -1207,7 +1220,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                     } else {
                         setForeground(table.getSelectionForeground());
                     }
-                    if ((fLayer.getCodePage() == fLayer.getCpuPage()) && (address == pc)) {
+                    if ((fEmulatorLayer.getCodePage() == fEmulatorLayer.getCpuPage()) && (address == pc)) {
                         setBackground(YELLOW_GREEN);
                     } else {
                         setBackground(table.getSelectionBackground());
@@ -1220,7 +1233,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                     } else {
                         setForeground(table.getForeground());
                     }
-                    if ((fLayer.getCodePage() == fLayer.getCpuPage()) && (address == pc)) {
+                    if ((fEmulatorLayer.getCodePage() == fEmulatorLayer.getCpuPage()) && (address == pc)) {
                         setBackground(Color.green);
                     } else {
                         setBackground(table.getBackground());
@@ -1267,7 +1280,7 @@ public final class DebuggerCPUi8080 extends JDialog {
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщиков колонок
             setDefaultRenderer(Boolean.class, new DisAsmBooleanRenderer());
-            setDefaultRenderer( String.class, new DisAsmStringRenderer());
+            setDefaultRenderer( String.class, new DisAsmStringRenderer ());
             // Блокируем вывод пустых строк и отключаем сортировку колонок
             final TableRowSorter<TableModel> sorter = new TableRowSorter<>(dm);
             for (int column = 0; column < sorter.getModel().getColumnCount(); column++) {
@@ -1275,26 +1288,26 @@ public final class DebuggerCPUi8080 extends JDialog {
             }
             sorter.setRowFilter(RowFilter.regexFilter(".", DA_COL_CMD));
             setRowSorter(sorter);
-            // Подключаемся к fLayer для прослушивания
-            fLayer.addObserver(this);
+            // Подключаемся к fEmulatorLayer для прослушивания
+            fEmulatorLayer.addObserver(this);
         }
 
         @Override
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
-            if (   fLayer.eventCheck(event, EventType.MEMORY  , fLayer.getCodePage())
-                || fLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CODE)
-                || fLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.PC)
-                || fLayer.eventCheck(event, EventType.STEP    , null)) {
+            if (   fEmulatorLayer.eventCheck(event, EventType.MEMORY  , fEmulatorLayer.getCodePage())
+                || fEmulatorLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CODE )
+                || fEmulatorLayer.eventCheck(event, EventType.REG_PAIR,   DebugRegPair.PC   )
+                || fEmulatorLayer.eventCheck(event, EventType.STEP    , null)) {
                 final int rowM = getFocusedRowModel   (this);
                 final int colM = getFocusedColumnModel(this);
                 // Вызываем обновление данных
                 ((AbstractTableModel) getModel()).fireTableDataChanged();
                 // Восстанавливаем предыдущую позицию
                 gotoAddress(rowM, colM);
-            } else if (fLayer.eventCheck(event, EventType.TRAPS, null)) {
+            } else if (fEmulatorLayer.eventCheck(event, EventType.TRAPS, null)) {
                 final Object detail = event.getDetail();
-                if ((detail == null) || ((detail instanceof Trap) && (((Trap) detail).getPage() == fLayer.getCodePage()))) {
+                if ((detail == null) || ((detail instanceof Trap) && (((Trap) detail).getPage() == fEmulatorLayer.getCodePage()))) {
                     repaint();
                 }
             }
@@ -1343,8 +1356,8 @@ public final class DebuggerCPUi8080 extends JDialog {
                     final int height = l.getHeight();
                     final int index  = l.getDisplayedMnemonicIndex();
 
-                    final int pAF = fLayer.getPrevValRegPair(DebugRegPair.AF);
-                    final int cAF = fLayer.getValRegPair    (DebugRegPair.AF);
+                    final int pAF = fEmulatorLayer.getPrevValRegPair(DebugRegPair.AF);
+                    final int cAF = fEmulatorLayer.getValRegPair    (DebugRegPair.AF);
 
                     char c;
                     int  width;
@@ -1370,7 +1383,7 @@ public final class DebuggerCPUi8080 extends JDialog {
          * Конструктор.
          */
         FlagsRegLabel() {
-            super(fLayer.getVisViewsFlagsReg());
+            super(fEmulatorLayer.getVisViewsFlagsReg());
             // Устанавливаем рисовальщик для метки
             setUI(new FlagsRegLabelUI());
             // Настариваем параметры отображения метки
@@ -1380,15 +1393,15 @@ public final class DebuggerCPUi8080 extends JDialog {
             setBackground(Color.white);
             setHorizontalAlignment(SwingConstants.CENTER);
             // Подключаемся к fWrapCPU для прослушивания
-            fLayer.addObserver(this);
+            fEmulatorLayer.addObserver(this);
         }
 
         @Override
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
-            if (   fLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.AF)
-                || fLayer.eventCheck(event, EventType.STEP    , null)) {
-                setText(fLayer.getVisViewsFlagsReg());
+            if (   fEmulatorLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.AF)
+                || fEmulatorLayer.eventCheck(event, EventType.STEP    , null)) {
+                setText(fEmulatorLayer.getVisViewsFlagsReg());
                 repaint();
             }
         }
@@ -1450,7 +1463,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 case CR_COL_EQU:
                     return "=";
                 case CR_COL_DAT:
-                    return String.format("%04X", fLayer.getValRegPair(DebugRegPair.values()[rowIndex]));
+                    return String.format("%04X", fEmulatorLayer.getValRegPair(DebugRegPair.values()[rowIndex]));
                 default:
                     return null;
             }
@@ -1479,11 +1492,11 @@ public final class DebuggerCPUi8080 extends JDialog {
                     try {
                         final DebugRegPair regPair = DebugRegPair.values()[rowIndex];
                         // Пишем данные в регистровые пары
-                        fLayer.setValRegPair(regPair, Integer.parseInt((String) aValue, 16));
+                        fEmulatorLayer.setValRegPair(regPair, Integer.parseInt((String) aValue, 16));
                         if (DebugRegPair.PC.equals(regPair)) {
                             // Если была запись в PC, то показываем код из страницы CPU и переходим на address = PC
-                                  fLayer.setCodePage(fLayer.getCpuPage());
-                            fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
+                            fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
+                              fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
                         }
                     } catch (NumberFormatException e) {
                         showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
@@ -1548,14 +1561,19 @@ public final class DebuggerCPUi8080 extends JDialog {
             }
 
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            public Component getTableCellRendererComponent(JTable  table,
+                                                           Object  value,
+                                                           boolean isSelected,
+                                                           boolean hasFocus  ,
+                                                           int     row,
+                                                           int     column) {
                 super.setHorizontalAlignment(CENTER);
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (table == null) {
                     return this;
                 }
                 fPaintColumn   =  table.convertColumnIndexToModel(column);
-                fCompareResult = fLayer.getChangesRegPair(DebugRegPair.values()[table.convertRowIndexToModel(row)]);
+                fCompareResult = fEmulatorLayer.getChangesRegPair(DebugRegPair.values()[table.convertRowIndexToModel(row)]);
 
                 if (fCompareResult >= 0) {
                     setBackground(table.getSelectionBackground());
@@ -1600,15 +1618,15 @@ public final class DebuggerCPUi8080 extends JDialog {
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new RegCpuStringRenderer());
-            // Подключаемся к fLayer для прослушивания
-            fLayer.addObserver(this);
+            // Подключаемся к fEmulatorLayer для прослушивания
+            fEmulatorLayer.addObserver(this);
         }
 
         @Override
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
-            if (   fLayer.eventCheck(event, EventType.REG_PAIR, null)
-                || fLayer.eventCheck(event, EventType.STEP    , null)) {
+            if (   fEmulatorLayer.eventCheck(event, EventType.REG_PAIR, null)
+                || fEmulatorLayer.eventCheck(event, EventType.STEP    , null)) {
                 repaint();
             }
         }
@@ -1659,10 +1677,10 @@ public final class DebuggerCPUi8080 extends JDialog {
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
             if (columnIndex == SP_COL_DAT) {
-                final int page    = fLayer.getCpuPage();
-                final int address = fLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
+                final int page    = fEmulatorLayer.getCpuPage();
+                final int address = fEmulatorLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
                 return String.format("%04X",
-                        fLayer.debugReadByte(page, address) | (fLayer.debugReadByte(page, address + 1) << 8));
+                        fEmulatorLayer.debugReadByte(page, address) | (fEmulatorLayer.debugReadByte(page, address + 1) << 8));
             }
             return null;
         }
@@ -1675,19 +1693,19 @@ public final class DebuggerCPUi8080 extends JDialog {
         @Override
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
             if (columnIndex == SP_COL_DAT) {
-                final int page    = fLayer.getCpuPage();
-                final int address = fLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
+                final int page    = fEmulatorLayer.getCpuPage();
+                final int address = fEmulatorLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
                 try {
                     final int value = Integer.parseInt((String) aValue, 16);
-                    fLayer.disableEvents();
-                    fLayer.writeByte(page, address, value & 0xFF);
-                    fLayer.writeByte(page, address + 1, value >> 8);
+                    fEmulatorLayer.disableEvents();
+                    fEmulatorLayer.writeByte(page, address, value & 0xFF);
+                    fEmulatorLayer.writeByte(page, address + 1, value >> 8);
                 } catch (NumberFormatException e) {
                     showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                 } finally {
-                    if (fLayer.isEventsDisabled()) {
-                        fLayer.enableEvents();
-                        fLayer.sendEvent(EventType.MEMORY, page);
+                    if (fEmulatorLayer.isEventsDisabled()) {
+                        fEmulatorLayer.enableEvents();
+                        fEmulatorLayer.sendEvent(EventType.MEMORY, page);
                     }
                 }
                 return;
@@ -1710,7 +1728,12 @@ public final class DebuggerCPUi8080 extends JDialog {
             private static final long serialVersionUID = 2680876900372610398L;
 
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            public Component getTableCellRendererComponent(JTable  table,
+                                                           Object  value,
+                                                           boolean isSelected,
+                                                           boolean hasFocus  ,
+                                                           int     row,
+                                                           int     column) {
                 super.setHorizontalAlignment(CENTER);
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
@@ -1751,17 +1774,17 @@ public final class DebuggerCPUi8080 extends JDialog {
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new StackStringRenderer());
-            // Подключаемся к fLayer для прослушивания
-            fLayer.addObserver(this);
+            // Подключаемся к fEmulatorLayer для прослушивания
+            fEmulatorLayer.addObserver(this);
         }
 
         @Override
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
-            if (   fLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.SP)
-                || fLayer.eventCheck(event, EventType.MEMORY  , fLayer.getCpuPage())
-                || fLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CPU)
-                || fLayer.eventCheck(event, EventType.STEP    , null)) {
+            if (   fEmulatorLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.SP)
+                || fEmulatorLayer.eventCheck(event, EventType.MEMORY  , fEmulatorLayer.getCpuPage())
+                || fEmulatorLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CPU)
+                || fEmulatorLayer.eventCheck(event, EventType.STEP    , null)) {
                 repaint();
             }
         }
@@ -1782,7 +1805,7 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         @Override
         public int getRowCount() {
-            return fLayer.getTrapCount();
+            return fEmulatorLayer.getTrapCount();
         }
 
         @Override
@@ -1815,10 +1838,10 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            final Trap trap = fLayer.getTrap(rowIndex);
+            final Trap trap = fEmulatorLayer.getTrap(rowIndex);
             switch (columnIndex) {
                 case TP_COL_PAG:
-                    return fLayer.getPageName(trap.getPage());
+                    return fEmulatorLayer.getPageName(trap.getPage());
                 case TP_COL_ADR:
                     return String.format("%04X",trap.getAddress());
                 default:
@@ -1841,7 +1864,13 @@ public final class DebuggerCPUi8080 extends JDialog {
             private static final long serialVersionUID = -7287183392747810798L;
 
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            public Component getTableCellRendererComponent(JTable  table,
+                                                           Object  value,
+                                                           boolean isSelected,
+                                                           boolean hasFocus  ,
+                                                           int     row,
+                                                           int     column) {
+
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (table == null) {
                     return this;
@@ -1887,20 +1916,20 @@ public final class DebuggerCPUi8080 extends JDialog {
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new TrapsStringRenderer());
-            // Подключаемся к fLayer для прослушивания
-            fLayer.addObserver(this);
+            // Подключаемся к fEmulatorLayer для прослушивания
+            fEmulatorLayer.addObserver(this);
         }
 
         @Override
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
-            if (fLayer.eventCheck(event, EventType.TRAPS, null)) {
+            if (fEmulatorLayer.eventCheck(event, EventType.TRAPS, null)) {
                 // Обновляем данные в таблице
                 ((AbstractTableModel) getModel()).fireTableDataChanged();
                 // Позиционируемся на добавленную ловушку
                 final int index;
                 final Object detail = event.getDetail();
-                if ((detail instanceof Trap) && ((index = fLayer.getTrapIndex((Trap) detail)) != -1)) {
+                if ((detail instanceof Trap) && ((index = fEmulatorLayer.getTrapIndex((Trap) detail)) != -1)) {
                     gotoTableCell(this, convertRowIndexToView(index), convertColumnIndexToView(TP_COL_PAG), false);
                 }
             }
@@ -1925,8 +1954,8 @@ public final class DebuggerCPUi8080 extends JDialog {
             setText(getCpuPageInfo());
             setBackground(Color.white);
             setHorizontalAlignment(SwingConstants.CENTER);
-            // Подключаемся к fLayer для прослушивания
-            fLayer.addObserver(this);
+            // Подключаемся к fEmulatorLayer для прослушивания
+            fEmulatorLayer.addObserver(this);
         }
 
         /**
@@ -1934,14 +1963,14 @@ public final class DebuggerCPUi8080 extends JDialog {
          * @return строка с информацией
          */
         private String getCpuPageInfo() {
-            return "CPU работает в: ".concat(fLayer.getPageName(fLayer.getCpuPage()));
+            return "CPU работает в: ".concat(fEmulatorLayer.getPageName(fEmulatorLayer.getCpuPage()));
         }
 
         @Override
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
-            if (   fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CPU)
-                || fLayer.eventCheck(event, EventType.STEP, null)) {
+            if (   fEmulatorLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CPU)
+                || fEmulatorLayer.eventCheck(event, EventType.STEP, null)) {
                 setText(getCpuPageInfo());
             }
         }
@@ -1962,21 +1991,21 @@ public final class DebuggerCPUi8080 extends JDialog {
             setFont(DEFAULT_FONT);
             setMinimumSize(new Dimension(50, 17));
             // Добавляем элементы списка
-            for (int i = 0, j = fLayer.getNumPages(); i < j; i++) {
-                addItem("← ".concat(fLayer.getPageName(i)));
+            for (int i = 0, j = fEmulatorLayer.getNumPages(); i < j; i++) {
+                addItem("← ".concat(fEmulatorLayer.getPageName(i)));
             }
             // Выделяем элемент, соответствующий странице памяти Data RAM
-            setSelectedIndex((fLayer.getCodePage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage());
-            // Подключаемся к fLayer для прослушивания
-            fLayer.addObserver(this);
+            setSelectedIndex((fEmulatorLayer.getCodePage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fEmulatorLayer.getCodePage());
+            // Подключаемся к fEmulatorLayer для прослушивания
+            fEmulatorLayer.addObserver(this);
         }
 
         @Override
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
-            if (   fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CODE)
-                || fLayer.eventCheck(event, EventType.STEP, null)) {
-                final int index = (fLayer.getCodePage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getCodePage();
+            if (   fEmulatorLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CODE)
+                || fEmulatorLayer.eventCheck(event, EventType.STEP, null)) {
+                final int index = (fEmulatorLayer.getCodePage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fEmulatorLayer.getCodePage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
                 }
@@ -1999,20 +2028,20 @@ public final class DebuggerCPUi8080 extends JDialog {
             setFont(DEFAULT_FONT);
             setMinimumSize(new Dimension(50, 17));
             // Добавляем элементы списка
-            for (int i = 0, j = fLayer.getNumPages(); i < j; i++) {
-                addItem("↓ ".concat(fLayer.getPageName(i)));
+            for (int i = 0, j = fEmulatorLayer.getNumPages(); i < j; i++) {
+                addItem("↓ ".concat(fEmulatorLayer.getPageName(i)));
             }
             // Выделяем элемент, соответствующий странице памяти Data RAM
-            setSelectedIndex((fLayer.getDataPage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage());
-            // Подключаемся к fLayer для прослушивания
-            fLayer.addObserver(this);
+            setSelectedIndex((fEmulatorLayer.getDataPage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fEmulatorLayer.getDataPage());
+            // Подключаемся к fEmulatorLayer для прослушивания
+            fEmulatorLayer.addObserver(this);
         }
 
         @Override
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
-            if (fLayer.eventCheck(event, EventType.PAGE, MemoryPageType.DATA)) {
-                final int index = (fLayer.getDataPage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fLayer.getDataPage();
+            if (fEmulatorLayer.eventCheck(event, EventType.PAGE, MemoryPageType.DATA)) {
+                final int index = (fEmulatorLayer.getDataPage() >= MainMemory.ROM_DISK) ? (getItemCount() - 1) : fEmulatorLayer.getDataPage();
                 if (getSelectedIndex() != index) {
                     setSelectedIndex(index);
                 }
@@ -2261,7 +2290,7 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            final int page = fLayer.getDataPage();
+            final int page = fEmulatorLayer.getDataPage();
             switch (columnIndex) {
                 case MD_COL_ADR:
                     return String.format("%04X:", rowIndex << 4);
@@ -2281,11 +2310,11 @@ public final class DebuggerCPUi8080 extends JDialog {
                 case MD_COL_B13:
                 case MD_COL_B14:
                 case MD_COL_B15:
-                    return String.format("%02X", fLayer.debugReadByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00));
+                    return String.format("%02X", fEmulatorLayer.debugReadByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00));
                 case MD_COL_STR: {
                     final char[] str   = new char[16];
                     for (int i  = 0, j = rowIndex << 4; i < 16; i++, j++) {
-                         str[i] = KOI8.charAt(fLayer.debugReadByte(page, j));
+                         str[i] = KOI8.charAt(fEmulatorLayer.debugReadByte(page, j));
                     }
                     return new String(str);
                 }
@@ -2324,7 +2353,7 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         @Override
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-            final int page = fLayer.getDataPage();
+            final int page = fEmulatorLayer.getDataPage();
             switch (columnIndex) {
                 case MD_COL_ADR:
                     break;
@@ -2345,7 +2374,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 case MD_COL_B14:
                 case MD_COL_B15:
                     try {
-                        fLayer.writeByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00, Integer.parseInt((String) aValue, 16));
+                        fEmulatorLayer.writeByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
                         showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
@@ -2355,19 +2384,19 @@ public final class DebuggerCPUi8080 extends JDialog {
                     final    int len = Math.min(str.length(), 16);
 
                     try {
-                        fLayer.disableEvents();
+                        fEmulatorLayer.disableEvents();
                         for (int index = 0, address = rowIndex << 4; index < len; index++, address++) {
                              int value;
                             if (   ((value  =   str.charAt(index)) != SKIP_CHAR)
                                 && ((value  = KOI8.indexOf(value)) != -1)
-                                && ( value != fLayer.readByte(page, address))) {
-                                fLayer.writeByte(page, address, value);
+                                && ( value != fEmulatorLayer.readByte(page, address))) {
+                                fEmulatorLayer.writeByte(page, address, value);
                             }
                         }
                     } finally {
-                        if (fLayer.isEventsDisabled()) {
-                            fLayer.enableEvents();
-                            fLayer.sendEvent(EventType.MEMORY, page);
+                        if (fEmulatorLayer.isEventsDisabled()) {
+                            fEmulatorLayer.enableEvents();
+                            fEmulatorLayer.sendEvent(EventType.MEMORY, page);
                         }
                     }
                     return;
@@ -2416,16 +2445,17 @@ public final class DebuggerCPUi8080 extends JDialog {
 
                             String  str;
                             boolean phase = false;
-                            for (int beginIndex = 0, endIndex = fFocusedColumn - MD_COL_B00, len = s.length(); beginIndex < len; ) {
+                            for (int beginIndex =        0, endIndex = fFocusedColumn - MD_COL_B00, len = s.length();
+                                     beginIndex <      len;
+                                     beginIndex = endIndex, endIndex = phase ? endIndex + 1 : len) {
+
                                 if (endIndex > 0) {
                                     g.setColor(phase ? Color.red : foreground);
                                     str = s.substring(beginIndex, endIndex);
                                     drawStringUnderlineCharAt(g, str, index, textX, textY);
                                     textX += g.getFontMetrics().stringWidth(str);
                                 }
-                                phase      = !phase;
-                                beginIndex = endIndex;
-                                endIndex   = phase ? endIndex + 1 : len;
+                                phase = !phase;
                             }
                         } else {
                             g.setColor(foreground);
@@ -2444,7 +2474,12 @@ public final class DebuggerCPUi8080 extends JDialog {
             }
 
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            public Component getTableCellRendererComponent(JTable  table,
+                                                           Object  value,
+                                                           boolean isSelected,
+                                                           boolean hasFocus  ,
+                                                           int     row,
+                                                           int     column) {
                 super.setHorizontalAlignment(CENTER);
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
@@ -2505,16 +2540,16 @@ public final class DebuggerCPUi8080 extends JDialog {
             columnModel.setSelectionModel(selectionModelsContainer.getColumnSelectionModel());
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new MemDatStringRenderer());
-            // Подключаемся к fLayer для прослушивания
-            fLayer.addObserver(this);
+            // Подключаемся к fEmulatorLayer для прослушивания
+            fEmulatorLayer.addObserver(this);
         }
 
         @Override
         public void update(Observable o, Object arg) {
             final InnerEvent event = (InnerEvent) arg;
-            if (   fLayer.eventCheck(event, EventType.MEMORY, fLayer.getDataPage())
-                || fLayer.eventCheck(event, EventType.PAGE  , MemoryPageType.DATA)
-                || fLayer.eventCheck(event, EventType.STEP  , null)) {
+            if (   fEmulatorLayer.eventCheck(event, EventType.MEMORY, fEmulatorLayer.getDataPage())
+                || fEmulatorLayer.eventCheck(event, EventType.PAGE  , MemoryPageType.DATA)
+                || fEmulatorLayer.eventCheck(event, EventType.STEP  , null)) {
                 repaint();
             }
         }
@@ -2666,7 +2701,7 @@ public final class DebuggerCPUi8080 extends JDialog {
             }
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        InputAddressPanel inputAddressPanel = new InputAddressPanel();
+        final InputAddressPanel inputAddressPanel = new InputAddressPanel();
         int result =  showConfirmDialog(DebuggerCPUi8080.this, inputAddressPanel, "Go to ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
         if (result == OK_OPTION) {
             int codeAddress = inputAddressPanel.getAddress(false);
@@ -2696,7 +2731,7 @@ public final class DebuggerCPUi8080 extends JDialog {
             private final JTextField fChars;
 
             // Функция - преобразует строку из байт в строку из символов.
-            private final transient Function<String, String> bytesToChars = strBytes -> {
+            private final transient UnaryOperator<String> bytesToChars = strBytes -> {
                     strBytes = strBytes.trim();
                 if (strBytes.matches(REGEXP_STRING_BYTES)) {
                     String[] b = strBytes.split(" +"); // разбиваем строку из байт на отдельные байты
@@ -2731,7 +2766,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                             super.insertString(offs, str, a);
                         }
                     }
-                }, PreviousStaticData.getPrevStringBytes(), 0);
+                }, PrevStaticData.getPrevStringBytes(), 0);
                 fChars = new JTextField();
 
                 bytesLabel.setFont( HEADER_FONT);
@@ -2799,8 +2834,8 @@ public final class DebuggerCPUi8080 extends JDialog {
                         if (fChars.isFocusOwner()) {
                             String strBytes = "";
                             String strChars = fChars.getText();
-                            for (int i = 0, len =  strChars.length(), val; i < len; i++) {
-                                val = KOI8.indexOf(strChars.charAt(i));
+                            for (int i = 0, len = strChars.length(); i < len; i++) {
+                                 final int  val = KOI8.indexOf(strChars.charAt(i));
                                 strBytes = strBytes.concat(String.format("%02X ", (val == -1) ? 0 : val));
                             }
                             fBytes.setText(strBytes.trim());
@@ -2847,7 +2882,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 String strBytes = fBytes.getText().trim();
                 if (strBytes.matches(REGEXP_STRING_BYTES)) {
                     // Запоминаем поисковую строку
-                    PreviousStaticData.setPrevStringBytes(strBytes);
+                    PrevStaticData.setPrevStringBytes(strBytes);
 
                     // Разбиваем строку из байт на отдельные байты
                     String[] s = strBytes.split(" +");
@@ -2868,7 +2903,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                     // Выполняем поиск данных
                     for (int i; address < 0x1_0000; address++) {
                         for (i = 0; i < length; i++) {
-                            if (fLayer.debugReadByte(fLayer.getDataPage(), address + i) != (b[i] & 0xFF)) {
+                            if (fEmulatorLayer.debugReadByte(fEmulatorLayer.getDataPage(), address + i) != (b[i] & 0xFF)) {
                                 break;
                             }
                         }
@@ -2882,9 +2917,9 @@ public final class DebuggerCPUi8080 extends JDialog {
             }
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        InputDataPanel inputDataPanel = new InputDataPanel();
+        final InputDataPanel inputDataPanel = new InputDataPanel();
         int result = showConfirmDialog(DebuggerCPUi8080.this, inputDataPanel,
-                String.format("Поиск в странице: [%s]", fLayer.getPageName(fLayer.getDataPage())), OK_CANCEL_OPTION, QUESTION_MESSAGE);
+                String.format("Поиск в странице: [%s]", fEmulatorLayer.getPageName(fEmulatorLayer.getDataPage())), OK_CANCEL_OPTION, QUESTION_MESSAGE);
 
         if (result == OK_OPTION) {
             int  start   = (fMemDatTable.getAddress() + 1) & 0xFFFF;
@@ -2896,7 +2931,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 fMemDatTable.gotoAddress(address);
             } else if (address == -2) {
                 showMessageDialog(DebuggerCPUi8080.this,
-                        String.format("Заданные для поиска данные:%n[%s]%nНе найдены!", PreviousStaticData.getPrevStringBytes()), "Информация", INFORMATION_MESSAGE);
+                        String.format("Заданные для поиска данные:%n[%s]%nНе найдены!", PrevStaticData.getPrevStringBytes()), "Информация", INFORMATION_MESSAGE);
             }
         }
     }
@@ -2906,14 +2941,14 @@ public final class DebuggerCPUi8080 extends JDialog {
      */
     private void step() {
         // Показываем код из страницы, в которой работает CPU
-        fLayer.setCodePage(fLayer.getCpuPage());
+        fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
         // Сохраняем регистровые пары
-        fLayer.saveAllRegPairs();
-        if (fLayer.execOneCmdCPU()) {
+        fEmulatorLayer.saveAllRegPairs();
+        if (fEmulatorLayer.execOneCmdCPU()) {
             // Уведомляем слушателей об изменениях
-            fLayer.afterStep();
+            fEmulatorLayer.afterStep();
             // Устанавливаем курсор на позицию = PC
-            fDisAsmTable.gotoAddress(fLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
+            fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
         }
     }
 
@@ -2922,16 +2957,16 @@ public final class DebuggerCPUi8080 extends JDialog {
      */
     private void stepOver() {
         // Показываем код из страницы, в которой работает CPU
-        fLayer.setCodePage(fLayer.getCpuPage());
+        fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
         // Получаем адрес следующей команды после команды вызова подпрограммы (CALL/RST)
-        int address = ((DisAsmTableModel) fDisAsmTable.getModel()).getAddressAfterCallCmd(fLayer.getValRegPair(DebugRegPair.PC));
+        int address = ((DisAsmTableModel) fDisAsmTable.getModel()).getAddressAfterCallCmd(fEmulatorLayer.getValRegPair(DebugRegPair.PC));
         if (address < 0) {
             step();
         } else {
             // Сохраняем регистровые пары
-            fLayer.saveAllRegPairs();
+            fEmulatorLayer.saveAllRegPairs();
             // Добавляем StepOver ловушку
-            fLayer.addTrap(fLayer.getCodePage(), address, true);
+            fEmulatorLayer.addTrap(fEmulatorLayer.getCodePage(), address, true);
             // Закрываем отладчик
             setVisible(false);
         }
@@ -2941,7 +2976,7 @@ public final class DebuggerCPUi8080 extends JDialog {
      * Выполняет запуск с места, на которое указывает курсор.
      */
     private void runToCursor() {
-        fLayer.setCpuPage(fLayer.getCodePage());
-        fLayer.setValRegPair(DebugRegPair.PC, getFocusedRowModel(fDisAsmTable));
+        fEmulatorLayer.setCpuPage(fEmulatorLayer.getCodePage());
+        fEmulatorLayer.setValRegPair(DebugRegPair.PC, getFocusedRowModel(fDisAsmTable));
     }
 }

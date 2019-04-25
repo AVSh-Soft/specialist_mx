@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.gui.lib;
+package ru.avsh.specialist.mx.gui.utils;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -20,7 +20,7 @@ import static javafx.scene.control.ButtonType.CANCEL;
 import static javafx.scene.control.ButtonType.OK;
 
 /**
- * Утилиты для формирования различных диалогов.
+ * Утилиты для формирования различных диалогов (JavaFX).
  *
  * @author -=AVSh=-
  */

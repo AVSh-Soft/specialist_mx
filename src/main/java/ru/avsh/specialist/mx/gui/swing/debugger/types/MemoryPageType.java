@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.gui.debugger.lib;
+package ru.avsh.specialist.mx.gui.swing.debugger.types;
 
 /**
  * Типы страницы памяти в отладчике:
