@@ -1,13 +1,15 @@
 package ru.avsh.specialist.mx.gui.swing.debugger;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.gui.swing.debugger.helpers.*;
+import ru.avsh.specialist.mx.gui.swing.debugger.helpers.EmulatorLayer;
+import ru.avsh.specialist.mx.gui.swing.debugger.helpers.InnerEvent;
+import ru.avsh.specialist.mx.gui.swing.debugger.helpers.PrevStaticData;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.EventType;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.MemoryPageType;
-import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.gui.swing.utils.JFormattedTextFieldExt;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;
+import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.CPUi8080.DebugRegPair;
 import ru.avsh.specialist.mx.units.memory.units.MainMemory;
 
@@ -23,6 +25,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.PlainDocument;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.function.UnaryOperator;
@@ -2068,19 +2071,12 @@ public final class DebuggerCPUi8080 extends JDialog {
             this.columnSelectionModel = new ColumnSelectionModel();
 
             this.rowSelectionModel.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
-/*
-            this.rowSelectionModel.addListSelectionListener(selectionEvent -> {
-                selectionEvent.getFirstIndex()
 
-            });
-*/
             this.columnSelectionModels = new ListSelectionModel[TOTAL_MODELS];
             for (int i = 0; i < this.columnSelectionModels.length; i++) {
                 this.columnSelectionModels[i] = new DefaultListSelectionModel();
                 this.columnSelectionModels[i].setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
             }
-
-            //this.columnSelectionModels[IND_MIDDLE].set
 
             this.currentColumnSelectionModel = this.columnSelectionModels[IND_TOP];
         }
@@ -2101,15 +2097,24 @@ public final class DebuggerCPUi8080 extends JDialog {
                     int min = this.getMinSelectionIndex();
                     int max = this.getMaxSelectionIndex();
 
+                    final ListSelectionModel selModel;
                     if (index == min) {
-                        currentColumnSelectionModel = columnSelectionModels[IND_TOP];
+                        selModel = columnSelectionModels[IND_TOP];
+                        if ((min != max) && (selModel.getMaxSelectionIndex() != MD_COL_B15)) {
+                            selModel.setSelectionInterval(selModel.getMinSelectionIndex(), MD_COL_B15);
+                        }
                     } else if (index == max) {
-                        currentColumnSelectionModel = columnSelectionModels[IND_BOTTOM];
-                    } else if ((index > min) && (index < max)) {
-                        currentColumnSelectionModel = columnSelectionModels[IND_MIDDLE];
-                        currentColumnSelectionModel.setSelectionInterval(MD_COL_B00, MD_COL_B15);
+                        selModel = columnSelectionModels[IND_BOTTOM];
+                        if (selModel.getMinSelectionIndex() != MD_COL_B00) {
+                            selModel.setSelectionInterval(MD_COL_B00, selModel.getMaxSelectionIndex());
+                        }
+                    } else {
+                        selModel = columnSelectionModels[IND_MIDDLE];
+                        if ((selModel.getMinSelectionIndex() != MD_COL_B00) || (selModel.getMaxSelectionIndex() != MD_COL_B15)) {
+                            selModel.setSelectionInterval(MD_COL_B00, MD_COL_B15);
+                        }
                     }
-
+                    currentColumnSelectionModel = selModel;
                 }
                 return result;
             }
@@ -2118,7 +2123,26 @@ public final class DebuggerCPUi8080 extends JDialog {
         private class ColumnSelectionModel implements ListSelectionModel {
             @Override
             public void setSelectionInterval(int index0, int index1) {
-                currentColumnSelectionModel.setSelectionInterval(index0, index1);
+                int min = rowSelectionModel.getMinSelectionIndex ();
+                int max = rowSelectionModel.getMaxSelectionIndex ();
+                int cur = rowSelectionModel.getLeadSelectionIndex();
+
+                final ListSelectionModel selModel;
+                if (cur == min) {
+                    selModel = columnSelectionModels[IND_TOP];
+                    if ((min != max) && (index1 != MD_COL_B15)) {
+                        selModel.setSelectionInterval(index0, MD_COL_B15);
+                    } else {
+                        selModel.setSelectionInterval(index0, index1);
+                    }
+                } else {
+                    selModel = columnSelectionModels[IND_BOTTOM];
+                    if (index0 != MD_COL_B00) {
+                        selModel.setSelectionInterval(MD_COL_B00, index1);
+                    } else {
+                        selModel.setSelectionInterval(index0, index1);
+                    }
+                }
             }
 
             @Override
@@ -2171,7 +2195,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 for (ListSelectionModel selectionModel : columnSelectionModels) {
                     selectionModel.clearSelection();
                 }
-                //currentColumnSelectionModel.clearSelection();
+                //currentColumnSelectionModel.clearSelection()
             }
 
             @Override
@@ -2530,13 +2554,13 @@ public final class DebuggerCPUi8080 extends JDialog {
             }
             getColumnModel().getColumn(MD_COL_STR).setMaxWidth(130);
             // Устанавливаем режим выделения для строк
-            //setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+            //setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION)
             SelectionModelsContainer selectionModelsContainer = new SelectionModelsContainer();
             setSelectionModel(selectionModelsContainer.getRowSelectionModel());
             // Устанавливаем режим выделения для столбцов (с установкой разрешения выделения)
             TableColumnModel columnModel = getColumnModel();
             columnModel.setColumnSelectionAllowed(true);
-            //columnModel.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+            //columnModel.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION)
             columnModel.setSelectionModel(selectionModelsContainer.getColumnSelectionModel());
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new MemDatStringRenderer());
@@ -2873,37 +2897,41 @@ public final class DebuggerCPUi8080 extends JDialog {
 
             /**
              * Выполняет поиск данных из fBytes в странице памяти Data MEM.
+             *
              * @param address начальный адрес для поиска
              * @return адрес начала найденных данных
              * или -1 = в fBytes некорректные данные
              * или -2 = данные не найдены
              */
             private int find(int address) {
-                String strBytes = fBytes.getText().trim();
+                final String strBytes = fBytes.getText().trim();
                 if (strBytes.matches(REGEXP_STRING_BYTES)) {
                     // Запоминаем поисковую строку
                     PrevStaticData.setPrevStringBytes(strBytes);
 
                     // Разбиваем строку из байт на отдельные байты
-                    String[] s = strBytes.split(" +");
-                    int length = s.length;
-                      byte[] b = new byte[length];
-                    for (int i = 0; i < length; i++) {
-                        try {
-                            b[i] = (byte) Integer.parseInt(s[i], 16);
-                        } catch (NumberFormatException e) {
-                            b[i] = 0;
-                        }
-                    }
+                    final int[] bytes = Arrays.stream(strBytes.split(" +"))
+                            .mapToInt(strByte -> {
+                                try {
+                                    return Integer.parseInt(strByte, 16);
+                                } catch (NumberFormatException e) {
+                                    //
+                                }
+                                return 0;
+                            })
+                            .toArray();
+
+                    final int length = bytes.length;
 
                     if (address + length >= 0x1_0000) {
                         address = 0;
                     }
 
                     // Выполняем поиск данных
-                    for (int i; address < 0x1_0000; address++) {
+                    for (; address < 0x1_0000; address++) {
+                        int  i;
                         for (i = 0; i < length; i++) {
-                            if (fEmulatorLayer.debugReadByte(fEmulatorLayer.getDataPage(), address + i) != (b[i] & 0xFF)) {
+                            if (fEmulatorLayer.debugReadByte(fEmulatorLayer.getDataPage(), address + i) != bytes[i]) {
                                 break;
                             }
                         }
