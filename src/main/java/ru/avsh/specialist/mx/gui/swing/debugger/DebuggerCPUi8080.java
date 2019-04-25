@@ -2066,6 +2066,9 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         private ListSelectionModel currentColumnSelectionModel;
 
+        private int columnMinSelectionIndex;
+        private int columnMaxSelectionIndex;
+
         SelectionModelsContainer() {
                this.rowSelectionModel = new    RowSelectionModel();
             this.columnSelectionModel = new ColumnSelectionModel();
@@ -2118,12 +2121,38 @@ public final class DebuggerCPUi8080 extends JDialog {
                 }
                 return result;
             }
+
+            @Override
+            public void setSelectionInterval(int index0, int index1) {
+                super.setSelectionInterval(index0, index1);
+
+                int cur = this.getLeadSelectionIndex();
+
+                final ListSelectionModel selModel;
+                if (cur == index0) {
+                    selModel = columnSelectionModels[IND_TOP];
+                    if ((index1 != index0) && (columnMaxSelectionIndex != MD_COL_B15)) {
+                        selModel.setSelectionInterval(columnMinSelectionIndex, MD_COL_B15);
+                    } else {
+                        selModel.setSelectionInterval(columnMinSelectionIndex, columnMaxSelectionIndex);
+                    }
+                } else if (cur == index1) {
+                    selModel = columnSelectionModels[IND_BOTTOM];
+                    if (columnMinSelectionIndex != MD_COL_B00) {
+                        selModel.setSelectionInterval(MD_COL_B00, columnMaxSelectionIndex);
+                    } else {
+                        selModel.setSelectionInterval(columnMinSelectionIndex, columnMaxSelectionIndex);
+                    }
+                }
+            }
         }
 
         private class ColumnSelectionModel implements ListSelectionModel {
             @Override
             public void setSelectionInterval(int index0, int index1) {
-                int min = rowSelectionModel.getMinSelectionIndex ();
+                columnMinSelectionIndex = index0;
+                columnMaxSelectionIndex = index1;
+/*                int min = rowSelectionModel.getMinSelectionIndex ();
                 int max = rowSelectionModel.getMaxSelectionIndex ();
                 int cur = rowSelectionModel.getLeadSelectionIndex();
 
@@ -2142,7 +2171,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                     } else {
                         selModel.setSelectionInterval(index0, index1);
                     }
-                }
+                }*/
             }
 
             @Override
