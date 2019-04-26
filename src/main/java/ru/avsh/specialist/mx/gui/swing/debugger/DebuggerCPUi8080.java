@@ -2066,8 +2066,8 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         private ListSelectionModel currentColumnSelectionModel;
 
-        private int columnMinSelectionIndex;
-        private int columnMaxSelectionIndex;
+        private int columnSelectionIndex0 = -1;
+        private int columnSelectionIndex1 = -1;
 
         SelectionModelsContainer() {
                this.rowSelectionModel = new    RowSelectionModel();
@@ -2126,23 +2126,24 @@ public final class DebuggerCPUi8080 extends JDialog {
             public void setSelectionInterval(int index0, int index1) {
                 super.setSelectionInterval(index0, index1);
 
-                int cur = this.getLeadSelectionIndex();
+                if (   (               index0 == -1) || (               index1 == -1)
+                    || (columnSelectionIndex0 == -1) || (columnSelectionIndex1 == -1)) {
+                    return;
+                }
 
-                final ListSelectionModel selModel;
-                if (cur == index0) {
-                    selModel = columnSelectionModels[IND_TOP];
-                    if ((index1 != index0) && (columnMaxSelectionIndex != MD_COL_B15)) {
-                        selModel.setSelectionInterval(columnMinSelectionIndex, MD_COL_B15);
-                    } else {
-                        selModel.setSelectionInterval(columnMinSelectionIndex, columnMaxSelectionIndex);
-                    }
-                } else if (cur == index1) {
-                    selModel = columnSelectionModels[IND_BOTTOM];
-                    if (columnMinSelectionIndex != MD_COL_B00) {
-                        selModel.setSelectionInterval(MD_COL_B00, columnMaxSelectionIndex);
-                    } else {
-                        selModel.setSelectionInterval(columnMinSelectionIndex, columnMaxSelectionIndex);
-                    }
+                final int min = Math.min(index0, index1);
+                final int max = Math.max(index0, index1);
+                final int cur = super.getLeadSelectionIndex();
+
+                //System.out.println(min + " " + max + " " + cur + " " + columnMin + " " + columnMax);
+
+                if (min == max) {
+                    columnSelectionModels[IND_TOP   ].setSelectionInterval(columnSelectionIndex0, columnSelectionIndex1);
+                    columnSelectionModels[IND_BOTTOM].setSelectionInterval(columnSelectionIndex0, columnSelectionIndex1);
+                } else if (cur == min) {
+                    columnSelectionModels[IND_TOP   ].setSelectionInterval(MD_COL_B15, columnSelectionIndex1);
+                } else if (cur == max) {
+                    columnSelectionModels[IND_BOTTOM].setSelectionInterval(MD_COL_B00, columnSelectionIndex1);
                 }
             }
         }
@@ -2150,28 +2151,8 @@ public final class DebuggerCPUi8080 extends JDialog {
         private class ColumnSelectionModel implements ListSelectionModel {
             @Override
             public void setSelectionInterval(int index0, int index1) {
-                columnMinSelectionIndex = index0;
-                columnMaxSelectionIndex = index1;
-/*                int min = rowSelectionModel.getMinSelectionIndex ();
-                int max = rowSelectionModel.getMaxSelectionIndex ();
-                int cur = rowSelectionModel.getLeadSelectionIndex();
-
-                final ListSelectionModel selModel;
-                if (cur == min) {
-                    selModel = columnSelectionModels[IND_TOP];
-                    if ((min != max) && (index1 != MD_COL_B15)) {
-                        selModel.setSelectionInterval(index0, MD_COL_B15);
-                    } else {
-                        selModel.setSelectionInterval(index0, index1);
-                    }
-                } else {
-                    selModel = columnSelectionModels[IND_BOTTOM];
-                    if (index0 != MD_COL_B00) {
-                        selModel.setSelectionInterval(MD_COL_B00, index1);
-                    } else {
-                        selModel.setSelectionInterval(index0, index1);
-                    }
-                }*/
+                columnSelectionIndex0 = index0;
+                columnSelectionIndex1 = index1;
             }
 
             @Override
@@ -2224,7 +2205,6 @@ public final class DebuggerCPUi8080 extends JDialog {
                 for (ListSelectionModel selectionModel : columnSelectionModels) {
                     selectionModel.clearSelection();
                 }
-                //currentColumnSelectionModel.clearSelection()
             }
 
             @Override
