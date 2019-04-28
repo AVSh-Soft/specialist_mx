@@ -747,6 +747,10 @@ public final class DebuggerCPUi8080 extends JDialog {
         });
 
         // Определяем обработчики кнопок
+        findButton.addActionListener(actionEvent -> findData());
+        button2.addActionListener(actionEvent -> {
+            System.out.println(String.format("%04X %04X", fMemDatTable.getStartAddress(),fMemDatTable.getEndAddress()));
+        });
         gotoButton.addActionListener(actionEvent -> gotoAddress());
         toPCButton.addActionListener(actionEvent -> {
                   fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
@@ -758,7 +762,6 @@ public final class DebuggerCPUi8080 extends JDialog {
             fEmulatorLayer.saveAllRegPairs();
             setVisible(false);
         });
-        findButton.addActionListener(actionEvent -> findData());
 
         // Обрабатываем события закрытия окна отладчика
         addWindowListener(new WindowAdapter() {
@@ -2053,10 +2056,13 @@ public final class DebuggerCPUi8080 extends JDialog {
     }
 
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-    // Не доведено до ума!!!
+    /**
+     * Очень спецефичная (под JTable) симуляция выделения строк, по аналогии с текстовым редактором
+     * (не все удалось реализовать, но результат скорее хороший).
+     */
     private class SelectionModelsContainer {
-        private final int minColumnIndex;
-        private final int maxColumnIndex;
+        private final int columnMinIndex;
+        private final int columnMaxIndex;
 
         private final ListSelectionModel columnSelectionModelTop   ;
         private final ListSelectionModel columnSelectionModelMiddle;
@@ -2069,9 +2075,9 @@ public final class DebuggerCPUi8080 extends JDialog {
         private int currentColumnSelectionIndex0 = -1;
         private int currentColumnSelectionIndex1 = -1;
 
-        SelectionModelsContainer(int minColumnIndex, int maxColumnIndex) {
-            this.minColumnIndex = minColumnIndex;
-            this.maxColumnIndex = maxColumnIndex;
+        SelectionModelsContainer(int columnMinIndex, int columnMaxIndex) {
+            this.columnMinIndex = columnMinIndex;
+            this.columnMaxIndex = columnMaxIndex;
 
             this.columnSelectionModelTop    = new DefaultListSelectionModel();
             this.columnSelectionModelMiddle = new DefaultListSelectionModel();
@@ -2084,7 +2090,7 @@ public final class DebuggerCPUi8080 extends JDialog {
             this.columnSelectionModelBottom.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
             this.   rowSelectionModel      .setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
 
-            this.columnSelectionModelMiddle.setSelectionInterval(minColumnIndex, maxColumnIndex);
+            this.columnSelectionModelMiddle.setSelectionInterval(columnMinIndex, columnMaxIndex);
 
             this.currentColumnSelectionModel = this.columnSelectionModelTop;
         }
@@ -2097,48 +2103,64 @@ public final class DebuggerCPUi8080 extends JDialog {
             return columnSelectionModel;
         }
 
+        int getStartAddress() {
+            final int rowMinSelIndex = rowSelectionModel.getMinSelectionIndex();
+            // Для чтения верхней строки
+            rowSelectionModel.isSelectedIndex(rowMinSelIndex);
+            final int columnMinSelIndex = currentColumnSelectionModel.getMinSelectionIndex();
+            return (( columnMinSelIndex < columnMinIndex) || (columnMinSelIndex > columnMaxIndex)) ?
+                    -1 : ((rowMinSelIndex << 4) + columnMinSelIndex - columnMinIndex);
+        }
+
+        int getEndAddress() {
+            final int rowMaxSelIndex = rowSelectionModel.getMaxSelectionIndex();
+            // Для чтения нижней строки
+            rowSelectionModel.isSelectedIndex(rowMaxSelIndex);
+            final int columnMaxSelIndex = currentColumnSelectionModel.getMaxSelectionIndex();
+            return (( columnMaxSelIndex < columnMinIndex) || (columnMaxSelIndex > columnMaxIndex)) ?
+                    -1 : ((rowMaxSelIndex << 4) + columnMaxSelIndex - columnMinIndex);
+        }
+
         private class RowSelectionModel extends DefaultListSelectionModel {
             @Override
             public boolean isSelectedIndex(int index) {
                 boolean result = super.isSelectedIndex(index);
                 if (result) {
-                    int min = this.getMinSelectionIndex();
-                    int max = this.getMaxSelectionIndex();
+                    int rowMinSelIndex = this.getMinSelectionIndex();
+                    int rowMaxSelIndex = this.getMaxSelectionIndex();
 
-                    final ListSelectionModel selModel;
-                    if (index == min) {
-                        selModel = columnSelectionModelTop;
-                        if (min != max) {
-                            final int curMinIndex = selModel.getMinSelectionIndex();
-                            final int curMaxIndex = selModel.getMaxSelectionIndex();
-                            final int setMinIndex = ((curMinIndex >= minColumnIndex) && (curMinIndex <= maxColumnIndex))
-                                    ? curMinIndex : minColumnIndex;
+                    if (index == rowMinSelIndex) {
+                        currentColumnSelectionModel = columnSelectionModelTop;
+                        if (rowMinSelIndex != rowMaxSelIndex) {
+                            final int columnMinSelIndex = currentColumnSelectionModel.getMinSelectionIndex();
+                            final int columnMaxSelIndex = currentColumnSelectionModel.getMaxSelectionIndex();
+                            final int columnMinSetIndex = ((columnMinSelIndex >= columnMinIndex) && (columnMinSelIndex <= columnMaxIndex))
+                                    ? columnMinSelIndex : columnMinIndex;
 
-                            if ((curMinIndex != setMinIndex) || (curMaxIndex != maxColumnIndex)) {
-                                selModel.setSelectionInterval(maxColumnIndex, setMinIndex);
+                            if ((columnMinSelIndex != columnMinSetIndex) || (columnMaxSelIndex != columnMaxIndex)) {
+                                currentColumnSelectionModel.setSelectionInterval(columnMaxIndex, columnMinSetIndex);
                             }
                         }
-                    } else if (index == max) {
-                        selModel = columnSelectionModelBottom;
-                        final int curMinIndex = selModel.getMinSelectionIndex();
-                        final int curMaxIndex = selModel.getMaxSelectionIndex();
-                        final int setMaxIndex = ((curMaxIndex >= minColumnIndex) && (curMaxIndex <= maxColumnIndex))
-                                ? curMaxIndex : maxColumnIndex;
+                    } else if (index == rowMaxSelIndex) {
+                        currentColumnSelectionModel = columnSelectionModelBottom;
+                        final int columnMinSelIndex = currentColumnSelectionModel.getMinSelectionIndex();
+                        final int columnMaxSelIndex = currentColumnSelectionModel.getMaxSelectionIndex();
+                        final int columnMaxSetIndex = ((columnMaxSelIndex >= columnMinIndex) && (columnMaxSelIndex <= columnMaxIndex))
+                                ? columnMaxSelIndex : columnMaxIndex;
 
-                        if ((curMinIndex != minColumnIndex) || (curMaxIndex != setMaxIndex)) {
-                            selModel.setSelectionInterval(minColumnIndex, setMaxIndex);
+                        if ((columnMinSelIndex != columnMinIndex)  ||  (columnMaxSelIndex != columnMaxSetIndex)) {
+                            currentColumnSelectionModel.setSelectionInterval(columnMinIndex, columnMaxSetIndex);
                         }
                     } else {
-                        selModel = columnSelectionModelMiddle;
+                        currentColumnSelectionModel = columnSelectionModelMiddle;
                     }
-                    currentColumnSelectionModel = selModel;
                 }
                 return result;
             }
 
             @Override
             public void setSelectionInterval(int index0, int index1) {
-                final boolean isManyRows = super.getMaxSelectionIndex() > super.getMinSelectionIndex();
+                final boolean isManyRows = super.getMinSelectionIndex() != super.getMaxSelectionIndex();
                 super.setSelectionInterval(index0, index1);
 
                 if (   (index0 == -1) || (index1 == -1)
@@ -2146,38 +2168,72 @@ public final class DebuggerCPUi8080 extends JDialog {
                     return;
                 }
 
-                final int  curMinRowIndex = Math.min(index0, index1);
-                final int  curMaxRowIndex = Math.max(index0, index1);
-                final int curLeadRowIndex = super.getLeadSelectionIndex();
+                final int  rowMinSelIndex = Math.min(index0, index1);
+                final int  rowMaxSelIndex = Math.max(index0, index1);
+                final int rowLeadSelIndex = super.getLeadSelectionIndex();
 
-                final int curMinColumnIndex = Math.min(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
-                final int curMaxColumnIndex = Math.max(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
+                final int columnMinSelIndex = Math.min(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
+                final int columnMaxSelIndex = Math.max(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
 
-
-                if (curMinRowIndex == curMaxRowIndex) {
-                    if (isManyRows) {
-                        columnSelectionModelTop   .setSelectionInterval(columnSelectionModelTop.getLeadSelectionIndex(), columnSelectionModelBottom.getLeadSelectionIndex());
-                        columnSelectionModelBottom.setSelectionInterval(columnSelectionModelTop.getLeadSelectionIndex(), columnSelectionModelBottom.getLeadSelectionIndex());
-                    } else if (   ( curMinColumnIndex == curMaxColumnIndex)
-                               || ((curMinColumnIndex >= minColumnIndex) && (curMaxColumnIndex <= maxColumnIndex))) {
+                if (rowMinSelIndex == rowMaxSelIndex) {
+                    // При переходе из многих строк в одну
+                    if (isManyRows && (columnMinSelIndex != columnMaxSelIndex)) {
+                        final int    columnTopLeadSelIndex = columnSelectionModelTop   .getLeadSelectionIndex();
+                        final int columnBottomLeadSelIndex = columnSelectionModelBottom.getLeadSelectionIndex();
+                        columnSelectionModelTop   .setSelectionInterval(columnTopLeadSelIndex, columnBottomLeadSelIndex);
+                        columnSelectionModelBottom.setSelectionInterval(columnTopLeadSelIndex, columnBottomLeadSelIndex);
+                    // Выделение в пределах одной строки
+                    } else if (   ( columnMinSelIndex == columnMaxSelIndex)
+                               || ((columnMinSelIndex >= columnMinIndex) && (columnMaxSelIndex <= columnMaxIndex))) {
                         columnSelectionModelTop   .setSelectionInterval(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
                         columnSelectionModelBottom.setSelectionInterval(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
                     }
-                } else if (curLeadRowIndex == curMinRowIndex) {
-                    //if ((curMinColumnIndex >= minColumnIndex) && (curMaxColumnIndex <= maxColumnIndex)) {
-                        columnSelectionModelTop.setSelectionInterval(maxColumnIndex, currentColumnSelectionIndex1);
-                    //}
-                } else if (curLeadRowIndex == curMaxRowIndex) {
-                    //if ((curMinColumnIndex >= minColumnIndex) && (curMaxColumnIndex <= maxColumnIndex)) {
-                        columnSelectionModelBottom.setSelectionInterval(minColumnIndex, currentColumnSelectionIndex1);
-                    //}
+                // При выделении снизу вверх
+                } else if (rowLeadSelIndex == rowMinSelIndex) {
+                    columnSelectionModelTop   .setSelectionInterval(columnMaxIndex, currentColumnSelectionIndex1);
+                // При выделении сверху вниз
+                } else if (rowLeadSelIndex == rowMaxSelIndex) {
+                    columnSelectionModelBottom.setSelectionInterval(columnMinIndex, currentColumnSelectionIndex1);
                 }
+
+                currentColumnSelectionIndex0 = -1;
+                currentColumnSelectionIndex1 = -1;
             }
         }
 
         private class ColumnSelectionModel implements ListSelectionModel {
             @Override
             public void setSelectionInterval(int index0, int index1) {
+                // Обрабатываем предыдущие значения
+                if ((currentColumnSelectionIndex0 != -1) || (currentColumnSelectionIndex1 != -1)) {
+                    final int  rowMinSelIndex = rowSelectionModel.getMinSelectionIndex();
+                    final int  rowMaxSelIndex = rowSelectionModel.getMaxSelectionIndex();
+                    final int rowLeadSelIndex = rowSelectionModel.getLeadSelectionIndex();
+
+                    final int columnMinSelIndex = Math.min(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
+                    final int columnMaxSelIndex = Math.max(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
+
+                    if (rowMinSelIndex == rowMaxSelIndex) {
+                        if (   ( columnMinSelIndex == columnMaxSelIndex)
+                            || ((columnMinSelIndex >= columnMinIndex) && (columnMaxSelIndex <= columnMaxIndex))) {
+                            columnSelectionModelTop   .setSelectionInterval(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
+                            columnSelectionModelBottom.setSelectionInterval(currentColumnSelectionIndex0, currentColumnSelectionIndex1);
+                        }
+                        // При выделении снизу вверх
+                    } else if (rowLeadSelIndex == rowMinSelIndex) {
+                        columnSelectionModelTop   .setSelectionInterval(columnMaxIndex, currentColumnSelectionIndex1);
+                        // При выделении сверху вниз
+                    } else if (rowLeadSelIndex == rowMaxSelIndex) {
+                        columnSelectionModelBottom.setSelectionInterval(columnMinIndex, currentColumnSelectionIndex1);
+                    }
+
+                    if ((currentColumnSelectionIndex0 == index0) && (currentColumnSelectionIndex1 == index1)) {
+                        index0 = -1;
+                        index1 = -1;
+                    }
+                }
+                // Так приходится делать из-за того, что Swing при работе с таблицей,
+                // сначала задает интервал для колонок, а потом только для строк
                 currentColumnSelectionIndex0 = index0;
                 currentColumnSelectionIndex1 = index1;
             }
@@ -2198,7 +2254,10 @@ public final class DebuggerCPUi8080 extends JDialog {
 
             @Override
             public void addSelectionInterval(int index0, int index1) {
-                setSelectionInterval(index0, index1);
+                // Тут так можно, для правильной работы gotoTableCell()
+                currentColumnSelectionIndex0 = index0;
+                currentColumnSelectionIndex1 = index1;
+                setSelectionInterval( index0,  index1);
             }
 
             @Override
@@ -2239,12 +2298,18 @@ public final class DebuggerCPUi8080 extends JDialog {
 
             @Override
             public int getAnchorSelectionIndex() {
-                return currentColumnSelectionModel.getAnchorSelectionIndex();
+                // Важно только для выбранной строки
+                return (rowSelectionModel.getLeadSelectionIndex() <= rowSelectionModel.getAnchorSelectionIndex()) ?
+                        columnSelectionModelTop   .getAnchorSelectionIndex() :
+                        columnSelectionModelBottom.getAnchorSelectionIndex() ;
             }
 
             @Override
             public int getLeadSelectionIndex() {
-                return currentColumnSelectionModel.getLeadSelectionIndex();
+                // Важно только для выбранной строки
+                return (rowSelectionModel.getLeadSelectionIndex() <= rowSelectionModel.getAnchorSelectionIndex()) ?
+                        columnSelectionModelTop   .getLeadSelectionIndex() :
+                        columnSelectionModelBottom.getLeadSelectionIndex() ;
             }
 
             @Override
@@ -2282,14 +2347,14 @@ public final class DebuggerCPUi8080 extends JDialog {
 
             @Override
             public void addListSelectionListener(ListSelectionListener x) {
-                columnSelectionModelTop   .addListSelectionListener(x);
-                columnSelectionModelBottom.addListSelectionListener(x);
+                columnSelectionModelTop   .addListSelectionListener   (x);
+                columnSelectionModelBottom.addListSelectionListener   (x);
             }
 
             @Override
             public void removeListSelectionListener(ListSelectionListener x) {
-                columnSelectionModelTop   .removeListSelectionListener(x);
-                columnSelectionModelBottom.removeListSelectionListener(x);
+                columnSelectionModelTop   .removeListSelectionListener   (x);
+                columnSelectionModelBottom.removeListSelectionListener   (x);
             }
         }
     }
@@ -2483,6 +2548,8 @@ public final class DebuggerCPUi8080 extends JDialog {
     private class MemDatTable extends JTable implements Observer {
         private static final long serialVersionUID = 9010843821123994652L;
 
+        private final SelectionModelsContainer selectionModelsContainer;
+
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
          * Класс "Рисовальщик строковых полей таблицы с данными памяти".
@@ -2589,6 +2656,8 @@ public final class DebuggerCPUi8080 extends JDialog {
          */
         MemDatTable(TableModel dm) {
             super(dm);
+            // Создааем экземпляр SelectionModelsContainer
+            this.selectionModelsContainer = new SelectionModelsContainer(MD_COL_B00, MD_COL_B15);
             // Настариваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
             getTableHeader().setFont(HEADER_FONT);
@@ -2599,14 +2668,11 @@ public final class DebuggerCPUi8080 extends JDialog {
             }
             getColumnModel().getColumn(MD_COL_STR).setMaxWidth(130);
             // Устанавливаем режим выделения для строк
-            //setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION)
-            SelectionModelsContainer selectionModelsContainer = new SelectionModelsContainer(MD_COL_B00, MD_COL_B15);
-            setSelectionModel(selectionModelsContainer.getRowSelectionModel());
+            setSelectionModel(this.selectionModelsContainer.getRowSelectionModel());
             // Устанавливаем режим выделения для столбцов (с установкой разрешения выделения)
-            TableColumnModel columnModel = getColumnModel();
+            final TableColumnModel columnModel = getColumnModel();
             columnModel.setColumnSelectionAllowed(true);
-            //columnModel.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION)
-            columnModel.setSelectionModel(selectionModelsContainer.getColumnSelectionModel());
+            columnModel.setSelectionModel(this.selectionModelsContainer.getColumnSelectionModel());
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new MemDatStringRenderer());
             // Подключаемся к fEmulatorLayer для прослушивания
@@ -2644,6 +2710,14 @@ public final class DebuggerCPUi8080 extends JDialog {
         void gotoAddress(int address) {
             address &= 0xFFFF;
             gotoTableCell(this, convertRowIndexToView(address >> 4), convertColumnIndexToView(MD_COL_B00 + (address & 0xF)), true);
+        }
+
+        int getStartAddress() {
+            return selectionModelsContainer.getStartAddress();
+        }
+
+        int getEndAddress() {
+            return selectionModelsContainer.getEndAddress();
         }
     }
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
