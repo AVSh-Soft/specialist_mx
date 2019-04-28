@@ -2595,7 +2595,7 @@ public final class DebuggerCPUi8080 extends JDialog {
     private class MemDatTable extends JTable implements Observer {
         private static final long serialVersionUID = 9010843821123994652L;
 
-        private final SelectionModelsContainer selectionModelsContainer;
+        private final transient SelectionModelsContainer selectionModelsContainer;
 
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
