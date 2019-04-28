@@ -751,6 +751,9 @@ public final class DebuggerCPUi8080 extends JDialog {
         button2.addActionListener(actionEvent -> {
             System.out.println(String.format("%04X %04X", fMemDatTable.getStartAddress(),fMemDatTable.getEndAddress()));
         });
+        button3.addActionListener(actionEvent -> {
+            fMemDatTable.setAddressRange(0x51, 0xC151);
+        });
         gotoButton.addActionListener(actionEvent -> gotoAddress());
         toPCButton.addActionListener(actionEvent -> {
                   fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
@@ -2103,6 +2106,11 @@ public final class DebuggerCPUi8080 extends JDialog {
             return columnSelectionModel;
         }
 
+        /**
+         * Получает начальный адрес выделения.
+         *
+         * @return начальный адрес выделения
+         */
         int getStartAddress() {
             final int rowMinSelIndex = rowSelectionModel.getMinSelectionIndex();
             // Для чтения верхней строки
@@ -2112,6 +2120,11 @@ public final class DebuggerCPUi8080 extends JDialog {
                     -1 : ((rowMinSelIndex << 4) + columnMinSelIndex - columnMinIndex);
         }
 
+        /**
+         * Получает конечный адрес выделения.
+         *
+         * @return конечный адрес выделения.
+         */
         int getEndAddress() {
             final int rowMaxSelIndex = rowSelectionModel.getMaxSelectionIndex();
             // Для чтения нижней строки
@@ -2119,6 +2132,40 @@ public final class DebuggerCPUi8080 extends JDialog {
             final int columnMaxSelIndex = currentColumnSelectionModel.getMaxSelectionIndex();
             return (( columnMaxSelIndex < columnMinIndex) || (columnMaxSelIndex > columnMaxIndex)) ?
                     -1 : ((rowMaxSelIndex << 4) + columnMaxSelIndex - columnMinIndex);
+        }
+
+        /**
+         * Выделяет диапазон адресов.
+         *
+         * @param startAddress адрес начала
+         * @param endAddress   адрес конца
+         */
+        void setAddressRange(int startAddress, int endAddress) {
+            startAddress &= 0xFFFF;
+              endAddress &= 0xFFFF;
+
+            if (startAddress > endAddress) {
+                return;
+            }
+
+               rowSelectionModel.clearSelection();
+            columnSelectionModel.clearSelection();
+
+            final int    rowMinSelIndex = startAddress >> 4;
+            final int    rowMaxSelIndex =   endAddress >> 4;
+            final int columnMinSelIndex = startAddress - (rowMinSelIndex << 4) + columnMinIndex;
+            final int columnMaxSelIndex =   endAddress - (rowMaxSelIndex << 4) + columnMinIndex;
+
+            if (rowMinSelIndex != rowMaxSelIndex) {
+                // выделяем левую точку
+                columnSelectionModel.setSelectionInterval(columnMinSelIndex, columnMinSelIndex);
+                   rowSelectionModel.setSelectionInterval(   rowMinSelIndex,    rowMinSelIndex);
+                // заполняем до правой точки
+                columnSelectionModel.setSelectionInterval(columnMaxSelIndex, columnMaxSelIndex);
+            } else {
+                columnSelectionModel.setSelectionInterval(columnMinSelIndex, columnMaxSelIndex);
+            }
+            rowSelectionModel.setSelectionInterval(rowMinSelIndex, rowMaxSelIndex);
         }
 
         private class RowSelectionModel extends DefaultListSelectionModel {
@@ -2718,6 +2765,11 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         int getEndAddress() {
             return selectionModelsContainer.getEndAddress();
+        }
+
+        void setAddressRange(int startAddress, int endAddress) {
+            gotoAddress(startAddress);
+            selectionModelsContainer.setAddressRange(startAddress, endAddress);
         }
     }
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
