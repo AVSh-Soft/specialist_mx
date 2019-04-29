@@ -317,10 +317,10 @@ public final class DebuggerCPUi8080 extends JDialog {
         // Переключатель страниц памяти для просмотра данных
         final DataMemPagesComboBox dataMemPagesComboBox = new DataMemPagesComboBox();
 
-        final JButton findButton = new JButton("Find");
-        final JButton    button2 = new JButton("---" );
-        final JButton    button3 = new JButton("---" );
-        final JButton    button4 = new JButton("---" );
+        final JButton   findButton = new JButton("Find"  );
+        final JButton selectButton = new JButton("Select");
+        final JButton      button3 = new JButton("---"   );
+        final JButton      button4 = new JButton("---"   );
 
         // Основные кнопки управления отладчиком
         final Action performStep = new AbstractAction("F6 Step") {
@@ -355,6 +355,8 @@ public final class DebuggerCPUi8080 extends JDialog {
 
             findButton.setMnemonic('F');
             findButton.setToolTipText("Осуществляет поиск данных");
+          selectButton.setMnemonic('e');
+          selectButton.setToolTipText("Осуществляет выделение диапазона адресов в таблице просмотра данных");
             gotoButton.setMnemonic('G');
             gotoButton.setToolTipText("Выполняет переход к заданному адресу в таблицах просмотра кода/данных");
             toPCButton.setMnemonic('T');
@@ -498,7 +500,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 5, 5), 0, 0));
 
                 //---- button2 ----
-                buttonBar.add(button2, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
+                buttonBar.add(selectButton, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 5, 5), 0, 0));
 
                 //---- button3 ----
@@ -747,15 +749,10 @@ public final class DebuggerCPUi8080 extends JDialog {
         });
 
         // Определяем обработчики кнопок
-        findButton.addActionListener(actionEvent -> findData());
-        button2.addActionListener(actionEvent -> {
-            System.out.println(String.format("%04X %04X", fMemDatTable.getStartAddress(),fMemDatTable.getEndAddress()));
-        });
-        button3.addActionListener(actionEvent -> {
-            fMemDatTable.setAddressRange(0x51, 0xC151);
-        });
-        gotoButton.addActionListener(actionEvent -> gotoAddress());
-        toPCButton.addActionListener(actionEvent -> {
+          findButton.addActionListener(actionEvent -> findData          ());
+        selectButton.addActionListener(actionEvent -> selectAddressRange());
+          gotoButton.addActionListener(actionEvent -> gotoAddress       ());
+          toPCButton.addActionListener(actionEvent -> {
                   fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
             fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
 
@@ -2111,7 +2108,7 @@ public final class DebuggerCPUi8080 extends JDialog {
          *
          * @return начальный адрес выделения
          */
-        int getStartAddress() {
+        int getStartSelectedAddress() {
             final int rowMinSelIndex = rowSelectionModel.getMinSelectionIndex();
             // Для чтения верхней строки
             rowSelectionModel.isSelectedIndex(rowMinSelIndex);
@@ -2125,7 +2122,7 @@ public final class DebuggerCPUi8080 extends JDialog {
          *
          * @return конечный адрес выделения.
          */
-        int getEndAddress() {
+        int getEndSelectedAddress() {
             final int rowMaxSelIndex = rowSelectionModel.getMaxSelectionIndex();
             // Для чтения нижней строки
             rowSelectionModel.isSelectedIndex(rowMaxSelIndex);
@@ -2140,7 +2137,7 @@ public final class DebuggerCPUi8080 extends JDialog {
          * @param startAddress адрес начала
          * @param endAddress   адрес конца
          */
-        void setAddressRange(int startAddress, int endAddress) {
+        void selectAddressRange(int startAddress, int endAddress) {
             startAddress &= 0xFFFF;
               endAddress &= 0xFFFF;
 
@@ -2759,17 +2756,35 @@ public final class DebuggerCPUi8080 extends JDialog {
             gotoTableCell(this, convertRowIndexToView(address >> 4), convertColumnIndexToView(MD_COL_B00 + (address & 0xF)), true);
         }
 
-        int getStartAddress() {
-            return selectionModelsContainer.getStartAddress();
+        /**
+         * Получает начальный адрес выделения.
+         *
+         * @return начальный адрес выделения
+         */
+        int getStartSelectedAddress() {
+            return selectionModelsContainer.getStartSelectedAddress();
         }
 
-        int getEndAddress() {
-            return selectionModelsContainer.getEndAddress();
+        /**
+         * Получает конечный адрес выделения.
+         *
+         * @return конечный адрес выделения.
+         */
+        int getEndSelectedAddress() {
+            return selectionModelsContainer.getEndSelectedAddress();
         }
 
-        void setAddressRange(int startAddress, int endAddress) {
+        /**
+         * Выделяет диапазон адресов.
+         *
+         * @param startAddress адрес начала
+         * @param endAddress   адрес конца
+         */
+        void selectAddressRange(int startAddress, int endAddress) {
+            // Переходим к начальному адресу
             gotoAddress(startAddress);
-            selectionModelsContainer.setAddressRange(startAddress, endAddress);
+            // Выделяем заданный диапазон адресов
+            selectionModelsContainer.selectAddressRange(startAddress, endAddress);
         }
     }
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -2824,6 +2839,78 @@ public final class DebuggerCPUi8080 extends JDialog {
     }
 
     /**
+     * Формирует диалог ввода адресов начала/конца выделяемого участка памяти,
+     * затем выполняет само выделение заданного диапазона адресов.
+     */
+    private void selectAddressRange() {
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Класс "Панель для диалога ввода адреса".
+        class InputAddressPanel extends JPanel {
+            private static final long serialVersionUID = -1875626299292457015L;
+
+            private final JFormattedTextFieldExt fStartAddress;
+            private final JFormattedTextFieldExt   fEndAddress;
+
+            // Конструктор
+            private InputAddressPanel() {
+                super(new GridLayout(2, 2));
+
+                JLabel codeLabel = new JLabel("Адрес начала:");
+                JLabel dataLabel = new JLabel("Адрес  конца:");
+                codeLabel.setFont(HEADER_FONT);
+                dataLabel.setFont(HEADER_FONT);
+
+                fStartAddress = new JFormattedTextFieldExt(WORD_MASK, '0');
+                fStartAddress.setValue(String.format("%04X", fMemDatTable.getStartSelectedAddress()));
+                  fEndAddress = new JFormattedTextFieldExt(WORD_MASK, '0');
+                  fEndAddress.setValue(String.format("%04X", fMemDatTable.  getEndSelectedAddress()));
+
+                add(codeLabel    );
+                add(fStartAddress);
+                add(dataLabel    );
+                add(fEndAddress  );
+
+                fStartAddress.addAncestorListener(new AncestorListener() {
+                    // Используем для перевода фокуса на компонент ввода адреса
+                    @Override
+                    public void ancestorAdded(AncestorEvent event) {
+                        if (!fStartAddress.isFocusOwner()) {
+                             fStartAddress.requestFocusInWindow();
+                        }
+                    }
+
+                    @Override
+                    public void ancestorRemoved(AncestorEvent event) {
+                        //
+                    }
+
+                    @Override
+                    public void ancestorMoved(AncestorEvent event) {
+                        //
+                    }
+                });
+
+                // Используем для перевода фокуса на следующий компонент
+                final ActionListener al = e -> ((JComponent)e.getSource()).transferFocus();
+                fStartAddress.addActionListener(al);
+                  fEndAddress.addActionListener(al);
+            }
+        }
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        final InputAddressPanel inputAddressPanel = new InputAddressPanel();
+        int result =  showConfirmDialog(DebuggerCPUi8080.this, inputAddressPanel, "Select block ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
+        if (result == OK_OPTION) {
+            try {
+                fMemDatTable.selectAddressRange(
+                        Integer.parseInt((String) inputAddressPanel.fStartAddress.getValue(), 16),
+                        Integer.parseInt((String) inputAddressPanel.  fEndAddress.getValue(), 16));
+            } catch (NumberFormatException e) {
+                showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /**
      * Формирует диалог ввода адресов кода/данных и выполняет переход к этим адресам в таблицах просмотра кода/данных.
      */
     private void gotoAddress() {
@@ -2849,9 +2936,9 @@ public final class DebuggerCPUi8080 extends JDialog {
                 fDataAddress = new JFormattedTextFieldExt(WORD_MASK, '0');
                 fDataAddress.setValue(String.format("%04X", fMemDatTable.getAddress()));
 
-                add(codeLabel);
+                add(codeLabel   );
                 add(fCodeAddress);
-                add(dataLabel);
+                add(dataLabel   );
                 add(fDataAddress);
 
                 fCodeAddress.addAncestorListener(new AncestorListener() {
@@ -2875,7 +2962,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 });
 
                 // Используем для перевода фокуса на следующий компонент
-                ActionListener al = e -> ((JComponent)e.getSource()).transferFocus();
+                final ActionListener al = e -> ((JComponent)e.getSource()).transferFocus();
                 fCodeAddress.addActionListener(al);
                 fDataAddress.addActionListener(al);
             }
