@@ -2855,15 +2855,18 @@ public final class DebuggerCPUi8080 extends JDialog {
             private InputAddressPanel() {
                 super(new GridLayout(2, 2));
 
-                JLabel codeLabel = new JLabel("Адрес начала:");
-                JLabel dataLabel = new JLabel("Адрес  конца:");
+                final JLabel codeLabel = new JLabel("Адрес начала:");
+                final JLabel dataLabel = new JLabel("Адрес  конца:");
                 codeLabel.setFont(HEADER_FONT);
                 dataLabel.setFont(HEADER_FONT);
 
+                final int startSelAddress = fMemDatTable.getStartSelectedAddress();
+                final int   endSelAddress = fMemDatTable.  getEndSelectedAddress();
+
                 fStartAddress = new JFormattedTextFieldExt(WORD_MASK, '0');
-                fStartAddress.setValue(String.format("%04X", fMemDatTable.getStartSelectedAddress()));
+                fStartAddress.setValue(String.format("%04X", (startSelAddress == -1) ? 0 : startSelAddress));
                   fEndAddress = new JFormattedTextFieldExt(WORD_MASK, '0');
-                  fEndAddress.setValue(String.format("%04X", fMemDatTable.  getEndSelectedAddress()));
+                  fEndAddress.setValue(String.format("%04X", (  endSelAddress == -1) ? 0 :   endSelAddress));
 
                 add(codeLabel    );
                 add(fStartAddress);
@@ -2926,8 +2929,8 @@ public final class DebuggerCPUi8080 extends JDialog {
             private InputAddressPanel() {
                 super(new GridLayout(2, 2));
 
-                JLabel codeLabel = new JLabel("Адрес (code):");
-                JLabel dataLabel = new JLabel("Адрес (data):");
+                final JLabel codeLabel = new JLabel("Адрес (code):");
+                final JLabel dataLabel = new JLabel("Адрес (data):");
                 codeLabel.setFont(HEADER_FONT);
                 dataLabel.setFont(HEADER_FONT);
 
