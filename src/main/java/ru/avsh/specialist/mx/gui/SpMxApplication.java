@@ -17,6 +17,7 @@ import javafx.stage.WindowEvent;
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.gui.swing.BlockSaveDialog;
 import ru.avsh.specialist.mx.gui.utils.PixelatedImageView;
+import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.units.Screen;
 
@@ -137,6 +138,8 @@ public class SpMxApplication extends Application {
         final VBox  root  = new VBox(menuBar, imageView, buttonBox);
         final Scene scene = new Scene(root, -1, -1);
         primaryStage.setScene(scene);
+        Constants.getCssUrl(this.getClass().getSimpleName().concat(".css"))
+                .ifPresent(url -> scene.getStylesheets().add(url.toExternalForm()));
         primaryStage.show();
         //--------------------------------------------------------------------------------------------------------------
 
