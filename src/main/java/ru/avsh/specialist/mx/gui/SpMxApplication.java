@@ -16,6 +16,8 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.gui.swing.BlockSaveDialog;
+import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
+import ru.avsh.specialist.mx.gui.swing.utils.SwingConfig;
 import ru.avsh.specialist.mx.gui.utils.PixelatedImageView;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.root.SpecialistMX;
@@ -27,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -65,7 +68,7 @@ public class SpMxApplication extends Application {
     }
 
     @Override
-    public void start(  Stage primaryStage) throws Exception {
+    public void start(  Stage primaryStage) {
         fSpMX.setPrimaryStage(primaryStage);
 
         primaryStage.getIcons().add(ICON);
@@ -137,6 +140,7 @@ public class SpMxApplication extends Application {
 
         final VBox  root  = new VBox(menuBar, imageView, buttonBox);
         final Scene scene = new Scene(root, -1, -1);
+
         primaryStage.setScene(scene);
         Constants.getCssUrl(this.getClass().getSimpleName().concat(".css"))
                 .ifPresent(url -> scene.getStylesheets().add(url.toExternalForm()));
@@ -152,9 +156,8 @@ public class SpMxApplication extends Application {
         final double deltaW = primaryStage.getWidth () - IMAGE_WIDTH ;
         final double deltaH = primaryStage.getHeight() - IMAGE_HEIGHT;
 
-        // Украшаем окна Swing
-         JFrame.setDefaultLookAndFeelDecorated(true);
-        JDialog.setDefaultLookAndFeelDecorated(true);
+        // Конфигурируем параметры Swing
+        SwingConfig.init();
 
         size11Item.setSelected(true );
         size21Item.setSelected(false);
@@ -259,8 +262,9 @@ public class SpMxApplication extends Application {
             // Диалог сохранения реализован в Swing
             SwingUtilities.invokeLater(() -> {
                 final AtomicBoolean result = new AtomicBoolean(true);
-                try {
-                    final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(JOptionPane.getRootFrame());
+                try (final StubMainFrame mainFrame = StubMainFrame.create(
+                           BlockSaveDialog.TITLE, Constants.getURL(SPMX_ICON_FILE).orElse(null))) {
+                     final BlockSaveDialog blockSaveDialog = new BlockSaveDialog(mainFrame);
                     if (blockSaveDialog.getResult()) {
                         final   File file     = blockSaveDialog.getFile   ();
                         final String fileName = file.getName().toLowerCase();
@@ -346,9 +350,9 @@ public class SpMxApplication extends Application {
             String version   = "x.x.x.x";
             String copyright = "Copyright © 2018 \"AVSh Software\" (Александр Шевцов)";
 
-            final InputStream is = getResourceAsStream(SPMX_PROP_FILE);
-            if (is != null) {
-                try (InputStreamReader isr    = new InputStreamReader(is, StandardCharsets.UTF_8)) {
+            final Optional<InputStream> optIS = getResourceAsStream(SPMX_PROP_FILE);
+            if (optIS.isPresent()) {
+                try (InputStreamReader isr    = new InputStreamReader(optIS.get(), StandardCharsets.UTF_8)) {
                     final Properties property = new Properties();
                     property.load(isr);
                     name      = property.getProperty("productName"  , name     );

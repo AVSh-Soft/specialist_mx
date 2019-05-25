@@ -26,6 +26,7 @@ import static javax.swing.JOptionPane.showMessageDialog;
 public final class BlockSaveDialog extends JDialog {
     private static final long serialVersionUID = -8762963068896802973L;
 
+    public  static final String TITLE     = "Сохранить блок";
     private static final String WORD_MASK = "HHHH";
 
     private File    fFile  ;
@@ -48,7 +49,7 @@ public final class BlockSaveDialog extends JDialog {
      * Инициализация компонентов и обработчиков событий.
      */
     private void initComponents() {
-        setTitle("Сохранить блок");
+        setTitle(TITLE);
 
         final JPanel dialogPane  = new JPanel();
         final JPanel mainPane    = new JPanel();
@@ -109,17 +110,23 @@ public final class BlockSaveDialog extends JDialog {
                     ((GridBagLayout) filePane.getLayout()).rowWeights    = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
 
                     filePane.add(fileNameLabel,
-                            new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     filePane.add(fileTypeLabel,
-                            new GridBagConstraints(4, 0, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(4, 0, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     filePane.add(fileNameTextField,
-                            new GridBagConstraints(0, 2, 2, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(0, 2, 2, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     filePane.add(fileNameButton,
-                            new GridBagConstraints(2, 2, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(2, 2, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     filePane.add(fileTypeComboBox,
-                            new GridBagConstraints(4, 2, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(4, 2, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     filePane.add(fileSeparator,
-                            new GridBagConstraints(0, 4, 5, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(0, 4, 5, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                 }
                 mainPane.add(filePane);
                 // addressPane
@@ -131,21 +138,29 @@ public final class BlockSaveDialog extends JDialog {
                     ((GridBagLayout) addressPane.getLayout()).rowWeights    = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
 
                     addressPane.add(addressLabel,
-                            new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     addressPane.add(beginAddressLabel,
-                            new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     addressPane.add(beginAddressTextField,
-                            new GridBagConstraints(2, 2, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(2, 2, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     addressPane.add(endAddressLabel,
-                            new GridBagConstraints(4, 2, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(4, 2, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     addressPane.add(endAddressTextField,
-                            new GridBagConstraints(6, 2, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(6, 2, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     addressPane.add(startAddressLabel,
-                            new GridBagConstraints(8, 2, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(8, 2, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     addressPane.add(startAddressTextField,
-                            new GridBagConstraints(10, 2, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(10, 2, 1, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                     addressPane.add(addressSeparator,
-                            new GridBagConstraints(0, 4, 12, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                            new GridBagConstraints(0, 4, 12, 1, 0.0, 0.0,
+                                    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
                 }
                 mainPane.add(addressPane);
             }
@@ -154,13 +169,15 @@ public final class BlockSaveDialog extends JDialog {
             {
                 buttonBar.setBorder(new EmptyBorder(12, 0, 0, 0));
                 buttonBar.setLayout(new GridBagLayout());
-                ((GridBagLayout) buttonBar.getLayout()).columnWidths  = new int[]{0, 85, 80};
-                ((GridBagLayout) buttonBar.getLayout()).columnWeights = new double[]{1.0, 0.0, 0.0};
+                ((GridBagLayout) buttonBar.getLayout()).columnWidths  = new    int[]{0  , 85  , 80  };
+                ((GridBagLayout) buttonBar.getLayout()).columnWeights = new double[]{1.0,  0.0,  0.0};
 
                 buttonBar.add(okButton,
-                        new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 5), 0, 0));
+                        new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
+                                GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 5), 0, 0));
                 buttonBar.add(cancelButton,
-                        new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+                        new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0,
+                                GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
             }
             dialogPane.add(buttonBar, BorderLayout.PAGE_END);
         }
@@ -209,8 +226,8 @@ public final class BlockSaveDialog extends JDialog {
             }
             chooser.setFileFilter(new FileNameExtensionFilter("Файлы: *.".concat(fileType), fileType));
             if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-                file = chooser.getSelectedFile();
-                fileName = file.getPath();
+                file     = chooser.getSelectedFile();
+                fileName =    file.getPath        ();
                 final int ind = fileName.lastIndexOf('.');
                 if (ind != -1) {
                     fileName = fileName.substring(0, ind + 1).concat(fileType);
@@ -262,7 +279,8 @@ public final class BlockSaveDialog extends JDialog {
         okButton.addActionListener(actionEvent -> {
             String s = fileNameTextField.getText().trim();
             if (s.isEmpty()) {
-                showMessageDialog(this, "Не задано имя файла для сохранения", Constants.STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this, "Не задано имя файла для сохранения",
+                        Constants.STR_ERROR, ERROR_MESSAGE);
                 fileNameTextField.requestFocusInWindow();
                 return;
             }
@@ -274,7 +292,9 @@ public final class BlockSaveDialog extends JDialog {
 
             s = fFile.getParent();
             if (!Paths.get(s).toFile().exists()) {
-                showMessageDialog(this, String.format("Не найден путь: \"%s\" для сохранения файла: \"%s\"", s, fFile.getName()), Constants.STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this,
+                        String.format("Не найден путь: \"%s\" для сохранения файла: \"%s\"", s, fFile.getName()),
+                        Constants.STR_ERROR, ERROR_MESSAGE);
                 fileNameTextField.requestFocusInWindow();
                 return;
             }
@@ -293,13 +313,17 @@ public final class BlockSaveDialog extends JDialog {
                 s = (String) curTextField.getValue();
                 fStartAddress = Integer.parseInt(s, 16);
             } catch (NumberFormatException ex) {
-                showMessageDialog(this, String.format("Ошибка задания адреса: [%s]%n%s", s, ex.toString()), Constants.STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this,
+                        String.format("Ошибка задания адреса: [%s]%n%s", s, ex.toString()),
+                        Constants.STR_ERROR, ERROR_MESSAGE);
                 curTextField.requestFocusInWindow();
                 return;
             }
 
             if (fBeginAddress > fEndAddress) {
-                showMessageDialog(this, String.format("Начальный адрес: [%04X] больше конечного: [%04X]", fBeginAddress, fEndAddress), Constants.STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this,
+                        String.format("Начальный адрес: [%04X] больше конечного: [%04X]", fBeginAddress, fEndAddress),
+                        Constants.STR_ERROR, ERROR_MESSAGE);
                 beginAddressTextField.requestFocusInWindow();
                 return;
             }
