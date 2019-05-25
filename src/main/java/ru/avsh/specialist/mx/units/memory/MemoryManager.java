@@ -7,7 +7,7 @@ import ru.avsh.specialist.mx.units.types.MemoryUnit;
  *
  * @author -=AVSh=-
  */
-public final class MemoryUnitManager implements MemoryUnit {
+public final class MemoryManager implements MemoryUnit {
     private static final int STORAGE_SIZE      = 0x1_0000;
     // Максимальное количество запоминающих устройств
     private static final int MAX_STORAGE_UNITS = 50;

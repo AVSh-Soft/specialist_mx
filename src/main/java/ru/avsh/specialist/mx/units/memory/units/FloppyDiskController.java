@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.units.memory.sub;
+package ru.avsh.specialist.mx.units.memory.units;
 
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.units.CPUi8080;
@@ -70,7 +70,7 @@ public final class FloppyDiskController implements MemoryUnit {
     /**
      * Внутренний класс "Накопитель на гибком магнитном диске".
      */
-    private class FloppyDiskDrive {
+    private static class FloppyDiskDrive {
         private volatile RandomAccessFile fDisk;
         private volatile boolean          fReadOnly;
         private final    AtomicInteger    fCurTrack = new AtomicInteger();
@@ -597,11 +597,7 @@ public final class FloppyDiskController implements MemoryUnit {
                         if (!fCurDrive.isReady()) {
                             setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
                         } else if (fCurSide || (((fRegCommand.get() & 0b1000) != 0) && getStatusFlag(F_BUSY))) {
-                            if (fGen.getCyclesCounter() % REVOLUTION_TIME > TIME_WITHOUT_INDEX) {
-                                setStatusFlag(F_INDEX_OR_DATA_REQUEST, true );
-                            } else {
-                                setStatusFlag(F_INDEX_OR_DATA_REQUEST, false);
-                            }
+                            setStatusFlag(F_INDEX_OR_DATA_REQUEST, (fGen.getCyclesCounter() % REVOLUTION_TIME) > TIME_WITHOUT_INDEX);
                         }
                         setStatusFlag(F_TRACK_00_OR_LOST_DATA, fCurDrive.getCurTrack() == 0);
                         setStatusFlag(F_WRITE_PROTECT, fCurDrive.isReadOnly());

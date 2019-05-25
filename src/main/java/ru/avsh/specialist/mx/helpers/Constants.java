@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 
 /**
  * Статические переменные и константы для проекта.
@@ -34,13 +35,14 @@ public final class Constants {
     public static final String PATH_MON_FILES = APP_DIR.concat(File.separator).concat("mon");
 
     // Папка с ресурсами эмулятора
-    private static final String RESOURCES     = "data/";
+    private static final String RESOURCES_CSS  = "css/" ;
+    private static final String RESOURCES_DATA = "data/";
     // Главный properties-файл эмулятора
-    public static final String SPMX_PROP_FILE = "specialist_mx.properties";
+    public static final String SPMX_PROP_FILE  = "specialist_mx.properties";
     // Встроенный ROM-файл эмулятора "Специалист MX"
-    public static final String SPMX_ROM_FILE  = "spmx.rom";
+    public static final String SPMX_ROM_FILE   = "spmx.rom";
     // Иконка эмулятора "Специалист MX"
-    public static final String SPMX_ICON_FILE = "specialist_mx.png";
+    public static final String SPMX_ICON_FILE  = "specialist_mx.png";
 
     // Строковые константы
     public static final String STR_ERROR     = "Ошибка";
@@ -51,9 +53,10 @@ public final class Constants {
     public static final int NUMBER_PAGES_RAMDISK = 8;
 
     // Инстанс иконки эмулятора "Специалист MX"
-    public static final Image ICON            = new Image(getResourceAsStream(SPMX_ICON_FILE));
+    public static final Image ICON = getResourceAsStream(SPMX_ICON_FILE).map(Image::new).orElse(null);
+
     // Инстанс шрифта семейства "Monospaced"
-    public static final Font  FONT_MONOSPACED = Font.font("Monospaced");
+    public static final Font FONT_MONOSPACED = Font.font("Monospaced");
 
     // Текущий путь к файлам эмулятора "Специалист MX"
     private static String fCurPath = APP_DIR;
@@ -84,22 +87,35 @@ public final class Constants {
     }
 
     /**
+     * Ищет scc-ресурс и возвращает URL-объект для чтения ресурса.
+     *
+     * @param name имя css-ресурса
+     * @return URL-объект для чтения ресурса (завернут в Optional)
+     */
+    public static Optional<URL> getCssUrl(final String name) {
+        return Optional.ofNullable(Constants.class.getClassLoader())
+                .map(classLoader -> classLoader.getResource(RESOURCES_CSS.concat(name)));
+    }
+
+    /**
      * Ищет ресурс и возвращает URL-объект для чтения ресурса.
      *
      * @param name имя ресурса
-     * @return URL-объект для чтения ресурса
+     * @return URL-объект для чтения ресурса (завернут в Optional)
      */
-    public static URL getURL(final String name) {
-        return Constants.class.getClassLoader().getResource(RESOURCES.concat(name));
+    public static Optional<URL> getURL(final String name) {
+        return Optional.ofNullable(Constants.class.getClassLoader())
+                .map(classLoader -> classLoader.getResource(RESOURCES_DATA.concat(name)));
     }
 
     /**
      * Возвращает InputStream для чтения ресурса.
      *
      * @param name имя ресурса
-     * @return InputStream для чтения ресурса
+     * @return InputStream для чтения ресурса (завернут в Optional)
      */
-    public static InputStream getResourceAsStream(final String name) {
-        return Constants.class.getClassLoader().getResourceAsStream(RESOURCES.concat(name));
+    public static Optional<InputStream> getResourceAsStream(final String name) {
+        return Optional.ofNullable(Constants.class.getClassLoader())
+                .map(classLoader -> classLoader.getResourceAsStream(RESOURCES_DATA.concat(name)));
     }
 }

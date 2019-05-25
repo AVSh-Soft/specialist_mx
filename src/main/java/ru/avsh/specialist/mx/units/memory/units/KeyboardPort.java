@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.units.memory.sub;
+package ru.avsh.specialist.mx.units.memory.units;
 
 import javafx.scene.input.KeyCode;
 import ru.avsh.specialist.mx.units.Speaker;
@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Адресуемое устройство "Порт клавиатуры Specialist_MX на базе КР580ВВ55А (i8255A)".
@@ -252,8 +253,8 @@ public final class KeyboardPort implements MemoryUnit {
     private final Speaker fSpeaker;
     private final List<Integer> fKeyBuffer;
 
-    private volatile boolean fShiftKey;
-    private volatile boolean fKeyboardMode;
+    private final AtomicBoolean fShiftKey;
+    private final AtomicBoolean fKeyboardMode;
 
     /**
      * Конструктор.
@@ -264,6 +265,9 @@ public final class KeyboardPort implements MemoryUnit {
         fPR        = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
         fSpeaker   =     speaker;
         fKeyBuffer = new CopyOnWriteArrayList<>();
+
+        fShiftKey     = new AtomicBoolean(false);
+        fKeyboardMode = new AtomicBoolean(false);
     }
 
     @Override
@@ -298,7 +302,7 @@ public final class KeyboardPort implements MemoryUnit {
                                         result &= ~(curBitMask >> 12);
                                     }
                                 }
-                                if (fShiftKey) {
+                                if (fShiftKey.get()) {
                                     result &= 0b1111_1101;
                                 }
                                 break;
@@ -310,7 +314,7 @@ public final class KeyboardPort implements MemoryUnit {
                                         result &= ~(curBitMask >> 12);
                                     }
                                 }
-                                if (fShiftKey) {
+                                if (fShiftKey.get()) {
                                     result &= 0b1111_1101;
                                 }
                                 break;
@@ -320,7 +324,7 @@ public final class KeyboardPort implements MemoryUnit {
                                         result &= ~(curBitMask >> 12);
                                     }
                                 }
-                                if (fShiftKey) {
+                                if (fShiftKey.get()) {
                                     result &= 0b1111_1101;
                                 }
                                 break;
@@ -413,7 +417,7 @@ public final class KeyboardPort implements MemoryUnit {
     public void reset(boolean clear) {
         fPA = fPB = fPC = 0;
         fPR =   0b1001_1011; // режим 0, все порты на ввод
-        fShiftKey =   false;
+        fShiftKey.getAndSet(false);
         if (clear) {
             clearKeyBuffer();
         }
@@ -445,7 +449,7 @@ public final class KeyboardPort implements MemoryUnit {
     /**
      * Устанавливает режим работы порта по умолчанию.
      */
-    public  synchronized void setDefaultMode() {
+    public synchronized void setDefaultMode() {
         fPR = 0b1000_0010; // порт А - вывод, порт B - ввод, порт С3-С0 - вывод
     }
 
@@ -455,7 +459,7 @@ public final class KeyboardPort implements MemoryUnit {
      * @return false = "Специалист MX" / true = стандартный "Специалист"
      */
     public boolean isKeyboardMode() {
-        return fKeyboardMode;
+        return fKeyboardMode.get();
     }
 
     /**
@@ -464,7 +468,7 @@ public final class KeyboardPort implements MemoryUnit {
      * @param keyboardMode false = "Специалист MX" / true = стандартный "Специалист"
      */
     public void setKeyboardMode(boolean keyboardMode) {
-        fKeyboardMode = keyboardMode;
+        fKeyboardMode.getAndSet(keyboardMode);
     }
 
     /**
@@ -486,11 +490,11 @@ public final class KeyboardPort implements MemoryUnit {
     public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
         // Обработка клавиши Shift
         if (KeyCode.SHIFT.equals(keyCode)) {
-            fShiftKey = flagKeyPressed;
+            fShiftKey.getAndSet(flagKeyPressed);
             return true;
         }
         // Обработка остальных клавиш
-        final Integer bitMask = fKeyboardMode ? BIT_MASKS_ST.get(keyCode) : BIT_MASKS_MX.get(keyCode);
+        final Integer bitMask = fKeyboardMode.get() ? BIT_MASKS_ST.get(keyCode) : BIT_MASKS_MX.get(keyCode);
         if (bitMask == null) {
             return false;
         }

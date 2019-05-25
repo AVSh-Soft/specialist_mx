@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.gui.lib;
+package ru.avsh.specialist.mx.gui.swing.utils;
 
 import javax.swing.*;
 import javax.swing.text.DefaultFormatterFactory;
@@ -33,7 +33,7 @@ public class JFormattedTextFieldExt extends JFormattedTextField {
         setFormatterFactory(new DefaultFormatterFactory(maskFormatter));
 
         setHorizontalAlignment(SwingConstants.CENTER);
-        setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+        setFont (new Font(Font.MONOSPACED, Font.PLAIN, 11));
         setCaret(new WideCaret(getCaret().getBlinkRate()));
     }
 }
