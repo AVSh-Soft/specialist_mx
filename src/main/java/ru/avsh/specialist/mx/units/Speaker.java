@@ -8,7 +8,9 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Класс "Speaker (динамик)".
@@ -39,16 +41,16 @@ public final class Speaker implements Unit {
     private final ClockSpeedGenerator fGen;
     private final SoundProcessor fSoundProcessor;
 
-    private volatile long    fPrevTime;
-    private volatile boolean fCurBit  ;
-    private volatile boolean fCurBit8255;
-    private volatile boolean fCurBit8253;
+    private final AtomicLong    fPrevTime;
+    private final AtomicBoolean fCurBit  ;
+    private final AtomicBoolean fCurBit8255;
+    private final AtomicBoolean fCurBit8253;
 
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
      * Внутренний класс "Звуковая очередь".
      */
-    private class SoundQueue extends ConcurrentLinkedQueue<Integer> {
+    private static class SoundQueue extends ConcurrentLinkedQueue<Integer> {
         private static final long serialVersionUID = 5717602369118717669L;
 
         // Счетчик времени всех полупериодов в очереди
@@ -273,12 +275,17 @@ public final class Speaker implements Unit {
         fSDL.open(af);
         // Инициализируем Mutex
         fMutex = new Object();
-        // Инициализируем флаг текущий бит
-        fCurBit = true;
         // Создаем очередь под звуковые полупериоды
         fSoundQueue = new SoundQueue();
         // Создаем звуковой процессор, который выполняет обработку очереди звуковых полупериодов (разбивку на сэмплы и воспроизведение)
         fSoundProcessor = new SoundProcessor();
+
+        fPrevTime   = new AtomicLong   (0L);
+        // Инициализируем флаг текущий бит
+        fCurBit     = new AtomicBoolean(true );
+        fCurBit8255 = new AtomicBoolean(false);
+        fCurBit8253 = new AtomicBoolean(false);
+
         // Запускаем звуковой процессор
         new Thread(fSoundProcessor).start();
     }
@@ -288,12 +295,13 @@ public final class Speaker implements Unit {
      */
     private void play() {
         // Эмулируем соединение выходов ВВ55 и ВИ53
-        boolean curBit = !(fCurBit8255 || fCurBit8253);
-        if (fCurBit ^ curBit) {
-            fCurBit = curBit;
+        boolean curBit = !(fCurBit8255.get() || fCurBit8253.get());
+        if (fCurBit.get()  ^  curBit) {
+            fCurBit.getAndSet(curBit);
 
             // Замеряем время звукового полупериода в тактах тактового генератора
-            long halfCycle = -fPrevTime + (fPrevTime = fGen.getCyclesCounter());
+            final long cyclesCounter = fGen.getCyclesCounter();
+            final long halfCycle     = cyclesCounter - fPrevTime.getAndSet(cyclesCounter);
 
             if (fSoundProcessor.isRunning()) {
                 if (halfCycle <= MAX_HALF_CYCLE) {
@@ -326,9 +334,9 @@ public final class Speaker implements Unit {
      *
      * @param bit бит, поступающий с вывода C5 порта ВВ55
      */
-    public void play8255(boolean bit) {
-        if (fCurBit8255 ^ bit) {
-            fCurBit8255 = bit;
+    public void play8255(boolean  bit) {
+        if (fCurBit8255.get()  ^  bit) {
+            fCurBit8255.getAndSet(bit);
             play();
         }
     }
@@ -338,9 +346,9 @@ public final class Speaker implements Unit {
      *
      * @param bit бит, поступающий с выхода таймера ВИ53
      */
-    public void play8253(boolean bit) {
-        if (fCurBit8253 ^ bit) {
-            fCurBit8253 = bit;
+    public void play8253(boolean  bit) {
+        if (fCurBit8253.get()  ^  bit) {
+            fCurBit8253.getAndSet(bit);
             play();
         }
     }
@@ -355,11 +363,12 @@ public final class Speaker implements Unit {
             fSoundQueue.clear();
         }
         // Сбрасываем сохраненное время
-        fPrevTime = 0;
+          fPrevTime.getAndSet(0);
         // Устанавливаем выходной бит, согласно схеме ПК "Специалист MX"
-        fCurBit = true;
+            fCurBit.getAndSet(true );
         // Сбрасываем биты звуковых устройств
-        fCurBit8255 = fCurBit8253 = false;
+        fCurBit8255.getAndSet(false);
+        fCurBit8253.getAndSet(false);
     }
 
     /**

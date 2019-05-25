@@ -6,13 +6,13 @@ import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 import org.ini4j.Wini;
 import org.jetbrains.annotations.Nullable;
-import ru.avsh.specialist.mx.gui.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPUi8080;
 import ru.avsh.specialist.mx.helpers.FileFinder;
 import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
 import ru.avsh.specialist.mx.units.Speaker;
-import ru.avsh.specialist.mx.units.memory.MemoryUnitManager;
-import ru.avsh.specialist.mx.units.memory.sub.*;
+import ru.avsh.specialist.mx.units.memory.MemoryManager;
+import ru.avsh.specialist.mx.units.memory.units.*;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
@@ -27,8 +27,8 @@ import java.util.function.Consumer;
 import static javafx.scene.control.Alert.AlertType;
 import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
 import static javafx.scene.control.Alert.AlertType.WARNING;
-import static ru.avsh.specialist.mx.gui.lib.AlertUtil.Option.YES_NO_OPTION;
-import static ru.avsh.specialist.mx.gui.lib.AlertUtil.*;
+import static ru.avsh.specialist.mx.gui.utils.AlertUtil.Option.YES_NO_OPTION;
+import static ru.avsh.specialist.mx.gui.utils.AlertUtil.*;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
@@ -46,7 +46,7 @@ public final class SpecialistMX {
     private final ClockSpeedGenerator  fGen;
     private final FloppyDiskController fFDC;
     private final String               fProductName;
-    private final MemoryUnitManager    fMemoryUnitManager;
+    private final MemoryManager fMemoryManager;
 
     private final AtomicBoolean          fIsDebugRun;
     private final AtomicReference<Stage> fPrimaryStageRef;
@@ -66,9 +66,9 @@ public final class SpecialistMX {
         // Создаем тактовый генератор
         fGen = new ClockSpeedGenerator();
         // Создаем диспетчер запоминающих устройств
-        fMemoryUnitManager = new MemoryUnitManager();
+        fMemoryManager = new MemoryManager();
         // Создаем CPU
-        fCPU = new CPUi8080(this, fMemoryUnitManager, null);
+        fCPU = new CPUi8080(this, fMemoryManager, null);
         // Создаем Speaker
         Speaker speaker;
         try {
@@ -95,16 +95,16 @@ public final class SpecialistMX {
         fGen.addClockedUnit(timer);
 
         // Добавляем устройства памяти в диспетчер устройств памяти
-        fMemoryUnitManager.addMemoryUnit(0x0000, fRAM   );
-        fMemoryUnitManager.addMemoryUnit(0x9000, fScr   );
-        fMemoryUnitManager.addMemoryUnit(0xFFC0, excRAM );
-        fMemoryUnitManager.addMemoryUnit(0xFFE0, fKey   );
-        fMemoryUnitManager.addMemoryUnit(0xFFE4, prgPort);
-        fMemoryUnitManager.addMemoryUnit(0xFFE8, fFDC   );
-        fMemoryUnitManager.addMemoryUnit(0xFFEC, timer  );
-        fMemoryUnitManager.addMemoryUnit(0xFFF0, fdcPort);
-        fMemoryUnitManager.addMemoryUnit(0xFFF8, colPort);
-        fMemoryUnitManager.addMemoryUnit(0xFFFC, ramPort);
+        fMemoryManager.addMemoryUnit(0x0000, fRAM   );
+        fMemoryManager.addMemoryUnit(0x9000, fScr   );
+        fMemoryManager.addMemoryUnit(0xFFC0, excRAM );
+        fMemoryManager.addMemoryUnit(0xFFE0, fKey   );
+        fMemoryManager.addMemoryUnit(0xFFE4, prgPort);
+        fMemoryManager.addMemoryUnit(0xFFE8, fFDC   );
+        fMemoryManager.addMemoryUnit(0xFFEC, timer  );
+        fMemoryManager.addMemoryUnit(0xFFF0, fdcPort);
+        fMemoryManager.addMemoryUnit(0xFFF8, colPort);
+        fMemoryManager.addMemoryUnit(0xFFFC, ramPort);
 
         fIsDebugRun      = new AtomicBoolean(false);
         fPrimaryStageRef = new AtomicReference<>();
@@ -181,8 +181,8 @@ public final class SpecialistMX {
      *
      * @return ссылка на диспетчер запоминающих устройств
      */
-    public MemoryUnitManager getMemoryUnitManager() {
-        return fMemoryUnitManager;
+    public MemoryManager getMemoryManager() {
+        return fMemoryManager;
     }
 
     /**
@@ -259,7 +259,7 @@ public final class SpecialistMX {
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
     public int readByte(final int address) {
-        return fMemoryUnitManager.readByte(address);
+        return fMemoryManager.readByte(address);
     }
 
     /**
@@ -272,7 +272,7 @@ public final class SpecialistMX {
      * @return считанный из устройства памяти байт (байт представлен как int)
      */
     public int debugReadByte(final int address) {
-        return fMemoryUnitManager.debugReadByte(address);
+        return fMemoryManager.debugReadByte(address);
     }
 
     /**
@@ -282,7 +282,7 @@ public final class SpecialistMX {
      * @param value   записываемый байт (байт представлен как int)
      */
     public void writeByte(final int address, final int value) {
-        fMemoryUnitManager.writeByte(address, value);
+        fMemoryManager.writeByte(address, value);
     }
 
     /**
@@ -637,7 +637,7 @@ public final class SpecialistMX {
             // Приостанавливаем компьютер
             pause(true, true);
             // Сбрасываем устройства памяти (с полной очисткой или нет)
-            fMemoryUnitManager.reset(clear);
+            fMemoryManager.reset(clear);
             // Очищаем все ловушки, если выбрана полная очистка
             if (clear) {
                 fCPU.debugClearTraps();
@@ -670,7 +670,7 @@ public final class SpecialistMX {
             // Приостанавливаем компьютер
             pause(true, true);
             // Сбрасываем устройства памяти (без полной очистки)
-            fMemoryUnitManager.reset(false);
+            fMemoryManager.reset(false);
             // Включаем ROM-диск
             setPage(MainMemory.ROM_DISK);
             // Загружаем ROM-файл в страницу ROM-диска (в случае ошибки загрузки выполняем сброс)

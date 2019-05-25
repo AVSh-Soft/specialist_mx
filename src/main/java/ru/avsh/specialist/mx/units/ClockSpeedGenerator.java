@@ -15,7 +15,7 @@ public final class ClockSpeedGenerator implements Runnable {
     private static final int    MAX_UNITS     =                   50 ; // Максимальное количество тактируемых устройств
 
     private final Object        fMutex;
-    private final AtomicLong    fCyclesCounter; // Это может быть излишним и достаточно volatile
+    private final AtomicLong    fCyclesCounter;
     private final ClockedUnit[] fClockedUnits ;
 
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация

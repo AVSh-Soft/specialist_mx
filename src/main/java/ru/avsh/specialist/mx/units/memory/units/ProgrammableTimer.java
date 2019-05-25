@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.units.memory.sub;
+package ru.avsh.specialist.mx.units.memory.units;
 
 import ru.avsh.specialist.mx.units.Speaker;
 import ru.avsh.specialist.mx.units.types.ClockedUnit;
@@ -33,7 +33,7 @@ public final class ProgrammableTimer implements MemoryUnit, ClockedUnit {
     /**
      * Внутренний класс "Счетчик" (реализует один счетчик таймера КР580ВИ53).
      */
-    private class Counter {
+    private static class Counter {
         private boolean fBCD   ; // Режим счета (True = двоично-десятичный счет, False = двоичный счет)
         private int     fMode  ; // Режим работы счетчика
         private int     fAccess; // Режим чтения/загрузки счетчика

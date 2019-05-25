@@ -1,6 +1,6 @@
-package ru.avsh.specialist.mx.gui;
+package ru.avsh.specialist.mx.gui.swing;
 
-import ru.avsh.specialist.mx.gui.lib.JFormattedTextFieldExt;
+import ru.avsh.specialist.mx.gui.swing.utils.JFormattedTextFieldExt;
 import ru.avsh.specialist.mx.helpers.Constants;
 
 import javax.swing.*;
@@ -23,7 +23,7 @@ import static javax.swing.JOptionPane.showMessageDialog;
  * Класс "Диалог сохранения блока".
  * @author -=AVSh=-
  */
-final class BlockSaveDialog extends JDialog {
+public final class BlockSaveDialog extends JDialog {
     private static final long serialVersionUID = -8762963068896802973L;
 
     private static final String WORD_MASK = "HHHH";
@@ -39,7 +39,7 @@ final class BlockSaveDialog extends JDialog {
      * Instantiates a new Save block dialog.
      * @param owner the owner
      */
-    BlockSaveDialog(Frame owner) {
+    public BlockSaveDialog(Frame owner) {
         super(owner, true);
         initComponents();
     }
@@ -325,7 +325,7 @@ final class BlockSaveDialog extends JDialog {
      * Gets result.
      * @return the result
      */
-    boolean getResult() {
+    public boolean getResult() {
         return fResult;
     }
 
@@ -333,7 +333,7 @@ final class BlockSaveDialog extends JDialog {
      * Gets file.
      * @return the file
      */
-    File getFile() {
+    public File getFile() {
         return fFile;
     }
 
@@ -341,7 +341,7 @@ final class BlockSaveDialog extends JDialog {
      * Gets begin address.
      * @return the begin address
      */
-    int getBeginAddress() {
+    public int getBeginAddress() {
         return fBeginAddress;
     }
 
@@ -349,7 +349,7 @@ final class BlockSaveDialog extends JDialog {
      * Gets end address.
      * @return the end address
      */
-    int getEndAddress() {
+    public int getEndAddress() {
         return fEndAddress;
     }
 
@@ -357,7 +357,7 @@ final class BlockSaveDialog extends JDialog {
      * Gets start address.
      * @return the start address
      */
-    int getStartAddress() {
+    public int getStartAddress() {
         return fStartAddress;
     }
 }

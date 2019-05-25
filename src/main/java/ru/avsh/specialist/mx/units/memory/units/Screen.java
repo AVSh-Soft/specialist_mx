@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.units.memory.sub;
+package ru.avsh.specialist.mx.units.memory.units;
 
 import javafx.animation.AnimationTimer;
 import javafx.scene.image.PixelFormat;
@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Адресуемое устройство "Экран 'Специалиста MX'".
@@ -32,27 +33,29 @@ public class Screen extends WritableImage implements MemoryUnit {
     private static final int BUFFER_SIZE  = SCREEN_HEIGHT * SCREEN_WIDTH;
     private static final int STORAGE_SIZE = BUFFER_SIZE >> 3;
 
-    private volatile boolean fEnable;
-    private volatile byte    fFgColor;
-    private volatile byte    fBgColor;
-
-    private final byte[] fImageBuffer;
+    private final AtomicBoolean fEnable ;
     private final AtomicBoolean fChanges;
+
+    private final AtomicInteger fFgColor;
+    private final AtomicInteger fBgColor;
+
+    private final byte[]         fImageBuffer;
     private final AnimationTimer fAnimationTimer;
 
     public Screen() {
         super(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-        fImageBuffer = new byte[BUFFER_SIZE];
-            fChanges = new AtomicBoolean(false);
+        fEnable  = new AtomicBoolean(true );
+        fChanges = new AtomicBoolean(false);
 
+        fFgColor = new AtomicInteger();
+        fBgColor = new AtomicInteger();
         setColor(DEFAULT_COLOR);
-
-        fEnable = true;
 
         final PixelWriter             pixelWriter = this.getPixelWriter();
         final PixelFormat<ByteBuffer> pixelFormat = PixelFormat.createByteIndexedInstance(COLORS);
 
+        fImageBuffer    = new byte[BUFFER_SIZE];
         fAnimationTimer = new AnimationTimer() {
             @Override
             public void handle(long now) {
@@ -71,13 +74,13 @@ public class Screen extends WritableImage implements MemoryUnit {
 
     @Override
     public void writeByte(int address, int value) {
-        if (fEnable && (address >= 0) && (address < STORAGE_SIZE)) {
+        if (fEnable.get() && (address >= 0) && (address < STORAGE_SIZE)) {
             fChanges.getAndSet(true);
 
             for (int idx  = (SCREEN_WIDTH * (address & 0xFF)) + ((address >> 5) & 0xFFFFFFF8),
                      end  = idx + 8,
                      mask = 0x80; idx < end; idx++, mask >>= 1) {
-                fImageBuffer[idx] = ((value & mask) != 0) ? fFgColor : fBgColor;
+                fImageBuffer[idx] = (byte) (((value & mask) != 0) ? fFgColor.get() : fBgColor.get());
             }
         }
     }
@@ -86,7 +89,7 @@ public class Screen extends WritableImage implements MemoryUnit {
     public void reset(boolean clear) {
         setColor(DEFAULT_COLOR);
 
-        fEnable = true;
+         fEnable.getAndSet(true );
         fChanges.getAndSet(false);
 
         if (clear) {
@@ -108,7 +111,7 @@ public class Screen extends WritableImage implements MemoryUnit {
             return false;
         }
         Screen screen = (Screen) o;
-        return (fFgColor == screen.fFgColor) && (fBgColor == screen.fBgColor);
+        return Objects.equals(fFgColor, screen.fFgColor) && Objects.equals(fBgColor, screen.fBgColor);
     }
 
     @Override
@@ -122,8 +125,8 @@ public class Screen extends WritableImage implements MemoryUnit {
      * @param color старший полубайт - цвет изображения, младший полубайт - цвет фона
      */
     public void setColor(int color) {
-        fFgColor = (byte) ((color & 0xF0) >> 4);
-        fBgColor = (byte)  (color & 0x0F);
+        fFgColor.getAndSet((color & 0xF0) >> 4);
+        fBgColor.getAndSet( color & 0x0F);
     }
 
     /**
@@ -132,6 +135,6 @@ public class Screen extends WritableImage implements MemoryUnit {
      * @param enable true - включает, false - отключает
      */
     void setEnable(boolean enable) {
-        fEnable = enable;
+        fEnable.getAndSet( enable);
     }
 }

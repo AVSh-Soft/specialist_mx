@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.units.memory.sub;
+package ru.avsh.specialist.mx.units.memory.units;
 
 import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.units.types.MemoryUnit;
