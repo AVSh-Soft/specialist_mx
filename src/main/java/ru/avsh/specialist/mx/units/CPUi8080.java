@@ -2,9 +2,11 @@ package ru.avsh.specialist.mx.units;
 
 import javafx.application.Platform;
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
+import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;
+import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.MemoryManager;
 import ru.avsh.specialist.mx.units.types.ClockedUnit;
 
@@ -16,6 +18,8 @@ import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static ru.avsh.specialist.mx.helpers.Constants.SPMX_ICON_FILE;
 
 /**
  * Класс "Процессор Intel C8080A (К580ВМ80А)".
@@ -1117,7 +1121,7 @@ public final class CPUi8080 implements ClockedUnit {
      * Запускает отладчик.
      */
     private void startDebugger() {
-        // Вызов возможен только для потока тактового генератора (блокирует вызов из потока Swing)
+        // Вызов возможен только для потока тактового генератора (блокирует вызов из потока FX/Swing)
         if (!fIsDebugRun.get() && Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
              fIsDebugRun.getAndSet(true);
@@ -1126,9 +1130,12 @@ public final class CPUi8080 implements ClockedUnit {
             pauseMemoryUnits(true);
             // Далее работаем в потоке Swing
             EventQueue.invokeLater(() -> {
-                // Останавливаем тактовый генератор
+                // Останавливаем тактовый генератор (обязательно из другого потока!)
                 fSpMX.pause(true, false);
-                try {
+                // Блокируем главное окно
+                Platform.runLater(() -> fSpMX.setPrimaryStagePeerEnabled(false));
+                try (final StubMainFrame mainFrame = StubMainFrame.create(
+                        DebuggerCPUi8080.TITLE, Constants.getURL(SPMX_ICON_FILE).orElse(null))) {
                     // Отменяем режим "Пауза" только для CPU
                     hold(false);
                     // Удаляем StepOver ловушку, если она вызвала отладчик
@@ -1137,10 +1144,8 @@ public final class CPUi8080 implements ClockedUnit {
                     if (debugIsStepOverTrap(page, address)) {
                                debugRemTrap(page, address);
                     }
-                    // Блокируем главное окно
-                    Platform.runLater(() -> fSpMX.setPrimaryStagePeerEnabled(false));
                     // Выводим окно отладчика
-                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(fSpMX);
+                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(mainFrame, fSpMX);
                     // После окончания работы - убиваем отладчик
                     debug.getContentPane().removeAll();
                     debug.dispose();

@@ -53,9 +53,10 @@ public final class Constants {
     public static final int NUMBER_PAGES_RAMDISK = 8;
 
     // Инстанс иконки эмулятора "Специалист MX"
-    public static final Image ICON            = new Image(getResourceAsStream(SPMX_ICON_FILE));
+    public static final Image ICON = getResourceAsStream(SPMX_ICON_FILE).map(Image::new).orElse(null);
+
     // Инстанс шрифта семейства "Monospaced"
-    public static final Font  FONT_MONOSPACED = Font.font("Monospaced");
+    public static final Font FONT_MONOSPACED = Font.font("Monospaced");
 
     // Текущий путь к файлам эмулятора "Специалист MX"
     private static String fCurPath = APP_DIR;
@@ -89,7 +90,7 @@ public final class Constants {
      * Ищет scc-ресурс и возвращает URL-объект для чтения ресурса.
      *
      * @param name имя css-ресурса
-     * @return URL-объект для чтения ресурса
+     * @return URL-объект для чтения ресурса (завернут в Optional)
      */
     public static Optional<URL> getCssUrl(final String name) {
         return Optional.ofNullable(Constants.class.getClassLoader())
@@ -100,19 +101,21 @@ public final class Constants {
      * Ищет ресурс и возвращает URL-объект для чтения ресурса.
      *
      * @param name имя ресурса
-     * @return URL-объект для чтения ресурса
+     * @return URL-объект для чтения ресурса (завернут в Optional)
      */
-    public static URL getURL(final String name) {
-        return Constants.class.getClassLoader().getResource(RESOURCES_DATA.concat(name));
+    public static Optional<URL> getURL(final String name) {
+        return Optional.ofNullable(Constants.class.getClassLoader())
+                .map(classLoader -> classLoader.getResource(RESOURCES_DATA.concat(name)));
     }
 
     /**
      * Возвращает InputStream для чтения ресурса.
      *
      * @param name имя ресурса
-     * @return InputStream для чтения ресурса
+     * @return InputStream для чтения ресурса (завернут в Optional)
      */
-    public static InputStream getResourceAsStream(final String name) {
-        return Constants.class.getClassLoader().getResourceAsStream(RESOURCES_DATA.concat(name));
+    public static Optional<InputStream> getResourceAsStream(final String name) {
+        return Optional.ofNullable(Constants.class.getClassLoader())
+                .map(classLoader -> classLoader.getResourceAsStream(RESOURCES_DATA.concat(name)));
     }
 }

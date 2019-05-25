@@ -41,6 +41,8 @@ import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharA
 public final class DebuggerCPUi8080 extends JDialog {
     private static final long serialVersionUID = -4782408965788448666L;
 
+    public  static final String TITLE = "Отладчик для процессора i8080 (К580ВМ80А)";
+
     private static final String INI_OPTION_FRAME_WIDTH  = "DebugFrameWidth" ;
     private static final String INI_OPTION_FRAME_HEIGHT = "DebugFrameHeight";
 
@@ -173,10 +175,10 @@ public final class DebuggerCPUi8080 extends JDialog {
     private static final Color  YELLOW_RED            = new Color(255, 128, 0);
     private static final Font   HEADER_FONT           = new Font(Font.MONOSPACED, Font.BOLD , 11);
     private static final Font   DEFAULT_FONT          = new Font(Font.MONOSPACED, Font.PLAIN, 11);
-    private static final String BYTE_MASK             = "HH";
-    private static final String WORD_MASK             = "HHHH";
+    private static final String BYTE_MASK             = "HH"   ;
+    private static final String WORD_MASK             = "HHHH" ;
     private static final String STR_ADDRESS           = "Адрес";
-    private static final String STR16_MASK            = "****************";
+    private static final String STR16_MASK            = "****************"   ;
     private static final String EDITING_OR_NAVIGATING = "EditingOrNavigating";
 
     private final transient SpecialistMX  fSpMX;
@@ -192,8 +194,8 @@ public final class DebuggerCPUi8080 extends JDialog {
      *
      * @param spMX ссылка на главный класс эмулятора.
      */
-    public DebuggerCPUi8080(@NotNull SpecialistMX spMX) {
-        super(JOptionPane.getRootFrame(), true);
+    public DebuggerCPUi8080(Frame owner, @NotNull SpecialistMX spMX) {
+        super(owner, true);
 
         // Запоминаем ссылку на главный класс эмулятора
         fSpMX = spMX;
@@ -209,7 +211,7 @@ public final class DebuggerCPUi8080 extends JDialog {
     }
 
     private void initComponents() {
-        setTitle("Отладчик для процессора i8080 (К580ВМ80А)");
+        setTitle(TITLE);
 
         final JPanel dialogPane   = new JPanel();
         final JPanel contentPanel = new JPanel();
@@ -2828,7 +2830,8 @@ public final class DebuggerCPUi8080 extends JDialog {
                 c.validate();
             }
             final Rectangle celRect = table.getCellRect(row, column, true);
-            final Rectangle visRect = new Rectangle(celRect.x, ((JScrollPane) c).getVerticalScrollBar().getValue(), celRect.width, ((JScrollPane) c).getVerticalScrollBar().getVisibleAmount());
+            final Rectangle visRect = new Rectangle(celRect.x    , ((JScrollPane) c).getVerticalScrollBar().getValue        (),
+                                                    celRect.width, ((JScrollPane) c).getVerticalScrollBar().getVisibleAmount());
             if (!visRect.contains(celRect)) {
                 int val = celRect.y - (Math.round((float) visRect.height / (celRect.height << 1)) - 1) * celRect.height;
                 ((JScrollPane) c).getVerticalScrollBar().setValue((val < 0) ? 0 : val);

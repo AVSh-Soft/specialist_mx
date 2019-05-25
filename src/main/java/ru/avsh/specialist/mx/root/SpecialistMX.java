@@ -7,6 +7,8 @@ import javafx.stage.Stage;
 import org.ini4j.Wini;
 import org.jetbrains.annotations.Nullable;
 import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
+import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.FileFinder;
 import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
@@ -19,6 +21,7 @@ import javax.swing.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -403,9 +406,9 @@ public final class SpecialistMX {
         String appName = SPMX_NAME;
         String version = "x.x.x.x";
 
-        final InputStream is = getResourceAsStream(SPMX_PROP_FILE);
-        if (is != null) {
-            try (InputStreamReader isr = new InputStreamReader(is, StandardCharsets.UTF_8)) {
+        final Optional<InputStream> optIS = getResourceAsStream(SPMX_PROP_FILE);
+        if (optIS.isPresent()) {
+            try (InputStreamReader isr = new InputStreamReader(optIS.get(), StandardCharsets.UTF_8)) {
                 final Properties property = new Properties();
                 property.load(isr);
 
@@ -588,10 +591,9 @@ public final class SpecialistMX {
 
         // Иначе загружаем встроенный ROM-файл
         fCurRomFile = null;
-        final InputStream is = getResourceAsStream(SPMX_ROM_FILE);
-        if (is == null) {
-            throw new IOException("ROM-файл эмулятора не найден в ресурсах программы!");
-        }
+        final InputStream is = getResourceAsStream(SPMX_ROM_FILE)
+                .orElseThrow(() -> new IOException("ROM-файл эмулятора не найден в ресурсах программы!"));
+
         try (BufferedInputStream bis = new BufferedInputStream(is)) {
             final int length = bis.available();
             if (length < 0x10000) {
@@ -1049,18 +1051,18 @@ public final class SpecialistMX {
         if (!fIsDebugRun.get()) {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
             fIsDebugRun.getAndSet(true);
-
+            // Выполняем мгновенный останов всех устройств с остановкой тактового генератора
+            pause(true, true);
             // Отладчик написан под Swing
             SwingUtilities.invokeLater(() -> {
-                // Выполняем мгновенный останов всех устройств с остановкой тактового генератора
-                pause(true, true);
-                try {
+                // Блокируем главное окно
+                Platform.runLater(() -> setPrimaryStagePeerEnabled(false));
+                try (final StubMainFrame mainFrame = StubMainFrame.create(
+                        DebuggerCPUi8080.TITLE, Constants.getURL(SPMX_ICON_FILE).orElse(null))) {
                     // Отменяем режим "Пауза" только для CPU
                     fCPU.hold(false);
-                    // Блокируем главное окно
-                    Platform.runLater(() -> setPrimaryStagePeerEnabled(false));
                     // Выводим окно отладчика
-                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(this);
+                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(mainFrame, this);
                     // После окончания работы - убиваем отладчик
                     debug.getContentPane().removeAll();
                     debug.dispose();
