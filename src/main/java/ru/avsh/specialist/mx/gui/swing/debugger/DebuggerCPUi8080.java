@@ -179,7 +179,7 @@ public final class DebuggerCPUi8080 extends JDialog {
     private static final String STR16_MASK            = "****************";
     private static final String EDITING_OR_NAVIGATING = "EditingOrNavigating";
 
-    private final transient SpecialistMX fSpMX ;
+    private final transient SpecialistMX  fSpMX;
     private final transient EmulatorLayer fEmulatorLayer;
 
     private final DisAsmTable fDisAsmTable;
@@ -2060,7 +2060,7 @@ public final class DebuggerCPUi8080 extends JDialog {
      * Очень спецефичная (под JTable) симуляция выделения строк, по аналогии с текстовым редактором
      * (не все удалось реализовать, но результат скорее хороший).
      */
-    private class SelectionModelsContainer {
+    private static class SelectionModelsContainer {
         private final int columnMinIndex;
         private final int columnMaxIndex;
 
@@ -2166,6 +2166,8 @@ public final class DebuggerCPUi8080 extends JDialog {
         }
 
         private class RowSelectionModel extends DefaultListSelectionModel {
+            private static final long serialVersionUID = 3849612944826298882L;
+
             @Override
             public boolean isSelectedIndex(int index) {
                 boolean result = super.isSelectedIndex(index);

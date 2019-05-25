@@ -1,10 +1,9 @@
 package ru.avsh.specialist.mx.gui.utils;
 
-import javafx.scene.control.Alert;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.layout.Region;
 import javafx.scene.text.Font;
@@ -12,6 +11,7 @@ import javafx.stage.Stage;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Optional;
 
 import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
@@ -25,8 +25,8 @@ import static javafx.scene.control.ButtonType.OK;
  * @author -=AVSh=-
  */
 public final class AlertUtil {
-    private static final String TEXT_YES    = "Да";
-    private static final String TEXT_NO     = "Нет";
+    private static final String TEXT_YES    = "Да"    ;
+    private static final String TEXT_NO     = "Нет"   ;
     private static final String TEXT_CANCEL = "Отмена";
 
     private AlertUtil() {
@@ -137,14 +137,20 @@ public final class AlertUtil {
      * @param title текст для заголовка окна
      * @param font  шрифт сообщения
      */
-    private static void setBasicParams(final  Alert alert,
-                                       final  Image icon ,
-                                       final String title,
-                                       final   Font font ) {
+    private static void setBasicParams(@NotNull final  Alert alert,
+                                                final  Image icon ,
+                                                final String title,
+                                                final   Font font ) {
         // Добавляем иконку
         if (icon != null) {
-            ((Stage) alert.getDialogPane().getScene().getWindow()).getIcons().add(icon);
+            Optional.ofNullable(alert.getDialogPane(    ))
+                    .map       ( Node::getScene  )
+                    .map       (Scene::getWindow )
+                    .filter    (window -> window   instanceof   Stage)
+                    .map       (window -> ((Stage) window).getIcons())
+                    .ifPresent (icons  -> icons.add(icon));
         }
+
         // Устанавливаем автоматический подбор ширины диалога (по contentText) и шрифт
         getAlertLabel(alert).ifPresent(label -> {
             label.setPrefWidth(Region.USE_COMPUTED_SIZE);
@@ -164,11 +170,13 @@ public final class AlertUtil {
      * @return объект Label в Optional
      */
     private static Optional<Label> getAlertLabel(@NotNull final Alert alert) {
-        return alert.getDialogPane().getChildren()
-                .stream   ()
-                .filter   (node -> node instanceof Label)
-                .map      (node ->          (Label) node)
-                .findFirst();
+        return Optional.ofNullable(alert.getDialogPane())
+                .map    (DialogPane::getChildren)
+                .flatMap(nodes -> nodes.stream( )
+                        .filter(Objects::nonNull)
+                        .filter(node -> node instanceof Label)
+                        .map   (node ->          (Label) node)
+                        .findFirst());
     }
 
     /**
@@ -196,7 +204,7 @@ public final class AlertUtil {
         }
 
         public ButtonType[] getButtonTypes() {
-            return buttonTypes;
+            return buttonTypes.clone();
         }
     }
 }

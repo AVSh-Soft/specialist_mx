@@ -50,7 +50,7 @@ public final class Speaker implements Unit {
     /**
      * Внутренний класс "Звуковая очередь".
      */
-    private class SoundQueue extends ConcurrentLinkedQueue<Integer> {
+    private static class SoundQueue extends ConcurrentLinkedQueue<Integer> {
         private static final long serialVersionUID = 5717602369118717669L;
 
         // Счетчик времени всех полупериодов в очереди

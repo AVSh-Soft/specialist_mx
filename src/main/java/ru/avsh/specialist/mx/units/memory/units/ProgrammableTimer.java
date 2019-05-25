@@ -33,7 +33,7 @@ public final class ProgrammableTimer implements MemoryUnit, ClockedUnit {
     /**
      * Внутренний класс "Счетчик" (реализует один счетчик таймера КР580ВИ53).
      */
-    private class Counter {
+    private static class Counter {
         private boolean fBCD   ; // Режим счета (True = двоично-десятичный счет, False = двоичный счет)
         private int     fMode  ; // Режим работы счетчика
         private int     fAccess; // Режим чтения/загрузки счетчика
