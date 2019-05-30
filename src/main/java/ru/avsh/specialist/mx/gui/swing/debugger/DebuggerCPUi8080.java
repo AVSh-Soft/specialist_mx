@@ -1075,13 +1075,12 @@ public final class DebuggerCPUi8080 extends JDialog {
                 case DA_COL_TRP:
                     return true;
                 case DA_COL_ADR:
+                case DA_COL_CMD:
                     return false;
                 case DA_COL_BT0:
                 case DA_COL_BT1:
                 case DA_COL_BT2:
                     return ((String) getValueAt(rowIndex, columnIndex)).length() > 0;
-                case DA_COL_CMD:
-                    return false;
                 default:
                     return super.isCellEditable(rowIndex, columnIndex);
             }
@@ -1098,8 +1097,8 @@ public final class DebuggerCPUi8080 extends JDialog {
                         fEmulatorLayer.remTrap(page, rowIndex);
                     }
                     return;
-                case DA_COL_ADR:
-                    break;
+                //case DA_COL_ADR:
+                //    break;~
                 case DA_COL_BT0:
                 case DA_COL_BT1:
                 case DA_COL_BT2:
@@ -1109,8 +1108,8 @@ public final class DebuggerCPUi8080 extends JDialog {
                         showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
-                case DA_COL_CMD:
-                    break;
+                //case DA_COL_CMD:
+                //    break;~
                 default:
                     break;
             }
@@ -1492,26 +1491,20 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         @Override
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-            switch (columnIndex) {
-                case CR_COL_REG:
-                case CR_COL_EQU:
-                    break;
-                case CR_COL_DAT:
-                    try {
-                        final DebugRegPair regPair = DebugRegPair.values()[rowIndex];
-                        // Пишем данные в регистровые пары
-                        fEmulatorLayer.setValRegPair(regPair, Integer.parseInt((String) aValue, 16));
-                        if (DebugRegPair.PC.equals(regPair)) {
-                            // Если была запись в PC, то показываем код из страницы CPU и переходим на address = PC
-                            fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
-                              fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
-                        }
-                    } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+            if (columnIndex == CR_COL_DAT) {
+                try {
+                    final DebugRegPair regPair = DebugRegPair.values()[rowIndex];
+                    // Пишем данные в регистровые пары
+                    fEmulatorLayer.setValRegPair(regPair, Integer.parseInt((String) aValue, 16));
+                    if (DebugRegPair.PC.equals(regPair)) {
+                        // Если была запись в PC, то показываем код из страницы CPU и переходим на address = PC
+                        fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
+                          fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
                     }
-                    return;
-                default:
-                    break;
+                } catch (NumberFormatException e) {
+                    showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                }
+                return;
             }
             super.setValueAt(aValue, rowIndex, columnIndex);
         }
@@ -2537,8 +2530,8 @@ public final class DebuggerCPUi8080 extends JDialog {
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
             final int page = fEmulatorLayer.getDataPage();
             switch (columnIndex) {
-                case MD_COL_ADR:
-                    break;
+                //case MD_COL_ADR:
+                //    break;~
                 case MD_COL_B00:
                 case MD_COL_B01:
                 case MD_COL_B02:

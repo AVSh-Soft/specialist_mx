@@ -356,8 +356,8 @@ public final class KeyboardPort implements MemoryUnit {
                         }
                     }
                     break;
-                case 3:
-                    break;
+                //case 3:
+                //    break;~
                 default:
                     break;
             }

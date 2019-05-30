@@ -60,8 +60,8 @@ public final class ProgrammerPort implements MemoryUnit {
                         result |= fPC | 0xF0;
                     }
                     break;
-                case 3:
-                    break;
+                //case 3:
+                //    break;~
                 default:
                     break;
             }
