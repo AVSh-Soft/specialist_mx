@@ -8,8 +8,8 @@ import java.util.Objects;
  * Класс "Внутреннее событие".
  */
 public class InnerEvent {
-    private EventType type  ;
-    private Object    detail;
+    private final EventType type  ;
+    private final Object    detail;
 
     public InnerEvent(EventType type, Object detail) {
         this.type   = type  ;
