@@ -169,13 +169,13 @@
     </plugins>
   </build>
   <properties>
+    <GitHub.username>AVSh-Soft</GitHub.username>
+    <copyright>Copyright © 2019 ${company.name}</copyright>
+    <jdkVersion>1.8</jdkVersion>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <product.name>The emulator "${project.name}"</product.name>
     <resources.dir>resources</resources.dir>
     <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
-    <copyright>Copyright © 2019 ${company.name}</copyright>
     <lib.dir>lib</lib.dir>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jdkVersion>1.8</jdkVersion>
-    <GitHub.username>AVSh-Soft</GitHub.username>
-    <product.name>The emulator "${project.name}"</product.name>
   </properties>
 </project>

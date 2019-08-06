@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
+import javafx.stage.WindowHelper;
 import org.ini4j.Wini;
 import org.jetbrains.annotations.Nullable;
 import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPUi8080;
@@ -164,10 +165,7 @@ public final class SpecialistMX {
      * @param enabled - true = окно разблокированно
      */
     public void setPrimaryStagePeerEnabled(final boolean enabled) {
-        final Stage primaryStage = getPrimaryStage();
-        if (primaryStage != null) {
-            primaryStage.impl_getPeer().setEnabled(enabled);
-        }
+        WindowHelper.setEnabled(getPrimaryStage(), enabled);
     }
 
     /**
