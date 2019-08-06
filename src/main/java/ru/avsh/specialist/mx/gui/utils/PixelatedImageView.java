@@ -42,7 +42,7 @@ public class PixelatedImageView extends ImageView {
                         @Override
                         protected void renderContent(Graphics g) {
                             final BaseResourceFactory factory = (BaseResourceFactory) g.getResourceFactory();
-                            Texture tex = factory.getCachedTexture(image, Texture.WrapMode.CLAMP_TO_EDGE);
+                            final Texture tex = factory.getCachedTexture(image, Texture.WrapMode.CLAMP_TO_EDGE);
                             tex.setLinearFiltering(false);
                             tex.unlock();
                             super.renderContent(g);
