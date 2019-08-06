@@ -12,13 +12,22 @@ import com.sun.prism.impl.BaseResourceFactory;
 import javafx.scene.Node;
 import javafx.scene.image.ImageView;
 import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.commons.lang3.reflect.MethodUtils;
+
+import java.lang.reflect.Method;
 
 @SuppressWarnings("restriction")
 public class PixelatedImageView extends ImageView {
 
+    private final Method doUpdatePeerMethod;
+    private final Method doComputeGeomBoundsMethod;
+    private final Method doComputeContainsMethod;
+
     public PixelatedImageView(javafx.scene.image.Image image) {
         super(image);
+        doUpdatePeerMethod = getImageViewMethod("doUpdatePeer");
+        doComputeGeomBoundsMethod = getImageViewMethod("doComputeGeomBounds", BaseBounds.class, BaseTransform.class);
+        doComputeContainsMethod = getImageViewMethod("doComputeContains", double.class, double.class);
+
         initialize();
     }
 
@@ -53,7 +62,9 @@ public class PixelatedImageView extends ImageView {
                 @Override
                 public void doUpdatePeer(Node node) {
                     try {
-                        MethodUtils.invokeMethod(node, true, "doUpdatePeer");
+                        if (doUpdatePeerMethod != null) {
+                            doUpdatePeerMethod.invoke(node);
+                        }
                     } catch (ReflectiveOperationException e) {
                         //
                     }
@@ -62,23 +73,40 @@ public class PixelatedImageView extends ImageView {
                 @Override
                 public BaseBounds doComputeGeomBounds(Node node, BaseBounds bounds, BaseTransform tx) {
                     try {
-                        return (BaseBounds) MethodUtils.invokeMethod(node, true, "doComputeGeomBounds", bounds, tx);
+                        if (doComputeGeomBoundsMethod != null) {
+                            return (BaseBounds) doComputeGeomBoundsMethod.invoke(node, bounds, tx);
+                        }
                     } catch (ReflectiveOperationException e) {
-                        return null;
+                        //
                     }
+                    return null;
                 }
 
                 @Override
                 public boolean doComputeContains(Node node, double localX, double localY) {
                     try {
-                        return (boolean) MethodUtils.invokeMethod(node, true, "doComputeContains", localX, localY);
+                        if (doComputeContainsMethod != null) {
+                            return (boolean) doComputeContainsMethod.invoke(node, localX, localY);
+                        }
                     } catch (ReflectiveOperationException e) {
-                        return false;
+                        //
                     }
+                    return false;
                 }
             });
         } catch (IllegalAccessException e) {
             //
         }
+    }
+
+    private Method getImageViewMethod(final String name, final Class<?>... parameterTypes) {
+        Method result = null;
+        try {
+            result = ImageView.class.getDeclaredMethod(name, parameterTypes);
+            result.setAccessible(true);
+        } catch (ReflectiveOperationException e) {
+            //
+        }
+        return result;
     }
 }
