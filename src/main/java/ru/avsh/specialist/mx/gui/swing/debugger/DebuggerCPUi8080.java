@@ -2924,7 +2924,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                                                     celRect.width, ((JScrollPane) c).getVerticalScrollBar().getVisibleAmount());
             if (!visRect.contains(celRect)) {
                 int val = celRect.y - (Math.round((float) visRect.height / (celRect.height << 1)) - 1) * celRect.height;
-                ((JScrollPane) c).getVerticalScrollBar().setValue((val < 0) ? 0 : val);
+                ((JScrollPane) c).getVerticalScrollBar().setValue(Math.max(val, 0));
             }
         }
         // Устанавливаем фокус на таблице
