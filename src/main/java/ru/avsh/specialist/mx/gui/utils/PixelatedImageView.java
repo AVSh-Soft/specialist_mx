@@ -13,20 +13,23 @@ import javafx.scene.Node;
 import javafx.scene.image.ImageView;
 import org.apache.commons.lang3.reflect.FieldUtils;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 
 @SuppressWarnings("restriction")
 public class PixelatedImageView extends ImageView {
-
-    private final Method doUpdatePeerMethod;
-    private final Method doComputeGeomBoundsMethod;
-    private final Method doComputeContainsMethod;
+    private final MethodHandle        doUpdatePeerMH;
+    private final MethodHandle doComputeGeomBoundsMH;
+    private final MethodHandle   doComputeContainsMH;
 
     public PixelatedImageView(javafx.scene.image.Image image) {
         super(image);
-        doUpdatePeerMethod = getImageViewMethod("doUpdatePeer");
-        doComputeGeomBoundsMethod = getImageViewMethod("doComputeGeomBounds", BaseBounds.class, BaseTransform.class);
-        doComputeContainsMethod = getImageViewMethod("doComputeContains", double.class, double.class);
+
+        final MethodHandles.Lookup lookup = MethodHandles.lookup();
+               doUpdatePeerMH = getImageViewMethodHandle(lookup, "doUpdatePeer");
+        doComputeGeomBoundsMH = getImageViewMethodHandle(lookup, "doComputeGeomBounds", BaseBounds.class, BaseTransform.class);
+          doComputeContainsMH = getImageViewMethodHandle(lookup, "doComputeContains"  ,     double.class,        double.class);
 
         initialize();
     }
@@ -62,10 +65,10 @@ public class PixelatedImageView extends ImageView {
                 @Override
                 public void doUpdatePeer(Node node) {
                     try {
-                        if (doUpdatePeerMethod != null) {
-                            doUpdatePeerMethod.invoke(node);
+                        if (doUpdatePeerMH != null) {
+                            doUpdatePeerMH.invokeExact((ImageView) node);
                         }
-                    } catch (ReflectiveOperationException e) {
+                    } catch (Throwable e) {
                         //
                     }
                 }
@@ -73,10 +76,10 @@ public class PixelatedImageView extends ImageView {
                 @Override
                 public BaseBounds doComputeGeomBounds(Node node, BaseBounds bounds, BaseTransform tx) {
                     try {
-                        if (doComputeGeomBoundsMethod != null) {
-                            return (BaseBounds) doComputeGeomBoundsMethod.invoke(node, bounds, tx);
+                        if (doComputeGeomBoundsMH != null) {
+                            return (BaseBounds) doComputeGeomBoundsMH.invokeExact((ImageView) node, bounds, tx);
                         }
-                    } catch (ReflectiveOperationException e) {
+                    } catch (Throwable e) {
                         //
                     }
                     return null;
@@ -85,10 +88,10 @@ public class PixelatedImageView extends ImageView {
                 @Override
                 public boolean doComputeContains(Node node, double localX, double localY) {
                     try {
-                        if (doComputeContainsMethod != null) {
-                            return (boolean) doComputeContainsMethod.invoke(node, localX, localY);
+                        if (doComputeContainsMH != null) {
+                            return (boolean) doComputeContainsMH.invokeExact((ImageView) node, localX, localY);
                         }
-                    } catch (ReflectiveOperationException e) {
+                    } catch (Throwable e) {
                         //
                     }
                     return false;
@@ -99,11 +102,14 @@ public class PixelatedImageView extends ImageView {
         }
     }
 
-    private Method getImageViewMethod(final String name, final Class<?>... parameterTypes) {
-        Method result = null;
+    private MethodHandle getImageViewMethodHandle(final MethodHandles.Lookup lookup,
+                                                  final String name,
+                                                  final Class<?>... parameterTypes) {
+        MethodHandle result = null;
         try {
-            result = ImageView.class.getDeclaredMethod(name, parameterTypes);
-            result.setAccessible(true);
+            final Method method = ImageView.class.getDeclaredMethod(name, parameterTypes);
+            method.setAccessible(true);
+            result = lookup.unreflect(method);
         } catch (ReflectiveOperationException e) {
             //
         }
