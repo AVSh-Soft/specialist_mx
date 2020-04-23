@@ -4,7 +4,7 @@
   <groupId>ru.avsh.specialist.mx</groupId>
   <artifactId>specialist_mx</artifactId>
   <name>Specialist MX</name>
-  <version>1.8.0</version>
+  <version>1.8.1</version>
   <description>The emulator of the computer "${project.name}"</description>
   <scm>
     <connection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git</connection>

@@ -242,9 +242,9 @@ public final class FloppyDiskController implements MemoryUnit {
                 // Определяем скорость позиционирования головки
                 long millis;
                 switch (fRegCommand.get() & 0b11) {
-                    case 0:
-                        millis =  6L;
-                        break;
+                    //case 0:
+                    //    millis =  6L;~
+                    //    break;~
                     case 1:
                         millis = 12L;
                         break;
@@ -522,14 +522,12 @@ public final class FloppyDiskController implements MemoryUnit {
                             emuCmdType2();
                             break;
                         case 12: // "Чтение адреса"
+                        case 14: // "Чтение дорожки"
+                        case 15: // "Запись дорожки"
                             emuCmdType3();
                             break;
                         case 13: // "Принудительное прерывание" (выполнение сюда не доходит, т.к. поток не пробуждается по этой команде)
                             fInterrupt.getAndSet(true);
-                            break;
-                        case 14: // "Чтение дорожки"
-                        case 15: // "Запись дорожки"
-                            emuCmdType3();
                             break;
                         default:
                             break;

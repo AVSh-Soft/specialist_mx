@@ -7,7 +7,7 @@
     <groupId>ru.avsh.specialist.mx</groupId>
     <artifactId>specialist_mx</artifactId>
     <!-- Major.Minor.Release -->
-    <version>1.8.0</version>
+    <version>1.8.1</version>
     <name>Specialist MX</name>
     <description>The emulator of the computer "${project.name}"</description>
     <packaging>jar</packaging>
