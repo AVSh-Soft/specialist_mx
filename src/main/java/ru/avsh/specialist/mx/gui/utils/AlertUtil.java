@@ -171,11 +171,11 @@ public final class AlertUtil {
      */
     private static Optional<Label> getAlertLabel(@NotNull final Alert alert) {
         return Optional.ofNullable(alert.getDialogPane())
-                .map    (DialogPane::getChildren)
-                .flatMap(nodes -> nodes.stream( )
-                        .filter(Objects::nonNull)
+                .map    (DialogPane::getChildren )
+                .flatMap(nodes -> nodes.stream(  )
+                        .filter(Objects::nonNull )
                         .filter(node -> node instanceof Label)
-                        .map   (node ->          (Label) node)
+                        .map   (Label.class::cast)
                         .findFirst());
     }
 

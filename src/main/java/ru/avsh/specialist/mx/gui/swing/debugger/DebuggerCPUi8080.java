@@ -681,7 +681,7 @@ public final class DebuggerCPUi8080 extends JDialog {
         });
 
         // Изменяем реакцию на клавишу Enter в таблице fDisAsmTable
-        fDisAsmTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        fDisAsmTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
         fDisAsmTable.getActionMap()
                 .put(EDITING_OR_NAVIGATING, new AbstractAction() {
@@ -734,23 +734,23 @@ public final class DebuggerCPUi8080 extends JDialog {
             };
 
             // Изменяем реакцию на клавишу Enter в таблице regCpuTable
-            regCpuTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            regCpuTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                     .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
             regCpuTable.getActionMap().put(EDITING_OR_NAVIGATING, abstractAction);
 
             // Изменяем реакцию на клавишу Enter в таблице stackTable
-            stackTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            stackTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                     .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
             stackTable.getActionMap().put(EDITING_OR_NAVIGATING, abstractAction);
 
             // Изменяем реакцию на клавишу Enter в таблице fMemDatTable
-            fMemDatTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            fMemDatTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                     .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
             fMemDatTable.getActionMap().put(EDITING_OR_NAVIGATING, abstractAction);
         }
 
         // Изменяем реакцию на клавишу Enter в таблице trapsTable
-        trapsTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        trapsTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
         trapsTable.getActionMap().put(EDITING_OR_NAVIGATING, new AbstractAction() {
             private static final long serialVersionUID = 4734432549045273397L;

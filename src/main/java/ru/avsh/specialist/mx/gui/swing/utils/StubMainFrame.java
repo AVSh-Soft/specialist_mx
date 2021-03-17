@@ -14,7 +14,7 @@ public final class StubMainFrame extends JFrame implements AutoCloseable {
         if (imageLocation != null) {
             this.setIconImage(new ImageIcon(imageLocation).getImage());
         }
-        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         this.setLocationRelativeTo(null);
         this.setVisible(true);
     }
