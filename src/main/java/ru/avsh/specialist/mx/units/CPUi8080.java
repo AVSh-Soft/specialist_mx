@@ -1,16 +1,13 @@
 package ru.avsh.specialist.mx.units;
 
-import javafx.application.Platform;
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPUi8080;
-import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
-import ru.avsh.specialist.mx.helpers.Constants;
+import org.jetbrains.annotations.Nullable;
+import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
 import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.MemoryManager;
-import ru.avsh.specialist.mx.units.types.ClockedUnit;
+import ru.avsh.specialist.mx.units.types.CpuDebugCore;
 
-import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
@@ -19,14 +16,12 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static ru.avsh.specialist.mx.helpers.Constants.SPMX_ICON_FILE;
-
 /**
  * Класс "Процессор Intel C8080A (К580ВМ80А)".
  *
  * @author -=AVSh=-
  */
-public final class CPUi8080 implements ClockedUnit {
+public final class CPUi8080 implements CpuDebugCore {
     // Количество тактов для каждой команды CPU
     private static final int[] CYCLES = {
                  4, 10,      7,  5,      5,  5,  7,  4,      4, 10,      7,  5,      5,  5,  7,  4,
@@ -67,28 +62,24 @@ public final class CPUi8080 implements ClockedUnit {
     private static final int P_HL  = 4;
     private static final int P_PSW = 6;
 
-    // Регистровая пара для отладчика
-    public enum DebugRegPair {
-        AF, BC, DE, HL, SP, PC
-    }
-
     // Фазы установки состояния "HOLD" CPU (здесь без enum - для скорости)
     private static final int HOLD_IS_NOT_SET  = 0;
     private static final int HOLD_IN_PROCESS  = 1;
     private static final int HOLD_ACKNOWLEDGE = 2;
 
     private final int[] fRegs;
-    private final Trap fCompareTrap;
-    private final SpecialistMX fSpMX;
+    private final Trap  fCompareTrap;
+    private final SpecialistMX  fSpMX;
     private final AtomicInteger fCycles;
     private final AtomicInteger fHoldPhase;
     private final AtomicBoolean fIsDebugRun;
+    private final AtomicBoolean fActive;
 
     private final SortedSet<Trap> fTraps;
     private final MemoryManager fMemManager;
     private final MemoryManager  fIoManager;
 
-    private int fOpCode;
+    private int     fOpCode;
     private boolean fTestResult;
 
     private volatile boolean fTrapsFlag;
@@ -101,7 +92,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @param memManager  ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (запоминающие устройства)
      * @param ioManager ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода)
      */
-    public CPUi8080(@NotNull SpecialistMX spMX, @NotNull MemoryManager memManager, MemoryManager ioManager) {
+    public CPUi8080(@Nullable SpecialistMX spMX, @NotNull MemoryManager memManager, MemoryManager ioManager) {
               fSpMX = spMX;
         fMemManager = memManager;
          fIoManager =  ioManager;
@@ -110,8 +101,9 @@ public final class CPUi8080 implements ClockedUnit {
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
 
              fCycles = new AtomicInteger();
-           fIsDebugRun = new AtomicBoolean();
+         fIsDebugRun = new AtomicBoolean();
           fHoldPhase = new AtomicInteger();
+             fActive = new AtomicBoolean(true);
         fCompareTrap = new Trap(0,0);
               fTraps = new ConcurrentSkipListSet<>();
     }
@@ -721,7 +713,7 @@ public final class CPUi8080 implements ClockedUnit {
                 setReg((fOpCode >> 3) & 0b111, getReg(fOpCode & 0b111));
                 break;
 
-            case 0x76: // HLT
+            case 0x76: // HLT - halt запускает отладчик
                 setPC(getPC() - 1);
                 startDebugger   ();
                 break;
@@ -1036,7 +1028,7 @@ public final class CPUi8080 implements ClockedUnit {
         // Проверям ловушку для следующей команды CPU
         if (fTrapsFlag) {
             // Здесь без порождения новых объектов (для скорости)
-            fCompareTrap.change(fSpMX.getPage(), getPC());
+            fCompareTrap.change((fSpMX != null) ? fSpMX.getPage() : 0, getPC());
             if (fTraps.contains(fCompareTrap)) {
                 startDebugger();
             }
@@ -1049,7 +1041,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @param mode true/false = установить/снять режим "HOLD"
      */
     public void hold(boolean mode) {
-        if ((fHoldPhase.get() == HOLD_IS_NOT_SET) == mode) {
+        if ((fSpMX != null) && ((fHoldPhase.get() == HOLD_IS_NOT_SET) == mode)) {
             if (mode) {
                 if (Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
                     // Для потока тактового генератора останавливаем CPU сразу конечным значением HOLD_ACKNOWLEDGE,
@@ -1075,7 +1067,8 @@ public final class CPUi8080 implements ClockedUnit {
      *
      * @return true = установлен режим "HOLD"
      */
-    boolean isHoldAcknowledge() {
+    @Override
+    public boolean isHoldAcknowledge() {
         return fHoldPhase.get() == HOLD_ACKNOWLEDGE;
     }
 
@@ -1117,48 +1110,20 @@ public final class CPUi8080 implements ClockedUnit {
         }
     }
 
-    /**
-     * Запускает отладчик.
-     */
-    private void startDebugger() {
-        // Вызов возможен только для потока тактового генератора (блокирует вызов из потока FX/Swing)
-        if (!fIsDebugRun.get() && Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
-            // Блокируем возможность одновременного запуска нескольких копий отладчика
-             fIsDebugRun.getAndSet(true);
-            // Останавливаем CPU и запоминающие устройства
-                        hold(true);
-            pauseMemoryUnits(true);
-            // Далее работаем в потоке Swing
-            EventQueue.invokeLater(() -> {
-                // Останавливаем тактовый генератор (обязательно из другого потока!)
-                fSpMX.pause(true, false);
-                // Блокируем главное окно
-                Platform.runLater(() -> fSpMX.setPrimaryStagePeerEnabled(false));
-                try (final StubMainFrame mainFrame = StubMainFrame.create(
-                        DebuggerCPUi8080.TITLE, Constants.getURL(SPMX_ICON_FILE).orElse(null))) {
-                    // Отменяем режим "Пауза" только для CPU
-                    hold(false);
-                    // Удаляем StepOver ловушку, если она вызвала отладчик
-                    final int page    = fSpMX.getPage();
-                    final int address = debugGetValRegPair(DebugRegPair.PC);
-                    if (debugIsStepOverTrap(page, address)) {
-                               debugRemTrap(page, address);
-                    }
-                    // Выводим окно отладчика
-                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(mainFrame, fSpMX);
-                    // После окончания работы - убиваем отладчик
-                    debug.getContentPane().removeAll();
-                    debug.dispose();
-                } finally {
-                    // Отменяем блокировку главного окна
-                    Platform.runLater(() -> fSpMX.setPrimaryStagePeerEnabled(true));
-                    // Запускаем тактовый генератор и запоминающие устройства
-                    fSpMX.pause(false, true);
-                    // Разрешаем запускать отладчик
-                    fIsDebugRun.getAndSet(false);
-                }
-            });
-        }
+    @Override
+    public boolean debugIsZ80() {
+        return false;
+    }
+
+    @Override
+    @Nullable
+    public SpecialistMX debugGetEmulator() {
+        return fSpMX;
+    }
+
+    @Override
+    public AtomicBoolean debugGetDebugRunFlag() {
+        return fIsDebugRun;
     }
 
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1168,8 +1133,9 @@ public final class CPUi8080 implements ClockedUnit {
      * (Метод для вызова из отладчика)
      *
      * @param regPair регистровая пара
-     * @return значение
+     * @return значение или -1, если пара не поддерживается
      */
+    @Override
     public synchronized int debugGetValRegPair(final DebugRegPair regPair) {
         switch (regPair) {
             case AF:
@@ -1184,8 +1150,9 @@ public final class CPUi8080 implements ClockedUnit {
                 return fRegs[SP];
             case PC:
                 return fRegs[PC];
+            default:
+                return -1;
         }
-        return -1;
     }
 
     /**
@@ -1195,6 +1162,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @param regPair регистровая пара
      * @param value   значение
      */
+    @Override
     public synchronized void debugSetValRegPair(final DebugRegPair regPair, final int value) {
         switch (regPair) {
             case AF:
@@ -1219,6 +1187,8 @@ public final class CPUi8080 implements ClockedUnit {
             case PC:
                 fRegs[PC] = value & 0xFFFF;
                 break;
+            default:
+                break;
         }
     }
 
@@ -1230,6 +1200,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @param address  адрес ловушки
      * @param stepOver true = StepOver ловушка
      */
+    @Override
     public void debugAddTrap(final int page, final int address, final boolean stepOver) {
         final Trap trap = new Trap(page, address);
         if (!stepOver && trap.equals(fTrapStepOver)) {
@@ -1254,6 +1225,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @param page    номер страницы памяти
      * @param address адрес ловушки
      */
+    @Override
     public void debugRemTrap(final int page, final int address) {
         final Trap trap = new Trap(page, address);
         if (trap.equals(fTrapStepOver)) {
@@ -1267,6 +1239,7 @@ public final class CPUi8080 implements ClockedUnit {
      * Удаляет все ловушки.
      * (Метод для вызова из отладчика)
      */
+    @Override
     public void debugClearTraps() {
         fTraps.clear();
         fTrapStepOver =  null;
@@ -1281,7 +1254,8 @@ public final class CPUi8080 implements ClockedUnit {
      * @param address адрес
      * @return true = ловушка StepOver установлена
      */
-    private boolean debugIsStepOverTrap(final int page, final int address) {
+    @Override
+    public boolean debugIsStepOverTrap(final int page, final int address) {
         final Trap trap = new Trap(page, address);
         return fTrapsFlag && trap.equals(fTrapStepOver) && (fTraps.contains(trap));
     }
@@ -1294,6 +1268,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @param address адрес
      * @return true = ловушка установлена
      */
+    @Override
     public boolean debugIsTrap(final int page, final int address) {
         final Trap trap = new Trap(page, address);
         return fTrapsFlag && !trap.equals(fTrapStepOver) && (fTraps.contains(trap));
@@ -1305,6 +1280,7 @@ public final class CPUi8080 implements ClockedUnit {
      *
      * @return количество установленных ловушек
      */
+    @Override
     public int debugGetTrapCount() {
         return ((fTrapStepOver != null) && fTraps.contains(fTrapStepOver)) ? (fTraps.size() - 1) : fTraps.size();
     }
@@ -1316,6 +1292,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @param index индекс ловушки
      * @return ловушка
      */
+    @Override
     public Trap debugGetTrap(final int index) {
         return fTraps.stream().filter(trap -> !trap.equals(fTrapStepOver)).skip(index).findFirst().orElse(null);
     }
@@ -1327,6 +1304,7 @@ public final class CPUi8080 implements ClockedUnit {
      * @param trap ловушка
      * @return индекс
      */
+    @Override
     public int debugGetTrapIndex(final Trap trap) {
         return new ArrayList<>(fTraps).indexOf(trap);
     }
@@ -1334,6 +1312,9 @@ public final class CPUi8080 implements ClockedUnit {
 
     @Override
     public boolean cycle() {
+        if (!fActive.get()) {
+            return true;
+        }
         if (fCycles.get() <= 1)  {
             switch (fHoldPhase.get()) {
                 case HOLD_IS_NOT_SET:
@@ -1357,6 +1338,85 @@ public final class CPUi8080 implements ClockedUnit {
             }
         }
         return false;
+    }
+
+    /**
+     * Включает или выключает процессор.
+     * Неактивный процессор находится в массиве тактируемых устройств, но не исполняет команды.
+     *
+     * @param active true = процессор активен
+     */
+    @Override
+    public void setActive(final boolean active) {
+        fActive.set(active);
+    }
+
+    /**
+     * Показывает, активен ли процессор.
+     *
+     * @return true = процессор активен
+     */
+    @Override
+    public boolean isActive() {
+        return fActive.get();
+    }
+
+    /**
+     * Возвращает состояние регистровой пары, общей для всех процессоров эмулятора.
+     * Старший байт результата - первый регистр пары, младший байт - второй
+     * (BC, DE, HL; для AF - старший байт A, младший F; SP и PC - адрес целиком).
+     *
+     * @param commonPair индекс регистровой пары: 0 - BC, 2 - DE, 4 - HL, 6 - AF, 8 - SP, 9 - PC
+     * @return значение регистровой пары
+     */
+    @Override
+    public int getCommonRegPair(final int commonPair) {
+        switch (commonPair) {
+            case P_BC:  return (fRegs[B] << 8) | fRegs[C];
+            case P_DE:  return (fRegs[D] << 8) | fRegs[E];
+            case P_HL:  return (fRegs[H] << 8) | fRegs[L];
+            case P_PSW: return (fRegs[A] << 8) | fRegs[F];
+            case SP:    return fRegs[SP];
+            case PC:    return fRegs[PC];
+            default:    return 0;
+        }
+    }
+
+    /**
+     * Устанавливает состояние регистровой пары, общей для всех процессоров эмулятора.
+     * Регистр F записывается как есть, без маскирования недокументированных битов.
+     *
+     * @param commonPair индекс регистровой пары: 0 - BC, 2 - DE, 4 - HL, 6 - AF, 8 - SP, 9 - PC
+     * @param value      значение регистровой пары
+     */
+    @Override
+    public void setCommonRegPair(final int commonPair, final int value) {
+        switch (commonPair) {
+            case P_BC:
+                fRegs[B] = (value >> 8) & 0xFF;
+                fRegs[C] =  value       & 0xFF;
+                break;
+            case P_DE:
+                fRegs[D] = (value >> 8) & 0xFF;
+                fRegs[E] =  value       & 0xFF;
+                break;
+            case P_HL:
+                fRegs[H] = (value >> 8) & 0xFF;
+                fRegs[L] =  value       & 0xFF;
+                break;
+            case P_PSW:
+                fRegs[A] = (value >> 8) & 0xFF;
+                fRegs[F] =  value       & 0xFF;
+                break;
+            case SP:
+                fRegs[SP] = value & 0xFFFF;
+                break;
+            case PC:
+                fRegs[PC] = value & 0xFFFF;
+                break;
+            default:
+                break;
+        }
     }
 
     @Override

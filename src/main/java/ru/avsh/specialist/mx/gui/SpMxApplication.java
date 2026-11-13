@@ -95,16 +95,29 @@ public class SpMxApplication extends Application {
         final CheckMenuItem size21Item = new CheckMenuItem("Размер 2:1");
         final RadioMenuItem modeMXItem = new RadioMenuItem("Клавиатура \"".concat(SPMX_NAME).concat("\""));
         final RadioMenuItem modeSTItem = new RadioMenuItem("Клавиатура \"Специалист\"");
-        final      Menu       viewMenu = new      Menu    ("Просмотр", null,
+        final RadioMenuItem cpuI8080Item = new RadioMenuItem("i8080");
+        final RadioMenuItem cpuZ80Item   = new RadioMenuItem("Z80"  );
+        final      Menu     cpuMenu = new Menu("Процессор", null, cpuI8080Item, cpuZ80Item);
+        final      Menu    viewMenu = new Menu("Просмотр" , null,
                 infoItem,  debugItem,
                 new SeparatorMenuItem(), size11Item, size21Item,
-                new SeparatorMenuItem(), modeMXItem, modeSTItem);
+                new SeparatorMenuItem(), modeMXItem, modeSTItem,
+                new SeparatorMenuItem(), cpuMenu);
 
         final   ToggleGroup       group = new ToggleGroup();
         modeMXItem.setToggleGroup(group);
         modeSTItem.setToggleGroup(group);
         modeMXItem.setSelected(!fSpMX.isKeyboardMode());
         modeSTItem.setSelected( fSpMX.isKeyboardMode());
+
+        final ToggleGroup cpuGroup = new ToggleGroup();
+        cpuI8080Item.setToggleGroup(cpuGroup);
+        cpuZ80Item  .setToggleGroup(cpuGroup);
+        cpuI8080Item.setSelected(!fSpMX.isZ80());
+        cpuZ80Item  .setSelected( fSpMX.isZ80());
+
+        cpuI8080Item.setOnAction(e -> switchCpu(false, cpuI8080Item, cpuZ80Item));
+        cpuZ80Item  .setOnAction(e -> switchCpu(true,  cpuI8080Item, cpuZ80Item));
 
         final MenuItem aboutItem = new MenuItem("О программе...");
         final Menu     aboutMenu = new Menu    ("О программе", null, aboutItem);
@@ -482,6 +495,27 @@ public class SpMxApplication extends Application {
             fSpMX.ejectDisk(fdd);
             targetMenuItem.setSelected(false);
             targetMenuItem.setText(diskName.concat(NO_DISK));
+        }
+    }
+
+    /**
+     * Переключает активный процессор и восстанавливает состояние пунктов меню, если переключение запрещено.
+     *
+     * @param isZ80     true = сделать активным Z80, false = сделать активным i8080
+     * @param i8080Item пункт меню процессора i8080
+     * @param z80Item   пункт меню процессора Z80
+     */
+    private void switchCpu(final boolean isZ80,
+                           final @NotNull RadioMenuItem i8080Item,
+                           final @NotNull RadioMenuItem z80Item) {
+
+        if (!fSpMX.switchCpu(isZ80)) {
+            // Переключение процессора при открытом отладчике запрещено
+            i8080Item.setSelected(!fSpMX.isZ80());
+              z80Item.setSelected( fSpMX.isZ80());
+            showMessageDialog(ICON, "Информация", null,
+                    "Переключение процессора недоступно при открытом отладчике.",
+                    WARNING);
         }
     }
 

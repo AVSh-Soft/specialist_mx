@@ -1,16 +1,20 @@
 package ru.avsh.specialist.mx.gui.swing.debugger;
 
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.gui.swing.debugger.disasm.DisAsm;
+import ru.avsh.specialist.mx.gui.swing.debugger.disasm.DisAsmI8080;
+import ru.avsh.specialist.mx.gui.swing.debugger.disasm.DisAsmResult;
+import ru.avsh.specialist.mx.gui.swing.debugger.disasm.DisAsmZ80;
 import ru.avsh.specialist.mx.gui.swing.debugger.helpers.EmulatorLayer;
 import ru.avsh.specialist.mx.gui.swing.debugger.helpers.InnerEvent;
 import ru.avsh.specialist.mx.gui.swing.debugger.helpers.PrevStaticData;
+import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.EventType;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.MemoryPageType;
 import ru.avsh.specialist.mx.gui.swing.utils.JFormattedTextFieldExt;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
-import ru.avsh.specialist.mx.units.CPUi8080.DebugRegPair;
 import ru.avsh.specialist.mx.units.memory.units.MainMemory;
 
 import javax.swing.*;
@@ -34,121 +38,18 @@ import static javax.swing.JOptionPane.*;
 import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharAt;
 
 /**
- * Класс "Отладчик для процессора i8080 (К580ВМ80А)".
+ * Класс "Отладчик для активного процессора эмулятора (i8080 или Z80)".
  *
  * @author -=AVSh=-
  */
-public final class DebuggerCPUi8080 extends JDialog {
+public final class DebuggerCPU extends JDialog {
     private static final long serialVersionUID = -4782408965788448666L;
 
-    public  static final String TITLE = "Отладчик для процессора i8080 (К580ВМ80А)";
+    private static final String TITLE_I8080 = "Отладчик для процессора i8080 (К580ВМ80А)";
+    private static final String TITLE_Z80   = "Отладчик для процессора Z80";
 
     private static final String INI_OPTION_FRAME_WIDTH  = "DebugFrameWidth" ;
     private static final String INI_OPTION_FRAME_HEIGHT = "DebugFrameHeight";
-
-    // Массив мнемоник процессора i8080 (К580ВМ80А)
-    private static final String   M_NOP  = "nop"  ;
-    private static final String   M_CALL = "call ";
-    private static final String[] MNEMONICS = new String[] {
-            "NOP"     , "LXI  B," , "STAX B"  , "INX  B"  , "INR  B"  , "DCR  B"  , "MVI  B," , "RLC"     ,
-            M_NOP     , "DAD  B"  , "LDAX B"  , "DCX  B"  , "INR  C"  , "DCR  C"  , "MVI  C," , "RRC"     ,
-
-            M_NOP     , "LXI  D," , "STAX D"  , "INX  D"  , "INR  D"  , "DCR  D"  , "MVI  D," , "RAL"     ,
-            M_NOP     , "DAD  D"  , "LDAX D"  , "DCX  D"  , "INR  E"  , "DCR  E"  , "MVI  E," , "RAR"     ,
-
-            M_NOP     , "LXI  H," , "SHLD "   , "INX  H"  , "INR  H"  , "DCR  H"  , "MVI  H," , "DAA"     ,
-            M_NOP     , "DAD  H"  , "LHLD "   , "DCX  H"  , "INR  L"  , "DCR  L"  , "MVI  L," , "CMA"     ,
-
-            M_NOP     , "LXI  SP,", "STA  "   , "INX  SP" , "INR  M"  , "DCR  M"  , "MVI  M," , "STC"     ,
-            M_NOP     , "DAD  SP" , "LDA  "   , "DCX  SP" , "INR  A"  , "DCR  A"  , "MVI  A," , "CMC"     ,
-
-            "MOV  B,B", "MOV  B,C", "MOV  B,D", "MOV  B,E", "MOV  B,H", "MOV  B,L", "MOV  B,M", "MOV  B,A",
-            "MOV  C,B", "MOV  C,C", "MOV  C,D", "MOV  C,E", "MOV  C,H", "MOV  C,L", "MOV  C,M", "MOV  C,A",
-
-            "MOV  D,B", "MOV  D,C", "MOV  D,D", "MOV  D,E", "MOV  D,H", "MOV  D,L", "MOV  D,M", "MOV  D,A",
-            "MOV  E,B", "MOV  E,C", "MOV  E,D", "MOV  E,E", "MOV  E,H", "MOV  E,L", "MOV  E,M", "MOV  E,A",
-
-            "MOV  H,B", "MOV  H,C", "MOV  H,D", "MOV  H,E", "MOV  H,H", "MOV  H,L", "MOV  H,M", "MOV  H,A",
-            "MOV  L,B", "MOV  L,C", "MOV  L,D", "MOV  L,E", "MOV  L,H", "MOV  L,L", "MOV  L,M", "MOV  L,A",
-
-            "MOV  M,B", "MOV  M,C", "MOV  M,D", "MOV  M,E", "MOV  M,H", "MOV  M,L", "HLT"     , "MOV  M,A",
-            "MOV  A,B", "MOV  A,C", "MOV  A,D", "MOV  A,E", "MOV  A,H", "MOV  A,L", "MOV  A,M", "MOV  A,A",
-
-            "ADD  B"  , "ADD  C"  , "ADD  D"  , "ADD  E"  , "ADD  H"  , "ADD  L"  , "ADD  M"  , "ADD  A"  ,
-            "ADC  B"  , "ADC  C"  , "ADC  D"  , "ADC  E"  , "ADC  H"  , "ADC  L"  , "ADC  M"  , "ADC  A"  ,
-
-            "SUB  B"  , "SUB  C"  , "SUB  D"  , "SUB  E"  , "SUB  H"  , "SUB  L"  , "SUB  M"  , "SUB  A"  ,
-            "SBB  B"  , "SBB  C"  , "SBB  D"  , "SBB  E"  , "SBB  H"  , "SBB  L"  , "SBB  M"  , "SBB  A"  ,
-
-            "ANA  B"  , "ANA  C"  , "ANA  D"  , "ANA  E"  , "ANA  H"  , "ANA  L"  , "ANA  M"  , "ANA  A"  ,
-            "XRA  B"  , "XRA  C"  , "XRA  D"  , "XRA  E"  , "XRA  H"  , "XRA  L"  , "XRA  M"  , "XRA  A"  ,
-
-            "ORA  B"  , "ORA  C"  , "ORA  D"  , "ORA  E"  , "ORA  H"  , "ORA  L"  , "ORA  M"  , "ORA  A"  ,
-            "CMP  B"  , "CMP  C"  , "CMP  D"  , "CMP  E"  , "CMP  H"  , "CMP  L"  , "CMP  M"  , "CMP  A"  ,
-
-            "RNZ"     , "POP  B"  , "JNZ  "   , "JMP  "   , "CNZ  "   , "PUSH B"  , "ADI  "   , "RST  0"  ,
-            "RZ"      , "RET"     , "JZ   "   , "jmp  "   , "CZ   "   , "CALL "   , "ACI  "   , "RST  1"  ,
-
-            "RNC"     , "POP  D"  , "JNC  "   , "OUT  "   , "CNC  "   , "PUSH D"  , "SUI  "   , "RST  2"  ,
-            "RC"      , "ret"     , "JC   "   , "IN   "   , "CC   "   , M_CALL    , "SBI  "   , "RST  3"  ,
-
-            "RPO"     , "POP  H"  , "JPO  "   , "XTHL"    , "CPO  "   , "PUSH H"  , "ANI  "   , "RST  4"  ,
-            "RPE"     , "PCHL"    , "JPE  "   , "XCHG"    , "CPE  "   , M_CALL    , "XRI  "   , "RST  5"  ,
-
-            "RP"      , "POP  PSW", "JP   "   , "DI"      , "CP   "   , "PUSH PSW", "ORI  "   , "RST  6"  ,
-            "RM"      , "SPHL"    , "JM   "   , "EI"      , "CM   "   , M_CALL    , "CPI  "   , "RST  7"
-    };
-
-    // Массив длин команд процессора i8080 (К580ВМ80А)
-    private static final int[] CMD_LEN = {
-            1, 3, 1, 1, 1, 1, 2, 1,
-            1, 1, 1, 1, 1, 1, 2, 1,
-
-            1, 3, 1, 1, 1, 1, 2, 1,
-            1, 1, 1, 1, 1, 1, 2, 1,
-
-            1, 3, 3, 1, 1, 1, 2, 1,
-            1, 1, 3, 1, 1, 1, 2, 1,
-
-            1, 3, 3, 1, 1, 1, 2, 1,
-            1, 1, 3, 1, 1, 1, 2, 1,
-
-            1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1,
-
-            1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1,
-
-            1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1,
-
-            1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1,
-
-            1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1,
-
-            1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1,
-
-            1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1,
-
-            1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1,
-
-            1, 1, 3, 3, 3, 1, 2, 1,
-            1, 1, 3, 3, 3, 3, 2, 1,
-
-            1, 1, 3, 2, 3, 1, 2, 1,
-            1, 1, 3, 2, 3, 3, 2, 1,
-
-            1, 1, 3, 1, 3, 1, 2, 1,
-            1, 1, 3, 1, 3, 3, 2, 1,
-
-            1, 1, 3, 1, 3, 1, 2, 1,
-            1, 1, 3, 1, 3, 3, 2, 1
-    };
 
     // Кодовая таблица знаков -=КОИ8=-
     private static final String KOI8 =
@@ -163,29 +64,30 @@ public final class DebuggerCPUi8080 extends JDialog {
     // Символ, который игнорируется в таблице знаков -=КОИ8=-
     private static final char SKIP_CHAR = '·';
 
-    // Имена флагов SZ0A0P1C
-    public static final String FLAGS = "SZ?A?P?C"; // ? - заполняются значениями битов регистра флагов
+    // Имена флагов процессоров от старшего бита регистра F к младшему биту,
+    // должно быть ровно 8 символов, т.к. каждый отвечает за отдельный флаг
+    public static final String FLAGS_I8080 = "SZ?A?P?C"; // SZ0A0P1C - тут '?' неизменяемые биты в регистре F у i8080
+    public static final String FLAGS_Z80   = "SZ5H3PNC"; // SZ5H3PNC
 
-    // Коды команд передачи управления (JMP/CALL)
-    private static final int[] JMP_CMD  = {
-            // JMP
-            0xC3, 0xCB,
-            // Jxx
-            0xC2, 0xCA, 0xD2, 0xDA, 0xE2, 0xEA, 0xF2, 0xFA,
-            // CALL
-            0xCD, 0xDD, 0xED, 0xFD,
-            // Cxx
-            0xC4, 0xCC, 0xD4, 0xDC, 0xE4, 0xEC, 0xF4, 0xFC
-    };
-    // Коды команд вызова подпрограммы (CALL/RST)
-    private static final int[] CALL_CMD = {
-            // CALL
-            0xCD, 0xDD, 0xED, 0xFD,
-            // Cxx
-            0xC4, 0xCC, 0xD4, 0xDC, 0xE4, 0xEC, 0xF4, 0xFC,
-            // RST
-            0xC7, 0xCF, 0xD7, 0xDF, 0xE7, 0xEF, 0xF7, 0xFF
-    };
+    // Дизассемблеры процессоров
+    private static final DisAsm DISASM_I8080 = new DisAsmI8080();
+    private static final DisAsm DISASM_Z80   = new DisAsmZ80  ();
+
+    // Максимальная длина команды среди поддерживаемых процессоров
+    private static final int DA_MAX_CMD_LENGTH = Math.max(DISASM_I8080.getMaxCmdLength(), DISASM_Z80.getMaxCmdLength());
+    // Отступ колонки "Команда" дизассемблера (ширина колонки рассчитывается по тексту команд)
+    private static final int DA_CMD_PADDING = 6;
+    // Ширина колонки "Команда" дизассемблера по самому длинному тексту команд поддерживаемых процессоров
+    private static final int DA_CMD_WIDTH;
+    static {
+        final FontMetrics fontMetrics = new Canvas().getFontMetrics(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+        DA_CMD_WIDTH = DA_CMD_PADDING + Math.max(
+                fontMetrics.stringWidth(DISASM_I8080.getMaxCmdText()),
+                fontMetrics.stringWidth(DISASM_Z80.getMaxCmdText()));
+    }
+    // Ширина и высота кнопки флага
+    private static final int FLAG_BUTTON_WIDTH = 17;
+    private static final int FLAG_BUTTON_HEIGHT = 17;
 
     // Константы дизассемблера
     private static final int FOR_ALIGNMENT = 16; // Длина участка для выравнивания кода
@@ -193,18 +95,21 @@ public final class DebuggerCPUi8080 extends JDialog {
     private static final int THREE_QUARTER = BUF_SIZE - (BUF_SIZE >> 2);
 
     // Количество строк и колонок таблицы с дизассемблированными данными (просмотр кода)
-    private static final int DA_NUM_ROWS    = 0x1_0000;
-    private static final int DA_NUM_COLUMNS = 6;
-    // Колонки таблицы с дизассемблированными данными (просмотр кода)
+    private static final int DA_NUM_ROWS = 0x1_0000;
+    // Колонки таблицы с дизассемблированными данными (просмотр кода):
+    // ловушка, адрес, байты команды (по числу максимума среди процессоров), мнемоника
     private static final int DA_COL_TRP = 0;
     private static final int DA_COL_ADR = 1;
     private static final int DA_COL_BT0 = 2;
-    private static final int DA_COL_BT1 = 3;
-    private static final int DA_COL_BT2 = 4;
-    private static final int DA_COL_CMD = 5;
+    private static final int DA_COL_BT3 = 5;
+    private static final int DA_COL_CMD = 6;
+    private static final int DA_NUM_COLUMNS = 7;
 
-    // Количество строк и колонок таблицы с регистровыми парами CPU
-    private static final int CR_NUM_ROWS    = DebugRegPair.values().length;
+    // Количество строк таблицы с регистровыми парами CPU (высота таблицы в строках -
+    // по максимальному составу регистров, чтобы все пары были видны без вертикального скроллера)
+    private static final int CR_NUM_ROWS = DebugRegPair.getSupportedCount(true, true);
+
+    // Количество колонок таблицы с регистровыми парами CPU (количество строк зависит от активного процессора)
     private static final int CR_NUM_COLUMNS = 3;
     // Колонки таблицы с регистровыми парами CPU
     private static final int CR_COL_REG = 0;
@@ -212,8 +117,8 @@ public final class DebuggerCPUi8080 extends JDialog {
     private static final int CR_COL_DAT = 2;
 
     // Количество строк и колонок таблицы с данными стека
-    private static final int SP_NUM_ROWS    = 9;
-    private static final int SP_NUM_COLUMNS = 1;
+    private static final int SP_NUM_ROWS    = 12;
+    private static final int SP_NUM_COLUMNS =  1;
     // Колонки таблицы с данными стека
     private static final int SP_COL_DAT = 0;
 
@@ -265,18 +170,47 @@ public final class DebuggerCPUi8080 extends JDialog {
     private final DisAsmTable fDisAsmTable;
     private final MemDatTable fMemDatTable;
 
+    // Строка имён флагов активного процессора и признак отображения пар IX/IY
+    private final String  fFlags;
+    private final boolean fIsZ80;
+    private final boolean fShowIndexRegisters;
+
     private int fFocusedAddress;
+
+    /**
+     * Возвращает заголовок окна для активного процессора.
+     *
+     * @param isZ80 true = активен процессор Z80
+     * @return заголовок окна
+     */
+    public static String getTitle(final boolean isZ80) {
+        return isZ80 ? TITLE_Z80 : TITLE_I8080;
+    }
+
+    /**
+     * Возвращает заголовок окна для активного процессора эмулятора.
+     *
+     * @param spMX ссылка на главный класс эмулятора
+     * @return заголовок окна
+     */
+    public static String getTitle(@NotNull final SpecialistMX spMX) {
+        return getTitle(spMX.isZ80());
+    }
 
     /**
      * Конструктор.
      *
      * @param spMX ссылка на главный класс эмулятора.
      */
-    public DebuggerCPUi8080(Frame owner, @NotNull SpecialistMX spMX) {
+    public DebuggerCPU(Frame owner, @NotNull SpecialistMX spMX) {
         super(owner, true);
 
         // Запоминаем ссылку на главный класс эмулятора
-        fSpMX = spMX;
+        fSpMX  = spMX;
+        // Процессор, который сейчас отлаживается
+        fIsZ80 = spMX.isZ80();
+        fFlags = fIsZ80 ? FLAGS_Z80 : FLAGS_I8080;
+        fShowIndexRegisters = fIsZ80;
         // Инициализируем слой для взаимодействия с CPU и памятью
         fEmulatorLayer = new EmulatorLayer(spMX);
         // Инициализируем модели и таблицы для просмотра кода и данных
@@ -289,7 +223,7 @@ public final class DebuggerCPUi8080 extends JDialog {
     }
 
     private void initComponents() {
-        setTitle(TITLE);
+        setTitle(fIsZ80 ? TITLE_Z80 : TITLE_I8080);
 
         final JPanel dialogPane   = new JPanel();
         final JPanel contentPanel = new JPanel();
@@ -313,18 +247,18 @@ public final class DebuggerCPUi8080 extends JDialog {
         final JFormattedTextFieldExt wordFieldST  = new JFormattedTextFieldExt(WORD_MASK, '0');
         final DefaultCellEditor wordCellEditorST  = new      DefaultCellEditor(wordFieldST);
 
-        // Байтовые поля для редактора ячеек таблицы таблицы fMemDatTable
+        // Байтовые поля для редактора ячеек таблицы fMemDatTable
         final JFormattedTextFieldExt byteFieldMDT = new JFormattedTextFieldExt(BYTE_MASK, '0');
         final DefaultCellEditor byteCellEditorMDT = new      DefaultCellEditor(byteFieldMDT);
 
-        // Строковое поле из 16 символов для редактора ячеек таблицы таблицы fMemDatTable
+        // Строковое поле из 16 символов для редактора ячеек таблицы fMemDatTable
         final JFormattedTextFieldExt strFieldMDT  = new JFormattedTextFieldExt(STR16_MASK, ' ');
         final DefaultCellEditor strCellEditorMDT  = new      DefaultCellEditor(strFieldMDT);
 
         // Параметры таблицы fDisAsmTable с дизассемблированными данными
-        fDisAsmTable.getColumnModel().getColumn(DA_COL_BT0).setCellEditor(byteCellEditorDAT);
-        fDisAsmTable.getColumnModel().getColumn(DA_COL_BT1).setCellEditor(byteCellEditorDAT);
-        fDisAsmTable.getColumnModel().getColumn(DA_COL_BT2).setCellEditor(byteCellEditorDAT);
+        for (int i = DA_COL_BT0; i <= DA_COL_BT3; i++) {
+            fDisAsmTable.getColumnModel().getColumn(i).setCellEditor(byteCellEditorDAT);
+        }
 
         // Параметры таблицы fMemDatTable с данными памяти
         for (int i = MD_COL_B00; i <= MD_COL_B15; i++) {
@@ -335,30 +269,31 @@ public final class DebuggerCPUi8080 extends JDialog {
         // Метка для вывода информации из регистра флагов CPU
         final FlagsRegLabel flagsRegLabel = new FlagsRegLabel();
 
-        // Кнопки установки/сброса флагов CPU (FLAGS = SZ?A?P?C)
-        final JButton flagSButton = new JButton(new String(new char[]{FLAGS.charAt(0)}));
-        final JButton flagZButton = new JButton(new String(new char[]{FLAGS.charAt(1)}));
-        final JButton flagAButton = new JButton(new String(new char[]{FLAGS.charAt(3)}));
-        final JButton flagPButton = new JButton(new String(new char[]{FLAGS.charAt(5)}));
-        final JButton flagCButton = new JButton(new String(new char[]{FLAGS.charAt(7)}));
+        // Метка для вывода информации о текущей странице CPU
+        final CpuMemPageLabel cpuMemPageLabel = new CpuMemPageLabel();
+
+        // Кнопки установки/сброса флагов CPU (по кнопке на каждый значащий бит регистра F):
+        // у i8080 - S Z A P C, у Z80 - S Z 5 H 3 P N C. Обработчик находит бит по названию кнопки
+        // в строке fFlags, поэтому набор кнопок задаётся только этой строкой
+        final JButton[] flagButtons = new JButton[fFlags.length()];
         {
-            final Dimension dim = new Dimension(17, 17);
-            final Insets    ins = new Insets   ( 1, 1, 1, 1);
-            flagSButton.setMinimumSize(dim);
-            flagSButton.setMargin     (ins);
-            flagSButton.setMnemonic   (FLAGS.charAt(0));
-            flagZButton.setMinimumSize(dim);
-            flagZButton.setMargin     (ins);
-            flagZButton.setMnemonic   (FLAGS.charAt(1));
-            flagAButton.setMinimumSize(dim);
-            flagAButton.setMargin     (ins);
-            flagAButton.setMnemonic   (FLAGS.charAt(3));
-            flagPButton.setMinimumSize(dim);
-            flagPButton.setMargin     (ins);
-            flagPButton.setMnemonic   (FLAGS.charAt(5));
-            flagCButton.setMinimumSize(dim);
-            flagCButton.setMargin     (ins);
-            flagCButton.setMnemonic   (FLAGS.charAt(7));
+            final Dimension dim = new Dimension(FLAG_BUTTON_WIDTH, FLAG_BUTTON_HEIGHT);
+            final Insets    ins = new Insets   (1, 0, 1, 0);
+            for (int i = 0; i < flagButtons.length; i++) {
+                final char flagName = fFlags.charAt(i);
+                final JButton button = new JButton(String.valueOf(flagName));
+                button.setMinimumSize  (dim);
+                button.setPreferredSize(dim);
+                button.setMargin       (ins);
+                // Для i8080 блокируем управление для битов с именами '?'
+                if (flagName == '?') {
+                    button.setEnabled(false);
+                } else {
+                    button.setMnemonic   (flagName);
+                    button.setToolTipText("Флаг " + flagName + " (бит " + (7 - i) + " регистра F)");
+                }
+                flagButtons[i] = button;
+            }
         }
 
         // Модель и таблица для вывода информации из регистровых пар CPU
@@ -387,9 +322,6 @@ public final class DebuggerCPUi8080 extends JDialog {
             clearTrapsButton.setFont(HEADER_FONT);
             clearTrapsButton.setToolTipText ("Удаляет все ловушки");
         }
-
-        // Метка для вывода информации о текущей странице CPU
-        final CpuMemPageLabel cpuMemPageLabel = new CpuMemPageLabel();
 
         // Переключатель страниц памяти для просмотра кода
         final CodeMemPagesComboBox codeMemPagesComboBox = new CodeMemPagesComboBox();
@@ -460,117 +392,112 @@ public final class DebuggerCPUi8080 extends JDialog {
 
             // -=- contentPanel -=-
             {
-                contentPanel.setPreferredSize(new Dimension(540, 412));
+                contentPanel.setPreferredSize(new Dimension(DA_CMD_WIDTH + 529, 565));
                 contentPanel.setLayout(new GridBagLayout());
                 ((GridBagLayout) contentPanel.getLayout()).columnWidths  =
-                        new    int[] {249,  18,  18,  18,  18,  18,  43,  79,  79, 0};
+                        new    int[] {DA_CMD_WIDTH + 177,
+                                      FLAG_BUTTON_WIDTH, FLAG_BUTTON_WIDTH, FLAG_BUTTON_WIDTH, FLAG_BUTTON_WIDTH,
+                                      FLAG_BUTTON_WIDTH, FLAG_BUTTON_WIDTH, FLAG_BUTTON_WIDTH, FLAG_BUTTON_WIDTH,
+                                      79,  79, 10};
                 ((GridBagLayout) contentPanel.getLayout()).rowHeights    =
-                        new    int[] { 22,  22, 104,  20,  22,  50,  22, 150,  0};
+                        new    int[] {22, 22, 203, 20, 22, 22, 22, 22, 100, 0};
                 ((GridBagLayout) contentPanel.getLayout()).columnWeights =
-                        new double[] {0.0, 0.0, 0.0, 0.0, 0.0 ,0.0, 0.0, 0.0, 0.0, 1.0E-4};
+                        new double[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
                 ((GridBagLayout) contentPanel.getLayout()).rowWeights    =
-                        new double[] {0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0E-4};
+                        new double[] {0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0E-4};
 
                 // -=- disAsmScrollPane -=-
                 disAsmScrollPane.setViewportView(fDisAsmTable);
                 contentPanel.add(disAsmScrollPane,
-                                 new GridBagConstraints(0, 0, 1, 7, 0.0, 0.0,
+                                 new GridBagConstraints(0, 0, 1, 8, 0.0, 0.0,
                                                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                                                         new Insets(0, 0, 5, 5), 0, 0));
-
-                // -=- memDatScrollPane -=-
-                memDatScrollPane.setViewportView(fMemDatTable);
-                contentPanel.add(memDatScrollPane,
-                                 new GridBagConstraints(0, 7, 9, 1, 0.0, 0.0,
-                                                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 0, 0), 0, 0));
 
                 // -=- flagsRegLabel -=-
+                // Метка регистра флагов стоит в одной полосе с кнопками флагов: с полосы шириной
+                // в 8 столбцов по 16 px (у i8080 используются 5 из них)
                 contentPanel.add(flagsRegLabel,
-                                 new GridBagConstraints(1, 0, 5, 1, 0.0, 0.0,
+                                 new GridBagConstraints(1, 0, 8, 1, 0.0, 0.0,
                                                         GridBagConstraints.BASELINE, GridBagConstraints.HORIZONTAL,
-                                                        new Insets(0, 0, 3, 5), 0, 0));
+                                                        new Insets(0, 0, 1, 0), 0, 0));
 
-                // -=- flagSButton -=-
-                contentPanel.add(flagSButton,
-                                 new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0,
-                                                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 8, 1), 0, 0));
+                // -=- flagButtons -=-
+                // Кнопки управления флагами в один ряд под flagsRegLabel
+                for (int i = 0; i < flagButtons.length; i++) {
+                    contentPanel.add(flagButtons[i],
+                                     new GridBagConstraints(i + 1, 1, 1, 1, 0.0, 0.0,
+                                                            GridBagConstraints.CENTER, GridBagConstraints.NONE,
+                                                            new Insets(0, 1, 0, 1), 0, 0));
+                }
 
-                // -=- regCpuScrollPane -=-
+                // -=- regCpuPanel -=-
+                // Под кнопками управления флагами
                 regCpuScrollPane.setViewportView(regCpuTable);
                 contentPanel.add(regCpuScrollPane,
-                                 new GridBagConstraints(1, 2, 5, 2, 0.0, 0.0,
+                        new GridBagConstraints(1, 2, 5, 2, 0.0, 0.0,
+                                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                                new Insets(5, 5, 3, 0), 0, 0));
+
+                // -=- stackScrollPane -=-
+                // Под кнопками управления флагами, правее regCpuPanel
+                stackScrollPane.setViewportView(stackTable);
+                contentPanel.add(stackScrollPane,
+                        new GridBagConstraints(6, 2, 3, 2, 0.0, 0.0,
+                                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                                new Insets(5, 7, 3, 7), 0, 0));
+
+                // -=- trapsScrollPane -=-
+                // Правее flagsRegLabel
+                trapsScrollPane.setViewportView(trapsTable);
+                contentPanel.add(trapsScrollPane,
+                                 new GridBagConstraints(9, 0, 2, 3, 0.0, 0.0,
                                                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 5, 5), 0, 0));
+                                                        new Insets(0, 5, 0, 0), 0, 0));
+
+                // -=- deleteTrapButton -=-
+                // Под trapsScrollPane
+                contentPanel.add(deleteTrapButton,
+                                 new GridBagConstraints(9, 3, 1, 1, 0.0, 0.0,
+                                                        GridBagConstraints.CENTER, GridBagConstraints.NONE,
+                                                        new Insets(0, 5, 0, 1), 0, 0));
+
+                // -=- clearTrapsButton -=-
+                // Под trapsScrollPane, правее deleteTrapButton
+                contentPanel.add(clearTrapsButton,
+                                 new GridBagConstraints(10, 3, 1, 1, 0.0, 0.0,
+                                                        GridBagConstraints.CENTER, GridBagConstraints.NONE,
+                                                        new Insets(0, 1, 0, 0), 0, 0));
+
 
                 // -=- cpuMemPageLabel -=-
+                // Под regCpuPanel, stackScrollPane, deleteTrapButton, clearTrapsButton
                 contentPanel.add(cpuMemPageLabel,
-                                 new GridBagConstraints(1, 4, 8, 1, 0.0, 0.0,
+                                 new GridBagConstraints(1, 4, 10, 1, 0.0, 0.0,
                                                         GridBagConstraints.BASELINE, GridBagConstraints.HORIZONTAL,
                                                         new Insets(0, 0, 5, 0), 0, 0));
 
                 // -=- codeMemPagesComboBox -=-
+                // Под cpuMemPageLabel
                 contentPanel.add(codeMemPagesComboBox,
-                                 new GridBagConstraints(1, 6, 6, 1, 0.0, 0.0,
+                                 new GridBagConstraints(1, 6, 9,  1, 0.0, 0.0,
                                                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 5, 5), 0, 0));
+                                                        new Insets(0, 0, 5, DA_CMD_WIDTH - 131), 0, 0));
 
-                // -=- flagZButton -=-
-                contentPanel.add(flagZButton,
-                                 new GridBagConstraints(2, 1, 1, 1, 0.0, 0.0,
-                                                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 8, 1), 0, 0));
-
-                // -=- flagAButton -=-
-                contentPanel.add(flagAButton,
-                                 new GridBagConstraints(3, 1, 1, 1, 0.0, 0.0,
-                                                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 8, 1), 0, 0));
-
-                // -=- flagPButton -=-
-                contentPanel.add(flagPButton,
-                                 new GridBagConstraints(4, 1, 1, 1, 0.0, 0.0,
-                                                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 8, 1), 0, 0));
-
-                // -=- flagCButton -=-
-                contentPanel.add(flagCButton,
-                                 new GridBagConstraints(5, 1, 1, 1, 0.0, 0.0,
-                                                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 8, 5), 0, 0));
-
-                // -=- stackScrollPane -=-
-                stackScrollPane.setViewportView(stackTable);
-                contentPanel.add(stackScrollPane,
-                                 new GridBagConstraints(6, 0, 1, 4, 0.0, 0.0,
-                                                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 5, 5), 0, 0));
-
-                // -=- trapsScrollPane -=-
-                trapsScrollPane.setViewportView(trapsTable);
-                contentPanel.add(trapsScrollPane,
-                                 new GridBagConstraints(7, 0, 2, 3, 0.0, 0.0,
-                                                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 1, 0), 0, 0));
-
-                // -=- deleteTrapButton -=-
-                contentPanel.add(deleteTrapButton,
-                                 new GridBagConstraints(7, 3, 1, 1, 0.0, 0.0,
-                                                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 6, 1), 0, 0));
 
                 // -=- dataMemPagesComboBox -=-
+                // Под codeMemPagesComboBox
                 contentPanel.add(dataMemPagesComboBox,
-                                 new GridBagConstraints(7, 6, 2, 1, 0.0, 0.0,
+                                 new GridBagConstraints(1, 7, 9, 1, 0.0, 0.0,
                                                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 0, 5, 0), 0, 0));
+                                                        new Insets(0, 0, 5, DA_CMD_WIDTH - 131), 0, 0));
 
-                // -=- clearTrapsButton -=-
-                contentPanel.add(clearTrapsButton,
-                                 new GridBagConstraints(8, 3, 1, 1, 0.0, 0.0,
+                // -=- memDatScrollPane -=-
+                // Под codeMemPagesComboBox
+                memDatScrollPane.setViewportView(fMemDatTable);
+                contentPanel.add(memDatScrollPane,
+                                 new GridBagConstraints(0, 8, 10, 1, 0.0, 0.0,
                                                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                                                        new Insets(0, 1, 6, 0), 0, 0));
+                                                        new Insets(1, 0, 4, DA_CMD_WIDTH - 131), 0, 0));
             }
             dialogPane.add(contentPanel, BorderLayout.CENTER);
 
@@ -628,7 +555,7 @@ public final class DebuggerCPUi8080 extends JDialog {
         // -=-=-=-=- Обработчики событий -=-=-=-=-
         {
             // Срабатывает в начале и конце редактирования - корректируем позицию курсора,
-            // устанавливаем значение и фокус компонена JFormattedTextField
+            // устанавливаем значение и фокус компонента JFormattedTextField
             final HierarchyListener hierarchyListener = hierarchyEvent -> {
                 if ((hierarchyEvent.getChangedParent() instanceof JTable) &&
                         (hierarchyEvent.getComponent() instanceof JFormattedTextField)) {
@@ -651,7 +578,7 @@ public final class DebuggerCPUi8080 extends JDialog {
         }
 
         {
-            // При потере фокуса на редактируемомом байте/слове - отменяем редактирование
+            // При потере фокуса на редактируемом байте/слове - отменяем редактирование
             final FocusAdapter focusAdapter = new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent focusEvent) {
@@ -681,7 +608,7 @@ public final class DebuggerCPUi8080 extends JDialog {
         });
 
         // Изменяем реакцию на клавишу Enter в таблице fDisAsmTable
-        fDisAsmTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        fDisAsmTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
         fDisAsmTable.getActionMap()
                 .put(EDITING_OR_NAVIGATING, new AbstractAction() {
@@ -693,23 +620,18 @@ public final class DebuggerCPUi8080 extends JDialog {
 
                 final int rowM =    getFocusedRowModel(fDisAsmTable);
                 final int colM = getFocusedColumnModel(fDisAsmTable);
-                switch (colM) {
-                    case DA_COL_BT0:
-                    case DA_COL_BT1:
-                    case DA_COL_BT2: // Редактирование ячейки
-                        if (model.isCellEditable(rowM, colM)) {
-                            fDisAsmTable.editCellAt(
-                                    fDisAsmTable.convertRowIndexToView   (rowM),
-                                    fDisAsmTable.convertColumnIndexToView(colM));
-                        }
-                        break;
-                    case DA_COL_CMD: // Переход по адресу в команде
-                        if ((fFocusedAddress >= 0) && ((DisAsmTableModel) model).isJmpCmd(rowM)) {
-                            fDisAsmTable.gotoAddress(fFocusedAddress, DA_COL_ADR);
-                        }
-                        break;
-                    default:
-                        break;
+                if ((colM >= DA_COL_BT0) && (colM <= DA_COL_BT3)) {
+                    // Редактирование ячейки с байтом команды
+                    if (model.isCellEditable(rowM, colM)) {
+                        fDisAsmTable.editCellAt(
+                                fDisAsmTable.convertRowIndexToView   (rowM),
+                                fDisAsmTable.convertColumnIndexToView(colM));
+                    }
+                } else if ((colM == DA_COL_CMD)
+                        && (fFocusedAddress >= 0)
+                        && ((DisAsmTableModel) model).isJmpAndCallCmd(rowM)) {
+                    // Переход по адресу в команде
+                    fDisAsmTable.gotoAddress(fFocusedAddress, DA_COL_ADR);
                 }
             }
         });
@@ -734,23 +656,23 @@ public final class DebuggerCPUi8080 extends JDialog {
             };
 
             // Изменяем реакцию на клавишу Enter в таблице regCpuTable
-            regCpuTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            regCpuTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                     .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
             regCpuTable.getActionMap().put(EDITING_OR_NAVIGATING, abstractAction);
 
             // Изменяем реакцию на клавишу Enter в таблице stackTable
-            stackTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            stackTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                     .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
             stackTable.getActionMap().put(EDITING_OR_NAVIGATING, abstractAction);
 
             // Изменяем реакцию на клавишу Enter в таблице fMemDatTable
-            fMemDatTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            fMemDatTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                     .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
             fMemDatTable.getActionMap().put(EDITING_OR_NAVIGATING, abstractAction);
         }
 
         // Изменяем реакцию на клавишу Enter в таблице trapsTable
-        trapsTable.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        trapsTable.getInputMap(JTable.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), EDITING_OR_NAVIGATING);
         trapsTable.getActionMap().put(EDITING_OR_NAVIGATING, new AbstractAction() {
             private static final long serialVersionUID = 4734432549045273397L;
@@ -774,7 +696,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 if ((mouseEvent.getClickCount() == 2)
                         && (getFocusedColumnModel(fDisAsmTable) == DA_COL_CMD)
                         && (fFocusedAddress >= 0)
-                        && ((DisAsmTableModel) fDisAsmTable.getModel()).isJmpCmd(getFocusedRowModel(fDisAsmTable))) {
+                        && ((DisAsmTableModel) fDisAsmTable.getModel()).isJmpAndCallCmd(getFocusedRowModel(fDisAsmTable))) {
                     fDisAsmTable.gotoAddress(fFocusedAddress, DA_COL_ADR); // Переход по адресу в команде
                 }
             }
@@ -799,18 +721,18 @@ public final class DebuggerCPUi8080 extends JDialog {
         {
             // Обработчик событий для кнопок установки/сброса флагов
             final ActionListener actionListener = actionEvent -> {
-                final int index = FLAGS.indexOf(actionEvent.getActionCommand());
+                final int index = fFlags.indexOf(actionEvent.getActionCommand());
                 if (index != -1) {
                     // Инвертируем бит, соответствующий названию кнопки
                     fEmulatorLayer.setValRegPair(DebugRegPair.AF, fEmulatorLayer.getValRegPair(DebugRegPair.AF) ^ (1 << (7 - index)));
                 }
             };
             // Добавляем в компоненты
-            flagSButton.addActionListener(actionListener);
-            flagZButton.addActionListener(actionListener);
-            flagAButton.addActionListener(actionListener);
-            flagPButton.addActionListener(actionListener);
-            flagCButton.addActionListener(actionListener);
+            for (final JButton flagButton : flagButtons) {
+                if (flagButton != null) {
+                    flagButton.addActionListener(actionListener);
+                }
+            }
         }
 
         // Обработчик событий для кнопки удаления ловушки
@@ -882,7 +804,7 @@ public final class DebuggerCPUi8080 extends JDialog {
         });
 
         // -=-=-=-=- Завершение формирования окна отладчика -=-=-=-=-
-        setSize(578, 546);
+        setSize(contentPanel.getPreferredSize().width, contentPanel.getPreferredSize().height);
         setMinimumSize(getSize());
         pack();
 
@@ -928,8 +850,13 @@ public final class DebuggerCPUi8080 extends JDialog {
         private static final int IND_BT1  = 2;
         // Индекс байта 2 команды CPU
         private static final int IND_BT2  = 3;
-        // Размер записи под адрес и данные команды CPU
-        private static final int REC_SIZE = IND_BT2 + 1;
+        // Максимальная длина команды среди поддерживаемых процессоров
+        // (размер записи отладчика не должен зависеть от выбранного процессора)
+        private final int fMaxCmdLength = DA_MAX_CMD_LENGTH;
+        // Размер записи: адрес + код операции + байты данных команды (всего fMaxCmdLength байтов)
+        private final int fRecSize      = IND_CMD + fMaxCmdLength;
+        // Количество байтов данных команды в записи (кроме кода операции)
+        private final int fNumDataBytes = fMaxCmdLength - 1;
         // Пустой элемент записи   (обязательно отрицательное значение)
         private static final int EMPTY    = -1;
         // Неверный элемент записи (обязательно отрицательное значение)
@@ -943,8 +870,24 @@ public final class DebuggerCPUi8080 extends JDialog {
          */
         DisAsmTableModel() {
             super();
-            fStartBuffer = new int[BUF_SIZE][REC_SIZE]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
-            fMovedBuffer = new int[BUF_SIZE][REC_SIZE]; // [x][0] - под адрес, [x][1..3] - под данные команды CPU
+            fStartBuffer = new int[BUF_SIZE][fRecSize]; // [x][0] - под адрес, [x][1..fRecSize-1] - под данные команды CPU
+            fMovedBuffer = new int[BUF_SIZE][fRecSize]; // [x][0] - под адрес, [x][1..fRecSize-1] - под данные команды CPU
+        }
+
+        /**
+         * Возвращает длину команды по заданному адресу.
+         *
+         * @param page    страница памяти
+         * @param address адрес команды
+         * @return длина команды в байтах
+         */
+        private int getCmdLength(final int page, final int address) {
+            final int code = fEmulatorLayer.debugReadByte(page, address);
+            if (fIsZ80) {
+                final int next = fEmulatorLayer.debugReadByte(page, (address + 1) & 0xFFFF);
+                return DisAsmZ80.getCmdLength(new int[] { code, next });
+            }
+            return DisAsmI8080.getCmdLength(code);
         }
 
         /**
@@ -959,18 +902,21 @@ public final class DebuggerCPUi8080 extends JDialog {
 
             int address = codeAddress;
             for (int i  = 0; i < BUF_SIZE; i++) {
-                                     buf[i][IND_ADR] = address;
-                int cmdLen = CMD_LEN[buf[i][IND_CMD] = fEmulatorLayer.debugReadByte(page,   address)];
-                if ((pc   <= address)   ||  (pc >= address + cmdLen)) {
-                    buf[i][IND_BT1] = (--cmdLen > 0) ? fEmulatorLayer.debugReadByte(page, ++address) : EMPTY;
-                    buf[i][IND_BT2] = (--cmdLen > 0) ? fEmulatorLayer.debugReadByte(page, ++address) : EMPTY;
-                } else {
-                    // Устраняем коллизии
-                    cmdLen = pc - address;
-                    buf[i][IND_BT1] = (--cmdLen > 0) ? fEmulatorLayer.debugReadByte(page, ++address) : WRONG;
-                    buf[i][IND_BT2] = (--cmdLen > 0) ? fEmulatorLayer.debugReadByte(page, ++address) : WRONG;
+                buf[i][IND_ADR] = address;
+                final int  cmdLen  = getCmdLength(page, address);
+                // Коллизия: PC попадает внутрь команды - показываем только байты до PC
+                final boolean collide = (pc > address) && (pc < address + cmdLen);
+                buf[i][IND_CMD] = fEmulatorLayer.debugReadByte(page, address);
+                for (int j = 1; j <= fNumDataBytes; j++) {
+                    if (collide) {
+                        buf[i][IND_CMD + j] = (pc == address + j) ? WRONG : EMPTY;
+                    } else {
+                        buf[i][IND_CMD + j] = (j < cmdLen)
+                                ? fEmulatorLayer.debugReadByte(page, (address + j) & 0xFFFF)
+                                : EMPTY;
+                    }
                 }
-                address++;
+                address = (address + (collide ? pc - address : cmdLen)) & 0xFFFF;
             }
         }
 
@@ -988,7 +934,7 @@ public final class DebuggerCPUi8080 extends JDialog {
 
             final int[][] curBuf;
             // Начальный адрес данных после fStartBuffer
-            int movedStart = fStartBuffer[BUF_SIZE - 1][IND_ADR] + CMD_LEN[fStartBuffer[BUF_SIZE - 1][IND_CMD]];
+            int movedStart = (fStartBuffer[BUF_SIZE - 1][IND_ADR] + getRecordLength(fStartBuffer[BUF_SIZE - 1])) & 0xFFFF;
             // Определяем из какого буфера брать данные
             if (address < movedStart) {
                  curBuf = fStartBuffer;
@@ -1005,7 +951,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                         // Пытаемся выполнить выравнивание кода (в надежде, что повезет :-)
                         //noinspection StatementWithEmptyBody
                         for (int page = fEmulatorLayer.getCodePage(), endAddress = movedStart + FOR_ALIGNMENT, len;
-                             movedStart + (len = CMD_LEN[fEmulatorLayer.debugReadByte(page, endAddress)]) < endAddress;
+                             movedStart + (len = getCmdLength(page, endAddress)) < endAddress;
                              movedStart += len) {
                             //
                         }
@@ -1023,19 +969,59 @@ public final class DebuggerCPUi8080 extends JDialog {
         }
 
         /**
+         * Возвращает длину команды из записи буфера.
+         *
+         * @param buf запись буфера
+         * @return длина команды в байтах
+         */
+        private int getRecordLength(final int[] buf) {
+            if (buf[IND_CMD] < 0) {
+                return 1;
+            }
+            int cmdLen = 1;
+            while ((cmdLen <= fNumDataBytes) && (buf[IND_CMD + cmdLen] >= 0)) {
+                cmdLen++;
+            }
+            return cmdLen;
+        }
+
+        /**
+         * Возвращает результат дизассемблирования для записи буфера.
+         *
+         * @param buf запись буфера
+         * @return результат дизассемблирования
+         */
+        @NotNull
+        private DisAsmResult getDisAsmResult(final int[] buf) {
+            final int[] bytes = new int[getRecordLength(buf)];
+            bytes[0] = buf[IND_CMD];
+            for (int i = 1; i < bytes.length; i++) {
+                bytes[i] = buf[IND_CMD + i];
+            }
+            return getDisAsm().disAsm(buf[IND_ADR], bytes);
+        }
+
+        /**
+         * Возвращает дизассемблер активного процессора.
+         *
+         * @return дизассемблер
+         */
+        @NotNull
+        private DisAsm getDisAsm() {
+            return fIsZ80 ? DISASM_Z80 : DISASM_I8080;
+        }
+
+        /**
          * Возвращает true, если по заданному адресу находится команда передачи управления (JMP/CALL).
          *
          * @param address адрес
          * @return результат
          */
-        boolean isJmpCmd(final int address) {
-            final int[] record = getRecord(address);
-            if ( record.length == REC_SIZE) {
-                for (int codeJmp : JMP_CMD) {
-                    if ( codeJmp == record[IND_CMD]) {
-                        return true;
-                    }
-                }
+        boolean isJmpAndCallCmd(final int address) {
+            final int[] buf = getRecord(  address);
+            if (buf.length == fRecSize) {
+                final DisAsmResult disAsmResult = getDisAsmResult(buf);
+                return disAsmResult.isJmpCmd() || disAsmResult.isCallCmd();
             }
             return false;
         }
@@ -1043,15 +1029,16 @@ public final class DebuggerCPUi8080 extends JDialog {
         /**
          * Возвращает адрес/16-битные данные из команды CPU или
          * отрицательное значение, если в команде нет адреса/16-битных данных.
-         * (здесь учитывается начичие отрицательных значений EMPTY и WRONG)
+         * (здесь учитывается наличие отрицательных значений EMPTY и WRONG)
          *
          * @param address адрес команды
          * @return адрес из команды или отрицательное значение
          */
-        int getAddressFromCmd(final int    address) {
-            final int[] record = getRecord(address);
-            if ( record.length == REC_SIZE) {
-                return record[IND_BT1] | (record[IND_BT2] << 8);
+        int getAddressFromCmd(final int address) {
+            final int[] buf = getRecord(address);
+            if ( buf.length == fRecSize) {
+                // Байты в записи хранятся в порядке памяти, как и в самой команде CPU
+                return DisAsmResult.getCmdAddress(fIsZ80, buf[IND_BT1], buf[IND_BT2]);
             }
             return EMPTY;
         }
@@ -1064,12 +1051,11 @@ public final class DebuggerCPUi8080 extends JDialog {
          * @return адрес следующей команды или отрицательное значение
          */
         int getAddressAfterCallCmd(final int address) {
-            final int[] record  =  getRecord(address);
-            if ( record.length ==   REC_SIZE) {
-                for (int codeCall : CALL_CMD) {
-                    if ( codeCall ==   record[IND_CMD]) {
-                        return CMD_LEN[record[IND_CMD]] + address;
-                    }
+            final int[] buf  =   getRecord(  address);
+            if ( buf.length ==   fRecSize) {
+                final DisAsmResult result = getDisAsmResult(buf);
+                if (result.isCallCmd()) {
+                    return (address + result.getLength()) & 0xFFFF;
                 }
             }
             return EMPTY;
@@ -1111,46 +1097,32 @@ public final class DebuggerCPUi8080 extends JDialog {
                     return "Л.";
                 case DA_COL_ADR:
                     return STR_ADDRESS;
-                case DA_COL_BT0:
-                    return "0";
-                case DA_COL_BT1:
-                    return "1";
-                case DA_COL_BT2:
-                    return "2";
                 case DA_COL_CMD:
                     return "Команда";
                 default:
-                    return super.getColumnName(column);
+                    // Колонки байтов команды: 0, 1, 2, 3
+                    return ((column >= DA_COL_BT0) && (column <= DA_COL_BT3))
+                           ? Integer.toString(column - DA_COL_BT0)
+                           : super.getColumnName(column);
             }
         }
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            final int[] record = getRecord(rowIndex);
-            if (record.length == REC_SIZE) {
+            final int[] buf = getRecord(rowIndex);
+            if (buf.length == fRecSize) {
                 switch (columnIndex) {
                     case DA_COL_TRP:
                         return fEmulatorLayer.isTrap(fEmulatorLayer.getCodePage(), rowIndex);
                     case DA_COL_ADR:
-                        return String.format("%04X:", record[IND_ADR]);
-                    case DA_COL_BT0:
-                    case DA_COL_BT1:
-                    case DA_COL_BT2: {
-                        int     bt  = record[columnIndex - DA_COL_BT0 + 1];
-                        return (bt >= 0) ? String.format("%02X", bt)  : "";
-                    }
+                        return String.format("%04X:", buf[IND_ADR]);
                     case DA_COL_CMD:
-                        // Вызываем рекурсивно
-                        if (record[IND_BT2] == WRONG) {
-                            // Выводим только байты в случае коллизий
-                            return "DB   ".concat((String) getValueAt(rowIndex, DA_COL_BT0))
-                                          .concat((record[IND_BT1] >= 0) ? ",".concat((String) getValueAt(rowIndex, DA_COL_BT1)) : "");
-                        } else {
-                            // Выводим мнемоники
-                            return MNEMONICS[record[IND_CMD]].concat((String) getValueAt(rowIndex, DA_COL_BT2))
-                                                             .concat((String) getValueAt(rowIndex, DA_COL_BT1));
-                        }
+                        return getDisAsmResult(buf).getText();
                     default:
+                        if ((columnIndex >= DA_COL_BT0) && (columnIndex <= DA_COL_BT3)) {
+                            final int bt = buf[IND_CMD + columnIndex - DA_COL_BT0];
+                            return (bt >= 0) ? String.format("%02X", bt) : "";
+                        }
                         return "";
                 }
             } else {
@@ -1170,12 +1142,10 @@ public final class DebuggerCPUi8080 extends JDialog {
                 case DA_COL_ADR:
                 case DA_COL_CMD:
                     return false;
-                case DA_COL_BT0:
-                case DA_COL_BT1:
-                case DA_COL_BT2:
-                    return ((String) getValueAt(rowIndex, columnIndex)).length() > 0;
                 default:
-                    return super.isCellEditable(rowIndex, columnIndex);
+                    return ((columnIndex >= DA_COL_BT0) && (columnIndex <= DA_COL_BT3))
+                           ? ((String) getValueAt(rowIndex, columnIndex)).length() > 0
+                           : super.isCellEditable(rowIndex, columnIndex);
             }
         }
 
@@ -1192,18 +1162,16 @@ public final class DebuggerCPUi8080 extends JDialog {
                     return;
                 //case DA_COL_ADR:
                 //    break;~
-                case DA_COL_BT0:
-                case DA_COL_BT1:
-                case DA_COL_BT2:
-                    try {
-                        fEmulatorLayer.writeByte(page,rowIndex + columnIndex - DA_COL_BT0, Integer.parseInt((String) aValue, 16));
-                    } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
-                    }
-                    return;
                 //case DA_COL_CMD:
                 //    break;~
                 default:
+                    if ((columnIndex >= DA_COL_BT0) && (columnIndex <= DA_COL_BT3)) {
+                        try {
+                            fEmulatorLayer.writeByte(page,rowIndex + columnIndex - DA_COL_BT0, Integer.parseInt((String) aValue, 16));
+                        } catch (NumberFormatException e) {
+                            showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                        }
+                    }
                     break;
             }
             super.setValueAt(aValue, rowIndex, columnIndex);
@@ -1367,17 +1335,22 @@ public final class DebuggerCPUi8080 extends JDialog {
          */
         DisAsmTable(TableModel dm) {
             super(dm);
-            // Настариваем параметры отображения таблицы
+            // Настаиваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
             getTableHeader().setFont(HEADER_FONT);
             setSelectionBackground (Color.yellow);
             getColumnModel().getColumn(DA_COL_TRP).setMaxWidth(22);
             getColumnModel().getColumn(DA_COL_ADR).setMaxWidth(44);
-            getColumnModel().getColumn(DA_COL_BT0).setMaxWidth(22);
-            getColumnModel().getColumn(DA_COL_BT1).setMaxWidth(22);
-            getColumnModel().getColumn(DA_COL_BT2).setMaxWidth(22);
-            getColumnModel().getColumn(DA_COL_CMD).setMaxWidth(94);
-            setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
+            for (int i = DA_COL_BT0; i <= DA_COL_BT3; i++) {
+                getColumnModel().getColumn(i).setMaxWidth(22);
+            }
+            // Колонка "Команда" фиксированной ширины - по самой длинной мнемонике с операндами:
+            // минимальная ширина = максимальной, чтобы JTable не отдавал остаток ширины таблицы
+            // первым колонкам и текст не обрезался
+            final TableColumn cmdColumn = getColumnModel().getColumn(DA_COL_CMD);
+            cmdColumn.setMinWidth(DA_CMD_WIDTH);
+            cmdColumn.setMaxWidth(DA_CMD_WIDTH);
+            setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
             // Подключаем рисовальщиков колонок
             setDefaultRenderer(Boolean.class, new DisAsmBooleanRenderer());
             setDefaultRenderer( String.class, new DisAsmStringRenderer ());
@@ -1483,10 +1456,10 @@ public final class DebuggerCPUi8080 extends JDialog {
          * Конструктор.
          */
         FlagsRegLabel() {
-            super(fEmulatorLayer.getVisViewsFlagsReg());
+            super(fEmulatorLayer.getVisViewsFlagsReg(fFlags));
             // Устанавливаем рисовальщик для метки
             setUI(new FlagsRegLabelUI());
-            // Настариваем параметры отображения метки
+            // Настаиваем параметры отображения метки
             setOpaque(true);
             setFont  (new Font(Font.MONOSPACED, Font.PLAIN, 13));
             setBorder(FOCUS_BORDER);
@@ -1501,7 +1474,7 @@ public final class DebuggerCPUi8080 extends JDialog {
             final InnerEvent event = (InnerEvent) arg;
             if (   fEmulatorLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.AF)
                 || fEmulatorLayer.eventCheck(event, EventType.STEP    , null)) {
-                setText(fEmulatorLayer.getVisViewsFlagsReg());
+                setText(fEmulatorLayer.getVisViewsFlagsReg(fFlags));
                 repaint();
             }
         }
@@ -1522,7 +1495,7 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         @Override
         public int getRowCount() {
-            return CR_NUM_ROWS;
+            return DebugRegPair.getSupportedCount(fIsZ80, fShowIndexRegisters);
         }
 
         @Override
@@ -1557,13 +1530,17 @@ public final class DebuggerCPUi8080 extends JDialog {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
+            final DebugRegPair regPair = DebugRegPair.getByRowIndex(rowIndex, fIsZ80, fShowIndexRegisters);
+            if (regPair == null) {
+                return null;
+            }
             switch (columnIndex) {
                 case CR_COL_REG:
-                    return DebugRegPair.values()[rowIndex].name();
+                    return regPair.getName();
                 case CR_COL_EQU:
                     return "=";
                 case CR_COL_DAT:
-                    return String.format("%04X", fEmulatorLayer.getValRegPair(DebugRegPair.values()[rowIndex]));
+                    return String.format("%04X", fEmulatorLayer.getValRegPair(regPair));
                 default:
                     return null;
             }
@@ -1576,7 +1553,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                 case CR_COL_EQU:
                     return false;
                 case CR_COL_DAT:
-                    return (rowIndex >= 0) && (rowIndex < CR_NUM_ROWS);
+                    return DebugRegPair.getByRowIndex(rowIndex, fIsZ80, fShowIndexRegisters) != null;
                 default:
                     return super.isCellEditable(rowIndex, columnIndex);
             }
@@ -1585,8 +1562,11 @@ public final class DebuggerCPUi8080 extends JDialog {
         @Override
         public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
             if (columnIndex == CR_COL_DAT) {
+                final DebugRegPair regPair = DebugRegPair.getByRowIndex(rowIndex, fIsZ80, fShowIndexRegisters);
+                if (regPair == null) {
+                    return;
+                }
                 try {
-                    final DebugRegPair regPair = DebugRegPair.values()[rowIndex];
                     // Пишем данные в регистровые пары
                     fEmulatorLayer.setValRegPair(regPair, Integer.parseInt((String) aValue, 16));
                     if (DebugRegPair.PC.equals(regPair)) {
@@ -1595,7 +1575,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                           fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
                     }
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                 }
                 return;
             }
@@ -1667,7 +1647,8 @@ public final class DebuggerCPUi8080 extends JDialog {
                     return this;
                 }
                 fPaintColumn   =  table.convertColumnIndexToModel(column);
-                fCompareResult = fEmulatorLayer.getChangesRegPair(DebugRegPair.values()[table.convertRowIndexToModel(row)]);
+                final DebugRegPair regPair = DebugRegPair.getByRowIndex(table.convertRowIndexToModel(row), fIsZ80, fShowIndexRegisters);
+                fCompareResult = (regPair != null) ? fEmulatorLayer.getChangesRegPair(regPair) : -1;
 
                 if (fCompareResult >= 0) {
                     setBackground(table.getSelectionBackground());
@@ -1709,6 +1690,9 @@ public final class DebuggerCPUi8080 extends JDialog {
             getColumnModel().getColumn(CR_COL_REG).setMaxWidth(28);
             getColumnModel().getColumn(CR_COL_EQU).setMaxWidth(19);
             getColumnModel().getColumn(CR_COL_DAT).setMaxWidth(40);
+            // Высота таблицы задаётся по числу строк: таблица выводится без скроллера
+            setPreferredScrollableViewportSize(new Dimension(getPreferredSize().width,
+                                                             getRowHeight() * CR_NUM_ROWS + getRowMargin()));
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new RegCpuStringRenderer());
@@ -1795,7 +1779,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                     fEmulatorLayer.writeByte(page, address, value & 0xFF);
                     fEmulatorLayer.writeByte(page, address + 1, value >> 8);
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                 } finally {
                     if (fEmulatorLayer.isEventsDisabled()) {
                         fEmulatorLayer.enableEvents();
@@ -1860,7 +1844,7 @@ public final class DebuggerCPUi8080 extends JDialog {
          */
         StackTable(TableModel dm) {
             super(dm);
-            // Настариваем параметры отображения таблицы
+            // Настаиваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
             getTableHeader().setFont(HEADER_FONT);
             setSelectionBackground (Color.yellow);
@@ -2149,7 +2133,7 @@ public final class DebuggerCPUi8080 extends JDialog {
 
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
-     * Очень спецефичная (под JTable) симуляция выделения строк, по аналогии с текстовым редактором
+     * Очень специфичная (под JTable) симуляция выделения строк, по аналогии с текстовым редактором
      * (не все удалось реализовать, но результат скорее хороший).
      */
     private static class SelectionModelsContainer {
@@ -2648,7 +2632,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                     try {
                         fEmulatorLayer.writeByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                        showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 case MD_COL_STR: {
@@ -2996,14 +2980,14 @@ public final class DebuggerCPUi8080 extends JDialog {
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         final InputAddressPanel inputAddressPanel = new InputAddressPanel();
-        int result =  showConfirmDialog(DebuggerCPUi8080.this, inputAddressPanel, "Select block ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
+        int result =  showConfirmDialog(DebuggerCPU.this, inputAddressPanel, "Select block ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
         if (result == OK_OPTION) {
             try {
                 fMemDatTable.selectAddressRange(
                         Integer.parseInt((String) inputAddressPanel.fStartAddress.getValue(), 16),
                         Integer.parseInt((String) inputAddressPanel.  fEndAddress.getValue(), 16));
             } catch (NumberFormatException e) {
-                showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
             }
         }
     }
@@ -3075,14 +3059,14 @@ public final class DebuggerCPUi8080 extends JDialog {
                 try {
                     result = Integer.parseInt((String) (type ? fDataAddress.getValue() : fCodeAddress.getValue()), 16);
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerCPUi8080.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
                 }
                 return result;
             }
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         final InputAddressPanel inputAddressPanel = new InputAddressPanel();
-        int result =  showConfirmDialog(DebuggerCPUi8080.this, inputAddressPanel, "Go to ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
+        int result =  showConfirmDialog(DebuggerCPU.this, inputAddressPanel, "Go to ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
         if (result == OK_OPTION) {
             int codeAddress = inputAddressPanel.getAddress(false);
             int dataAddress = inputAddressPanel.getAddress(true );
@@ -3244,7 +3228,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                     public void focusLost(FocusEvent e) {
                         String strBytes = fBytes.getText().trim();
                         if (!( strBytes.equals("") || strBytes.matches(REGEXP_STRING_BYTES))) {
-                            showMessageDialog(DebuggerCPUi8080.this,
+                            showMessageDialog(DebuggerCPU.this,
                                     String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes),
                                     Constants.STR_ERROR, ERROR_MESSAGE);
                         }
@@ -3303,7 +3287,7 @@ public final class DebuggerCPUi8080 extends JDialog {
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         final InputDataPanel inputDataPanel = new InputDataPanel();
-        int result = showConfirmDialog(DebuggerCPUi8080.this, inputDataPanel,
+        int result = showConfirmDialog(DebuggerCPU.this, inputDataPanel,
                 String.format("Поиск в странице: [%s]", fEmulatorLayer.getPageName(fEmulatorLayer.getDataPage())),
                 OK_CANCEL_OPTION, QUESTION_MESSAGE);
 
@@ -3316,7 +3300,7 @@ public final class DebuggerCPUi8080 extends JDialog {
                    if (address >=  0) {
                 fMemDatTable.gotoAddress(address);
             } else if (address == -2) {
-                showMessageDialog(DebuggerCPUi8080.this,
+                showMessageDialog(DebuggerCPU.this,
                         String.format("Заданные для поиска данные:%n[%s]%nНе найдены!", PrevStaticData.getPrevStringBytes()),
                         "Информация", INFORMATION_MESSAGE);
             }

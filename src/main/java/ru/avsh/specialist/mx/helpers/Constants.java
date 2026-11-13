@@ -30,6 +30,12 @@ public final class Constants {
     public static final String INI_SECTION_CONFIG  = "Config" ;
     // Опция в ini-файле для ROM-файла эмулятора "Специалист MX"
     public static final String INI_OPTION_ROM_FILE = "RomFile";
+    // Опция в ini-файле для выбора процессора эмулятора "Специалист MX"
+    public static final String INI_OPTION_CPU      = "Cpu";
+
+    // Значения опции выбора процессора
+    public static final String CPU_I8080 = "i8080";
+    public static final String CPU_Z80   = "Z80"  ;
 
     // Путь к каталогу с MON-файлами эмулятора "Специалист MX"
     public static final String PATH_MON_FILES = APP_DIR.concat(File.separator).concat("mon");
