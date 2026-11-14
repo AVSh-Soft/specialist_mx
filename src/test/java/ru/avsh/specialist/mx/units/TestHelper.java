@@ -94,6 +94,12 @@ public final class TestHelper {
                 return true;
             }
 
+            case 1: {
+                final int af = cpu.getCommonRegPair(6);
+                cpu.setCommonRegPair(6, af & 0xFF | 0x0D00); // Enter
+                break;
+            }
+
             case 2: {
                 char value = (char) (de & 0xFF);
                 stringBuffer.append(value);
