@@ -89,12 +89,12 @@ public class SpMxApplication extends Application {
                 new SeparatorMenuItem(), resetItem,
                 new SeparatorMenuItem(),  exitItem);
 
-        final      MenuItem   infoItem = new      MenuItem("Состояние CPU/RAM");
-        final      MenuItem  debugItem = new      MenuItem("Запуск отладчика");
-        final CheckMenuItem size11Item = new CheckMenuItem("Размер 1:1");
-        final CheckMenuItem size21Item = new CheckMenuItem("Размер 2:1");
-        final RadioMenuItem modeMXItem = new RadioMenuItem("Клавиатура \"".concat(SPMX_NAME).concat("\""));
-        final RadioMenuItem modeSTItem = new RadioMenuItem("Клавиатура \"Специалист\"");
+        final      MenuItem   infoItem   = new      MenuItem("Состояние CPU/RAM");
+        final      MenuItem  debugItem   = new      MenuItem("Запуск отладчика");
+        final CheckMenuItem size11Item   = new CheckMenuItem("Размер 1:1");
+        final CheckMenuItem size21Item   = new CheckMenuItem("Размер 2:1");
+        final RadioMenuItem modeMXItem   = new RadioMenuItem("Клавиатура \"".concat(SPMX_NAME).concat("\""));
+        final RadioMenuItem modeSTItem   = new RadioMenuItem("Клавиатура \"Специалист\"");
         final RadioMenuItem cpuI8080Item = new RadioMenuItem("i8080");
         final RadioMenuItem cpuZ80Item   = new RadioMenuItem("Z80"  );
         final      Menu     cpuMenu = new Menu("Процессор", null, cpuI8080Item, cpuZ80Item);
@@ -361,7 +361,7 @@ public class SpMxApplication extends Application {
         aboutItem.setOnAction(event -> {
             String name      = "Эмулятор \"".concat(SPMX_NAME).concat("\"");
             String version   = "x.x.x.x";
-            String copyright = "Copyright © 2018 \"AVSh Software\" (Александр Шевцов)";
+            String copyright = "Copyright © 2026 \"AVSh Software\" (Александр Шевцов)";
 
             final Optional<InputStream> optIS = getResourceAsStream(SPMX_PROP_FILE);
             if (optIS.isPresent()) {
@@ -379,14 +379,14 @@ public class SpMxApplication extends Application {
                     String.format("%s v%s%n%n%s", name, version, copyright), INFORMATION);
         });
 
-        // -= Обработка событий клавиатуры "нажатие" (перехватваем события до всех обработчиков) =-
+        // -= Обработка событий клавиатуры "нажатие" (перехватываем события до всех обработчиков) =-
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             if (!event.isConsumed() && fSpMX.keyCodeReceiver(true , event.getCode())) {
                  event.consume   ();
             }
         });
 
-        // -= Обработка событий клавиатуры "отпускание" (перехватваем события до всех обработчиков) =-
+        // -= Обработка событий клавиатуры "отпускание" (перехватываем события до всех обработчиков) =-
         scene.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
             if (!event.isConsumed() && fSpMX.keyCodeReceiver(false, event.getCode())) {
                  event.consume   ();
@@ -450,7 +450,8 @@ public class SpMxApplication extends Application {
      * @param title заголовок
      */
     private void setTitle(@NotNull final Stage stage, @NotNull final String title) {
-        stage.setTitle(String.format("[%s] - %s %s", fSpMX.getCurMonName(), fSpMX.getProductName(), title));
+        stage.setTitle(String.format(
+                "[%s][%s] - %s %s", fSpMX.getCurMonName(), fSpMX.getCPU().getName(), fSpMX.getProductName(), title));
     }
 
     /**
@@ -509,10 +510,12 @@ public class SpMxApplication extends Application {
                            final @NotNull RadioMenuItem i8080Item,
                            final @NotNull RadioMenuItem z80Item) {
 
-        if (!fSpMX.switchCpu(isZ80)) {
+        if (fSpMX.switchCpu(isZ80)) {
+            setTitle(fSpMX.getPrimaryStage(), "");
+        } else {
             // Переключение процессора при открытом отладчике запрещено
             i8080Item.setSelected(!fSpMX.isZ80());
-              z80Item.setSelected( fSpMX.isZ80());
+            z80Item.setSelected  ( fSpMX.isZ80());
             showMessageDialog(ICON, "Информация", null,
                     "Переключение процессора недоступно при открытом отладчике.",
                     WARNING);

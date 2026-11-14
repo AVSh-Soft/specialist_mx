@@ -50,28 +50,6 @@ public final class DisAsmZ80 implements DisAsm {
     // Длины команд основного набора Z80
     private static final int[] MAIN_LENGTH = buildMainLength();
 
-    @Override
-    public int getMaxCmdLength() {
-        return MAX_CMD_LENGTH;
-    }
-
-    @Override
-    @NotNull
-    public String getMaxCmdText() {
-        return "LD   (IX-80),(IX-80)";
-    }
-
-    @Override
-    @NotNull
-    public DisAsmResult disAsm(final int address, final int[] bytes) {
-        final int code = bytes[0] & 0xFF;
-        final int bt1  = byteAt(bytes, 1);
-        final int bt2  = byteAt(bytes, 2);
-        final int bt3  = byteAt(bytes, 3);
-
-        return disAsmCmd(code, bt1, bt2, bt3);
-    }
-
     /**
      * Возвращает длину команды Z80 по первым байтам.
      *
@@ -83,8 +61,8 @@ public final class DisAsmZ80 implements DisAsm {
     }
 
     /**
-     * Возвращает длину команды по коду операции и следующему байту.
-     * (Единственное место расчёта длины: используется и таблицей отладчика, и дизассемблированием)
+     * Возвращает длину команды по коду операции и следующему байту (единственное
+     * место расчёта длины: используется и таблицей отладчика, и дизассемблированием).
      *
      * @param code код операции (или префикс)
      * @param next следующий байт команды
@@ -136,12 +114,13 @@ public final class DisAsmZ80 implements DisAsm {
                                           final int bt1,
                                           final int bt2,
                                           final int bt3) {
+
         final int len = lengthOf(code, bt1);
         switch (code) {
             case PREFIX_CB:
                 return disAsmCB(len, bt1);
             case PREFIX_DD:
-                return disAsmIndex(len, bt1, bt2, bt3, true);
+                return disAsmIndex(len, bt1, bt2, bt3, true );
             case PREFIX_FD:
                 return disAsmIndex(len, bt1, bt2, bt3, false);
             case PREFIX_ED:
@@ -238,8 +217,11 @@ public final class DisAsmZ80 implements DisAsm {
      * @return текст команды
      */
     @NotNull
-    private static String disAsmMainHigh(final int code, final String cond,
-                                         final String data, final String addr) {
+    private static String disAsmMainHigh(final int code,
+                                         final String cond,
+                                         final String data,
+                                         final String addr) {
+
         if ((code >= 0x40) && (code < 0x80) && (code != 0x76)) {
             return "LD   " + REGS[(code >> 3) & 7] + "," + REGS[code & 7];
         }
@@ -315,8 +297,12 @@ public final class DisAsmZ80 implements DisAsm {
      * @return результат дизассемблирования
      */
     @NotNull
-    private static DisAsmResult disAsmIndex(final int len, final int bt1, final int bt2,
-                                            final int bt3, final boolean isIX) {
+    private static DisAsmResult disAsmIndex(final int len,
+                                            final int bt1,
+                                            final int bt2,
+                                            final int bt3,
+                                            final boolean isIX) {
+
         final String name = isIX ? "DD" : "FD";
         final String pair = isIX ? "IX" : "IY";
         if (bt1 < 0) {
@@ -415,7 +401,7 @@ public final class DisAsmZ80 implements DisAsm {
         if (bt3 < 0) {
             return new DisAsmResult(len, "CB", false, false);
         }
-        final int block = bt3 >> 6;
+        final int block =  bt3 >> 6;
         final int bit   = (bt3 >> 3) & 7;
         final String cell = "(" + pair + hexDisp(bt2) + ")";
         // Для DD CB / FD CB память в коде операции (поле r=6) - это всегда (IX+d)/(IY+d)
@@ -425,9 +411,9 @@ public final class DisAsmZ80 implements DisAsm {
             // BIT b,(IX+d) - результат проверки бита не сохраняется в регистре
             text = "BIT  " + bit + "," + cell;
         } else if (block == 0) {
-            text = CB_OPS[bit] + cell + "," + regs[bt3 & 7];
+            text =     CB_OPS[bit      ] + cell + "," + regs[bt3 & 7];
         } else {
-            text = CB_BIT_OPS[block - 1] + bit + "," + regs[bt3 & 7];
+            text = CB_BIT_OPS[block - 1] + bit  + "," + regs[bt3 & 7];
         }
         return new DisAsmResult(len, text, false, false);
     }
@@ -628,6 +614,28 @@ public final class DisAsmZ80 implements DisAsm {
         // IN A,(n) и OUT (n),A
         length[0xD3] = length[0xDB] = 2;
         return length;
+    }
+
+    @Override
+    public int getMaxCmdLength() {
+        return MAX_CMD_LENGTH;
+    }
+
+    @Override
+    @NotNull
+    public String getMaxCmdText() {
+        return "LD   (IX-80),(IX-80)";
+    }
+
+    @Override
+    @NotNull
+    public DisAsmResult disAsm(final int address, final int[] bytes) {
+        final int code = bytes[0] & 0xFF;
+        final int bt1  = byteAt(bytes, 1);
+        final int bt2  = byteAt(bytes, 2);
+        final int bt3  = byteAt(bytes, 3);
+
+        return disAsmCmd(code, bt1, bt2, bt3);
     }
 }
 

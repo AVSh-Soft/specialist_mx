@@ -48,7 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-public final class CPUZ80 implements CpuDebugCore {
+public final class CpuZ80 implements CpuDebugCore {
     // Индексы регистров CPU в массиве fRegs (здесь без enum - для скорости)
     private static final int B  = 0;
     private static final int C  = 1;
@@ -98,29 +98,29 @@ public final class CPUZ80 implements CpuDebugCore {
         }
     }
 
-    private final int[]         fRegs;
+    private final int[]         fRegs      ;
     // Альтернативный регистровый файл (A', F', B', C', D', E', H', L') - индексы те же, что в fRegs
-    private final int[]         fRegsAlt;
+    private final int[]         fRegsAlt   ;
     private final MemoryManager fMemManager;
-    private final MemoryManager fIoManager;
-    private final SpecialistMX  fSpMX;
-    private final AtomicInteger fCycles;
-    private final AtomicInteger fHoldPhase;
-    private final AtomicBoolean fActive;
+    private final MemoryManager fIoManager ;
+    private final SpecialistMX  fSpMX      ;
+    private final AtomicInteger fCycles    ;
+    private final AtomicInteger fHoldPhase ;
+    private final AtomicBoolean fActive    ;
     private final AtomicBoolean fIsDebugRun;
 
-    private final SortedSet<Trap> fTraps;
+    private final SortedSet<Trap> fTraps      ;
     private final Trap            fCompareTrap;
 
-    private int     fOpCode;
-    private int     fIX      ; // Регистр IX
-    private int     fIY      ; // Регистр IY
+    private int     fOpCode   ;
+    private int     fIX       ; // Регистр IX
+    private int     fIY       ; // Регистр IY
     private int     fIndexMode; // INDEX_NONE / INDEX_IX / INDEX_IY
-    private boolean fHalted;
+    private boolean fHalted   ;
     private boolean fInterruptEnabled;
 
-    private volatile boolean fPause;
-    private volatile boolean fTrapsFlag;
+    private volatile boolean fPause       ;
+    private volatile boolean fTrapsFlag   ;
     private volatile Trap    fTrapStepOver;
 
     /**
@@ -130,7 +130,7 @@ public final class CPUZ80 implements CpuDebugCore {
      * @param memManager ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (запоминающие устройства)
      * @param ioManager  ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода) или null
      */
-    public CPUZ80(@Nullable final SpecialistMX spMX, final MemoryManager memManager, final MemoryManager ioManager) {
+    public CpuZ80(@Nullable final SpecialistMX spMX, final MemoryManager memManager, final MemoryManager ioManager) {
               fSpMX = spMX;
         fMemManager = memManager;
          fIoManager =  ioManager;
@@ -151,7 +151,7 @@ public final class CPUZ80 implements CpuDebugCore {
     public String toString() {
         return String.format("Значения регистров: SZ5H3PNC=%s, A=%02X, B=%02X, C=%02X, D=%02X, E=%02X, H=%02X, L=%02X, IX=%04X, SP=%04X, PC=%04X%n" +
                              "Память с адреса PC: %02X, %02X, %02X, %02X, %02X, ...",
-                flagsToString(),
+                Integer.parseInt(Integer.toBinaryString(fRegs[F])),
                 fRegs[A], fRegs[B], fRegs[C], fRegs[D], fRegs[E], fRegs[H], fRegs[L], getIndex(), fRegs[SP], fRegs[PC],
                 fMemManager.readByte((fRegs[PC]    ) & 0xFFFF),
                 fMemManager.readByte((fRegs[PC] + 1) & 0xFFFF),
@@ -159,22 +159,6 @@ public final class CPUZ80 implements CpuDebugCore {
                 fMemManager.readByte((fRegs[PC] + 3) & 0xFFFF),
                 fMemManager.readByte((fRegs[PC] + 4) & 0xFFFF));
     }
-
-    private String flagsToString() {
-        final StringBuilder sb = new StringBuilder(8);
-        final int f = fRegs[F];
-        sb.append((f & FLAG_S)  != 0 ? 'S' : '.');
-        sb.append((f & FLAG_Z)  != 0 ? 'Z' : '.');
-        sb.append((f & FLAG_F5) != 0 ? '5' : '.');
-        sb.append((f & FLAG_H)  != 0 ? 'H' : '.');
-        sb.append((f & FLAG_F3) != 0 ? '3' : '.');
-        sb.append((f & FLAG_PV) != 0 ? 'P' : '.');
-        sb.append((f & FLAG_N)  != 0 ? 'N' : '.');
-        sb.append((f & FLAG_C)  != 0 ? 'C' : '.');
-        return sb.toString();
-    }
-
-    //=-= Включение/выключение CPU =-
 
     /**
      * Включает или выключает процессор.
@@ -211,9 +195,9 @@ public final class CPUZ80 implements CpuDebugCore {
     @Override
     public int getCommonRegPair(final int commonPair) {
         switch (commonPair) {
-            case P_BC:  return getRegPair(P_BC);
-            case P_DE:  return getRegPair(P_DE);
-            case P_HL:  return getRegPair(P_HL);
+            case P_BC : return getRegPair(P_BC );
+            case P_DE : return getRegPair(P_DE );
+            case P_HL : return getRegPair(P_HL );
             case P_PSW: return getRegPair(P_PSW);
             case SP:    return getSP();
             case PC:    return getPC();
@@ -500,18 +484,15 @@ public final class CPUZ80 implements CpuDebugCore {
     }
 
     private int getRegPair(final int codePair) {
-        if (codePair == P_PSW) {
-            return (fRegs[A] << 8) | fRegs[F];
-        }
-        return (fRegs[codePair] << 8) | fRegs[codePair + 1];
+        return (codePair == P_PSW) ? ((fRegs[A] << 8) | fRegs[F]) : ((fRegs[codePair] << 8) | fRegs[codePair + 1]);
     }
 
     private void setRegPair(final int codePair, final int value) {
         if (codePair == P_PSW) {
-            fRegs[A] = (value >> 8) & 0xFF;
             fRegs[F] =  value       & 0xFF;
+            fRegs[A] = (value >> 8) & 0xFF;
         } else {
-            fRegs[codePair]     = (value >> 8) & 0xFF;
+            fRegs[codePair    ] = (value >> 8) & 0xFF;
             fRegs[codePair + 1] =  value       & 0xFF;
         }
     }
@@ -809,7 +790,7 @@ public final class CPUZ80 implements CpuDebugCore {
     @Override
     public void reset(final boolean clear) {
         if (clear) {
-            Arrays.fill(fRegs, 0);
+            Arrays.fill(fRegs   , 0);
             Arrays.fill(fRegsAlt, 0);
             fIX        = 0;
             fIY        = 0;
@@ -824,6 +805,14 @@ public final class CPUZ80 implements CpuDebugCore {
     @Override
     public void pause(final boolean mode) {
         fPause = mode;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getName() {
+        return "Z80";
     }
 
     @Override

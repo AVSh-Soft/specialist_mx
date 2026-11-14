@@ -82,29 +82,6 @@ public final class DisAsmI8080 implements DisAsm {
         return CMD_LEN[opCode & 0xFF];
     }
 
-    @Override
-    public int getMaxCmdLength() {
-        return MAX_CMD_LENGTH;
-    }
-
-    @Override
-    @NotNull
-    public String getMaxCmdText() {
-        return "LXI  SP,FFFF";
-    }
-
-    @Override
-    @NotNull
-    public DisAsmResult disAsm(final int address, final int[] bytes) {
-        final int code   = bytes[0] & 0xFF;
-        final int len    = CMD_LEN[code];
-        final int bt1    = byteAt(bytes, 1);
-        final int bt2    = byteAt(bytes, 2);
-        final String txt = text(code, bt1, bt2);
-
-        return new DisAsmResult(len, txt, isJmpOpCode(code), isCallOpCode(code));
-    }
-
     /**
      * Формирует текст команды i8080.
      *
@@ -252,5 +229,28 @@ public final class DisAsmI8080 implements DisAsm {
             default:
                 return false;
         }
+    }
+
+    @Override
+    public int getMaxCmdLength() {
+        return MAX_CMD_LENGTH;
+    }
+
+    @Override
+    @NotNull
+    public String getMaxCmdText() {
+        return "LXI  SP,FFFF";
+    }
+
+    @Override
+    @NotNull
+    public DisAsmResult disAsm(final int address, final int[] bytes) {
+        final int code   = bytes[0] & 0xFF;
+        final int len    = CMD_LEN[code];
+        final int bt1    = byteAt(bytes, 1);
+        final int bt2    = byteAt(bytes, 2);
+        final String txt =   text(code, bt1, bt2);
+
+        return new DisAsmResult(len, txt, isJmpOpCode(code), isCallOpCode(code));
     }
 }

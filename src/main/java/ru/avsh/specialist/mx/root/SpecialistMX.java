@@ -10,9 +10,9 @@ import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPU;
 import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.FileFinder;
-import ru.avsh.specialist.mx.units.CPUZ80;
-import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
+import ru.avsh.specialist.mx.units.CpuI8080;
+import ru.avsh.specialist.mx.units.CpuZ80;
 import ru.avsh.specialist.mx.units.Speaker;
 import ru.avsh.specialist.mx.units.memory.MemoryManager;
 import ru.avsh.specialist.mx.units.memory.units.*;
@@ -46,22 +46,22 @@ public final class SpecialistMX {
     /** Индексы регистровых пар, общих для i8080 и Z80: BC, DE, HL, AF, SP, PC. */
     private static final int[] COMMON_REG_PAIRS = {0, 2, 4, 6, 8, 9};
 
-    private final Wini                 fIni;
+    private final Wini   fIni;
+    private final String fProductName;
+
     private final Speaker              fSpc;
     private final Screen               fScr;
-    private final CPUi8080             fCpuI8080;
-    private final CPUZ80               fCpuZ80;
+    private final CpuI8080 fCpuI8080;
+    private final CpuZ80 fCpuZ80  ;
     private final MainMemory           fRAM;
     private final KeyboardPort         fKey;
     private final ClockSpeedGenerator  fGen;
     private final FloppyDiskController fFDC;
-    private final String               fProductName;
     private final MemoryManager        fMemoryManager;
 
-    private final AtomicReference<CpuCore> fCPU;
-
-    private final AtomicBoolean          fIsDebugRun;
-    private final AtomicReference<Stage> fPrimaryStageRef;
+    private final AtomicBoolean            fIsDebugRun     ;
+    private final AtomicReference<Stage>   fPrimaryStageRef;
+    private final AtomicReference<CpuCore> fCPU            ;
 
     private File   fCurRomFile;
     private String fCurMonName;
@@ -80,8 +80,8 @@ public final class SpecialistMX {
         // Создаем диспетчер запоминающих устройств
         fMemoryManager = new MemoryManager();
         // Создаем процессоры
-        fCpuI8080 = new CPUi8080(this, fMemoryManager, null);
-        fCpuZ80   = new CPUZ80  (this, fMemoryManager, null);
+        fCpuI8080 = new CpuI8080(this, fMemoryManager, null);
+        fCpuZ80   = new CpuZ80(this, fMemoryManager, null);
         // Выбираем активный процессор (по умолчанию i8080)
         final CpuCore cpu = isZ80Selected() ? fCpuZ80 : fCpuI8080;
         fCPU = new AtomicReference<>(cpu);

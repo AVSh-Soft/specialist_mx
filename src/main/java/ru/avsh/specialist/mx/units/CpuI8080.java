@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-public final class CPUi8080 implements CpuDebugCore {
+public final class CpuI8080 implements CpuDebugCore {
     // Количество тактов для каждой команды CPU
     private static final int[] CYCLES = {
                  4, 10,      7,  5,      5,  5,  7,  4,      4, 10,      7,  5,      5,  5,  7,  4,
@@ -68,18 +68,18 @@ public final class CPUi8080 implements CpuDebugCore {
     private static final int HOLD_ACKNOWLEDGE = 2;
 
     private final int[] fRegs;
-    private final Trap  fCompareTrap;
-    private final SpecialistMX  fSpMX;
-    private final AtomicInteger fCycles;
-    private final AtomicInteger fHoldPhase;
+    private final Trap  fCompareTrap       ;
+    private final SpecialistMX  fSpMX      ;
+    private final AtomicInteger fCycles    ;
+    private final AtomicInteger fHoldPhase ;
     private final AtomicBoolean fIsDebugRun;
-    private final AtomicBoolean fActive;
+    private final AtomicBoolean fActive    ;
 
-    private final SortedSet<Trap> fTraps;
+    private final SortedSet<Trap> fTraps   ;
     private final MemoryManager fMemManager;
     private final MemoryManager  fIoManager;
 
-    private int     fOpCode;
+    private int     fOpCode    ;
     private boolean fTestResult;
 
     private volatile boolean fTrapsFlag;
@@ -92,7 +92,7 @@ public final class CPUi8080 implements CpuDebugCore {
      * @param memManager  ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (запоминающие устройства)
      * @param ioManager ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода)
      */
-    public CPUi8080(@Nullable SpecialistMX spMX, @NotNull MemoryManager memManager, MemoryManager ioManager) {
+    public CpuI8080(@Nullable SpecialistMX spMX, @NotNull MemoryManager memManager, MemoryManager ioManager) {
               fSpMX = spMX;
         fMemManager = memManager;
          fIoManager =  ioManager;
@@ -152,7 +152,7 @@ public final class CPUi8080 implements CpuDebugCore {
      * @return значение
      */
     private int getRegPair(int codePair) {
-        return codePair == P_PSW ? fRegs[codePair] | (fRegs[codePair + 1] << 8) : fRegs[codePair + 1] | (fRegs[codePair] << 8);
+        return (codePair == P_PSW) ? (fRegs[codePair] | (fRegs[codePair + 1] << 8)) : (fRegs[codePair + 1] | (fRegs[codePair] << 8));
     }
 
     /**
@@ -163,11 +163,11 @@ public final class CPUi8080 implements CpuDebugCore {
      */
     private void setRegPair(int codePair, int value) {
         if (codePair == P_PSW) {
-            fRegs[codePair]     =  value & 0xFF;
+            fRegs[codePair    ] =  value       & 0b1101_0111 | 0b0000_0010; // SZ0A0P1C;
             fRegs[codePair + 1] = (value >> 8) & 0xFF;
         } else {
-            fRegs[codePair]     = (value >> 8) & 0xFF;
-            fRegs[codePair + 1] =  value & 0xFF;
+            fRegs[codePair    ] = (value >> 8) & 0xFF;
+            fRegs[codePair + 1] =  value       & 0xFF;
         }
     }
 
@@ -1036,6 +1036,14 @@ public final class CPUi8080 implements CpuDebugCore {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getName() {
+        return "i8080";
+    }
+
+    /**
      * Переводит CPU в режим ожидания (выполняется захват "HOLD").
      *
      * @param mode true/false = установить/снять режим "HOLD"
@@ -1372,12 +1380,12 @@ public final class CPUi8080 implements CpuDebugCore {
     @Override
     public int getCommonRegPair(final int commonPair) {
         switch (commonPair) {
-            case P_BC:  return (fRegs[B] << 8) | fRegs[C];
-            case P_DE:  return (fRegs[D] << 8) | fRegs[E];
-            case P_HL:  return (fRegs[H] << 8) | fRegs[L];
-            case P_PSW: return (fRegs[A] << 8) | fRegs[F];
-            case SP:    return fRegs[SP];
-            case PC:    return fRegs[PC];
+            case P_BC : return getRegPair(P_BC );
+            case P_DE : return getRegPair(P_DE );
+            case P_HL : return getRegPair(P_HL );
+            case P_PSW: return getRegPair(P_PSW);
+            case SP:    return getSP();
+            case PC:    return getPC();
             default:    return 0;
         }
     }
@@ -1392,30 +1400,13 @@ public final class CPUi8080 implements CpuDebugCore {
     @Override
     public void setCommonRegPair(final int commonPair, final int value) {
         switch (commonPair) {
-            case P_BC:
-                fRegs[B] = (value >> 8) & 0xFF;
-                fRegs[C] =  value       & 0xFF;
-                break;
-            case P_DE:
-                fRegs[D] = (value >> 8) & 0xFF;
-                fRegs[E] =  value       & 0xFF;
-                break;
-            case P_HL:
-                fRegs[H] = (value >> 8) & 0xFF;
-                fRegs[L] =  value       & 0xFF;
-                break;
-            case P_PSW:
-                fRegs[A] = (value >> 8) & 0xFF;
-                fRegs[F] =  value       & 0xFF;
-                break;
-            case SP:
-                fRegs[SP] = value & 0xFFFF;
-                break;
-            case PC:
-                fRegs[PC] = value & 0xFFFF;
-                break;
-            default:
-                break;
+            case P_BC:  setRegPair(P_BC,  value); break;
+            case P_DE:  setRegPair(P_DE,  value); break;
+            case P_HL:  setRegPair(P_HL,  value); break;
+            case P_PSW: setRegPair(P_PSW, value); break;
+            case SP:    setSP(value);             break;
+            case PC:    setPC(value);             break;
+            default:                              break;
         }
     }
 
@@ -1443,7 +1434,7 @@ public final class CPUi8080 implements CpuDebugCore {
     public boolean equals(Object o) {
         if (this == o) return true;
         if ((o == null) || (getClass() != o.getClass())) return false;
-        CPUi8080 i8080 = (CPUi8080) o;
+        CpuI8080 i8080 = (CpuI8080) o;
         return Objects.equals(fSpMX, i8080.fSpMX) &&
                Objects.equals(fMemManager, i8080.fMemManager) &&
                Objects.equals(fIoManager, i8080.fIoManager);

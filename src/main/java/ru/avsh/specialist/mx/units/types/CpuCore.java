@@ -9,6 +9,12 @@ package ru.avsh.specialist.mx.units.types;
  */
 public interface CpuCore extends ClockedUnit {
     /**
+     * Возвращает название CPU.
+     * @return название CPU
+     */
+    String getName();
+
+    /**
      * Переводит процессор в режим ожидания (выполняется захват "HOLD").
      *
      * @param mode true/false = установить/снять режим "HOLD"
