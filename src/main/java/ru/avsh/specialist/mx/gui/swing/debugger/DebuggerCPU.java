@@ -45,6 +45,11 @@ import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharA
 public final class DebuggerCPU extends JDialog {
     private static final long serialVersionUID = -4782408965788448666L;
 
+    // Значение пустого элемента буфера   (обязательно отрицательное значение)
+    public static final int EMPTY_VALUE = -1;
+    // Значение неверного элемента буфера (обязательно отрицательное значение)
+    public static final int WRONG_VALUE = -2;
+
     private static final String TITLE_I8080 = "Отладчик для процессора i8080 (К580ВМ80А)";
     private static final String TITLE_Z80   = "Отладчик для процессора Z80";
 
@@ -66,8 +71,8 @@ public final class DebuggerCPU extends JDialog {
 
     // Имена флагов процессоров от старшего бита регистра F к младшему биту,
     // должно быть ровно 8 символов, т.к. каждый отвечает за отдельный флаг
-    public static final String FLAGS_I8080 = "SZ?A?P?C"; // SZ0A0P1C - тут '?' неизменяемые биты в регистре F у i8080
-    public static final String FLAGS_Z80   = "SZ5H3PNC"; // SZ5H3PNC
+    private static final String FLAGS_I8080 = "SZ?A?P?C"; // SZ0A0P1C - тут '?' неизменяемые биты в регистре F у i8080
+    private static final String FLAGS_Z80   = "SZ5H3PNC"; // SZ5H3PNC
 
     // Дизассемблеры процессоров
     private static final DisAsm DISASM_I8080 = new DisAsmI8080();
@@ -86,7 +91,7 @@ public final class DebuggerCPU extends JDialog {
                 fontMetrics.stringWidth(DISASM_Z80.getMaxCmdText()));
     }
     // Ширина и высота кнопки флага
-    private static final int FLAG_BUTTON_WIDTH = 17;
+    private static final int FLAG_BUTTON_WIDTH  = 17;
     private static final int FLAG_BUTTON_HEIGHT = 17;
 
     // Константы дизассемблера
@@ -98,16 +103,12 @@ public final class DebuggerCPU extends JDialog {
     private static final int DA_NUM_ROWS = 0x1_0000;
     // Колонки таблицы с дизассемблированными данными (просмотр кода):
     // ловушка, адрес, байты команды (по числу максимума среди процессоров), мнемоника
-    private static final int DA_COL_TRP = 0;
-    private static final int DA_COL_ADR = 1;
-    private static final int DA_COL_BT0 = 2;
-    private static final int DA_COL_BT3 = 5;
-    private static final int DA_COL_CMD = 6;
+    private static final int DA_COL_TRP     = 0;
+    private static final int DA_COL_ADR     = 1;
+    private static final int DA_COL_BT0     = 2;
+    private static final int DA_COL_BT3     = 5;
+    private static final int DA_COL_CMD     = 6;
     private static final int DA_NUM_COLUMNS = 7;
-
-    // Количество строк таблицы с регистровыми парами CPU (высота таблицы в строках -
-    // по максимальному составу регистров, чтобы все пары были видны без вертикального скроллера)
-    private static final int CR_NUM_ROWS = DebugRegPair.getSupportedCount(true, true);
 
     // Количество колонок таблицы с регистровыми парами CPU (количество строк зависит от активного процессора)
     private static final int CR_NUM_COLUMNS = 3;
@@ -850,17 +851,15 @@ public final class DebuggerCPU extends JDialog {
         private static final int IND_BT1  = 2;
         // Индекс байта 2 команды CPU
         private static final int IND_BT2  = 3;
+        // Индекс байта 3 команды CPU (только для Z80)
+        private static final int IND_BT3  = 4;
         // Максимальная длина команды среди поддерживаемых процессоров
-        // (размер записи отладчика не должен зависеть от выбранного процессора)
+        // (размер буфера отладчика не должен зависеть от выбранного процессора)
         private final int fMaxCmdLength = DA_MAX_CMD_LENGTH;
-        // Размер записи: адрес + код операции + байты данных команды (всего fMaxCmdLength байтов)
+        // Размер буфера: адрес + код операции + байты данных команды (всего fMaxCmdLength байт)
         private final int fRecSize      = IND_CMD + fMaxCmdLength;
-        // Количество байтов данных команды в записи (кроме кода операции)
+        // Количество байт данных команды в буфере (кроме кода операции)
         private final int fNumDataBytes = fMaxCmdLength - 1;
-        // Пустой элемент записи   (обязательно отрицательное значение)
-        private static final int EMPTY    = -1;
-        // Неверный элемент записи (обязательно отрицательное значение)
-        private static final int WRONG    = -2;
 
         private final int[][] fStartBuffer;
         private final int[][] fMovedBuffer;
@@ -909,11 +908,11 @@ public final class DebuggerCPU extends JDialog {
                 buf[i][IND_CMD] = fEmulatorLayer.debugReadByte(page, address);
                 for (int j = 1; j <= fNumDataBytes; j++) {
                     if (collide) {
-                        buf[i][IND_CMD + j] = (pc == address + j) ? WRONG : EMPTY;
+                        buf[i][IND_CMD + j] = (pc == address + j) ? WRONG_VALUE : EMPTY_VALUE;
                     } else {
                         buf[i][IND_CMD + j] = (j < cmdLen)
                                 ? fEmulatorLayer.debugReadByte(page, (address + j) & 0xFFFF)
-                                : EMPTY;
+                                : EMPTY_VALUE;
                     }
                 }
                 address = (address + (collide ? pc - address : cmdLen)) & 0xFFFF;
@@ -921,12 +920,12 @@ public final class DebuggerCPU extends JDialog {
         }
 
         /**
-         * Возвращает запись (массив) с данными команды CPU по заданному адресу.
+         * Возвращает буфер (массив) с данными команды CPU по заданному адресу.
          *
          * @param address адрес
          * @return массив с данными команды CPU
          */
-        private int[] getRecord(final int address) {
+        private int[] getBuffer(final int address) {
             // Заполняем буфер данных из начальных адресов (таблица постоянно читает данные из начальной позиции)
             if (fStartBuffer[BUF_SIZE - 1][IND_ADR] == 0) {
                 fillBuffer(fStartBuffer, 0);
@@ -969,35 +968,31 @@ public final class DebuggerCPU extends JDialog {
         }
 
         /**
-         * Возвращает длину команды из записи буфера.
+         * Возвращает длину команды из буфера.
          *
-         * @param buf запись буфера
+         * @param buf буфер
          * @return длина команды в байтах
          */
         private int getRecordLength(final int[] buf) {
-            if (buf[IND_CMD] < 0) {
-                return 1;
+            int result = 1;
+            if (buf[IND_CMD] >= 0) {
+                while ((result <= fNumDataBytes) && (buf[IND_CMD + result] >= 0)) {
+                    result++;
+                }
             }
-            int cmdLen = 1;
-            while ((cmdLen <= fNumDataBytes) && (buf[IND_CMD + cmdLen] >= 0)) {
-                cmdLen++;
-            }
-            return cmdLen;
+            return result;
         }
 
         /**
-         * Возвращает результат дизассемблирования для записи буфера.
+         * Возвращает результат дизассемблирования для буфера.
          *
-         * @param buf запись буфера
+         * @param buf буфер
          * @return результат дизассемблирования
          */
         @NotNull
         private DisAsmResult getDisAsmResult(final int[] buf) {
-            final int[] bytes = new int[getRecordLength(buf)];
-            bytes[0] = buf[IND_CMD];
-            for (int i = 1; i < bytes.length; i++) {
-                bytes[i] = buf[IND_CMD + i];
-            }
+            final int[] bytes = new int[getRecordLength( buf)];
+            System.arraycopy(buf, IND_CMD, bytes, 0, bytes.length);
             return getDisAsm().disAsm(buf[IND_ADR], bytes);
         }
 
@@ -1018,7 +1013,7 @@ public final class DebuggerCPU extends JDialog {
          * @return результат
          */
         boolean isJmpAndCallCmd(final int address) {
-            final int[] buf = getRecord(  address);
+            final int[] buf = getBuffer(  address);
             if (buf.length == fRecSize) {
                 final DisAsmResult disAsmResult = getDisAsmResult(buf);
                 return disAsmResult.isJmpCmd() || disAsmResult.isCallCmd();
@@ -1035,12 +1030,12 @@ public final class DebuggerCPU extends JDialog {
          * @return адрес из команды или отрицательное значение
          */
         int getAddressFromCmd(final int address) {
-            final int[] buf = getRecord(address);
-            if ( buf.length == fRecSize) {
-                // Байты в записи хранятся в порядке памяти, как и в самой команде CPU
-                return DisAsmResult.getCmdAddress(fIsZ80, buf[IND_BT1], buf[IND_BT2]);
+            final int[] buf = getBuffer(address);
+            if (buf.length == fRecSize) {
+                // Байты в буфере хранятся в порядке памяти, как и в самой команде CPU
+                return buf[IND_BT1] | (buf[IND_BT2] << 8);
             }
-            return EMPTY;
+            return EMPTY_VALUE;
         }
 
         /**
@@ -1051,14 +1046,14 @@ public final class DebuggerCPU extends JDialog {
          * @return адрес следующей команды или отрицательное значение
          */
         int getAddressAfterCallCmd(final int address) {
-            final int[] buf  =   getRecord(  address);
+            final int[] buf  =   getBuffer(  address);
             if ( buf.length ==   fRecSize) {
                 final DisAsmResult result = getDisAsmResult(buf);
                 if (result.isCallCmd()) {
                     return (address + result.getLength()) & 0xFFFF;
                 }
             }
-            return EMPTY;
+            return EMPTY_VALUE;
         }
 
         @Override
@@ -1109,7 +1104,7 @@ public final class DebuggerCPU extends JDialog {
 
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            final int[] buf = getRecord(rowIndex);
+            final int[] buf = getBuffer(rowIndex);
             if (buf.length == fRecSize) {
                 switch (columnIndex) {
                     case DA_COL_TRP:
@@ -1683,16 +1678,16 @@ public final class DebuggerCPU extends JDialog {
          */
         RegCpuTable(TableModel dm) {
             super(dm);
-            // Настариваем параметры отображения таблицы
+            // Настраиваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
             getTableHeader().setFont(HEADER_FONT);
             setSelectionBackground (Color.yellow);
             getColumnModel().getColumn(CR_COL_REG).setMaxWidth(28);
             getColumnModel().getColumn(CR_COL_EQU).setMaxWidth(19);
             getColumnModel().getColumn(CR_COL_DAT).setMaxWidth(40);
-            // Высота таблицы задаётся по числу строк: таблица выводится без скроллера
+/*            // Высота таблицы задаётся по числу строк: таблица выводится без скроллера
             setPreferredScrollableViewportSize(new Dimension(getPreferredSize().width,
-                                                             getRowHeight() * CR_NUM_ROWS + getRowMargin()));
+                                                             getRowHeight() * CR_NUM_ROWS + getRowMargin()));*/
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new RegCpuStringRenderer());

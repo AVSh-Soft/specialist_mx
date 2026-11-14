@@ -2,6 +2,8 @@ package ru.avsh.specialist.mx.gui.swing.debugger.disasm;
 
 import org.jetbrains.annotations.NotNull;
 
+import static ru.avsh.specialist.mx.gui.swing.debugger.disasm.DisAsmResult.*;
+
 /**
  * Класс "Дизассемблер процессора i8080 (К580ВМ80А)".
  * Команда состоит из кода операции и не более чем двух байтов данных,
@@ -94,10 +96,10 @@ public final class DisAsmI8080 implements DisAsm {
     @Override
     @NotNull
     public DisAsmResult disAsm(final int address, final int[] bytes) {
-        final int code = bytes[0] & 0xFF;
-        final int len  = CMD_LEN[code];
-        final int bt1  = byteAt(bytes, 1);
-        final int bt2  = byteAt(bytes, 2);
+        final int code   = bytes[0] & 0xFF;
+        final int len    = CMD_LEN[code];
+        final int bt1    = byteAt(bytes, 1);
+        final int bt2    = byteAt(bytes, 2);
         final String txt = text(code, bt1, bt2);
 
         return new DisAsmResult(len, txt, isJmpOpCode(code), isCallOpCode(code));
@@ -209,45 +211,11 @@ public final class DisAsmI8080 implements DisAsm {
             case 0xE3: return "XTHL";
             case 0xE9: return "PCHL";
             case 0xEB: return "XCHG";
-            case 0xF3: return "DI";
-            case 0xFB: return "EI";
+            case 0xF3: return "DI"  ;
+            case 0xFB: return "EI"  ;
             case 0xF9: return "SPHL";
-            default:   return "NOP";
+            default:   return "NOP" ;
         }
-    }
-
-    /**
-     * Формирует строку из двух байтов в порядке старший-младший.
-     *
-     * @param bt2 старший байт
-     * @param bt1 младший байт
-     * @return четыре hex-символа или пустая строка, если байты отсутствуют
-     */
-    @NotNull
-    private static String hex16(final int bt2, final int bt1) {
-        return ((bt1 >= 0) && (bt2 >= 0)) ? String.format("%02X%02X", bt2, bt1) : "";
-    }
-
-    /**
-     * Формирует строку из одного байта.
-     *
-     * @param value байт
-     * @return два hex-символа или пустая строка
-     */
-    @NotNull
-    private static String hex8(final int value) {
-        return (value >= 0) ? String.format("%02X", value) : "";
-    }
-
-    /**
-     * Возвращает байт команды по индексу.
-     *
-     * @param bytes байты команды
-     * @param index индекс байта
-     * @return байт или {@link DisAsmResult#EMPTY}
-     */
-    private static int byteAt(final int[] bytes, final int index) {
-        return (index < bytes.length) ? bytes[index] : DisAsmResult.EMPTY;
     }
 
     /**

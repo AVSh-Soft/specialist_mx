@@ -2,18 +2,20 @@ package ru.avsh.specialist.mx.gui.swing.debugger.disasm;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
+
+import static ru.avsh.specialist.mx.gui.swing.debugger.disasm.DisAsmResult.*;
+
 /**
  * Класс "Дизассемблер процессора Z80".
  * Поддерживает основной набор команд, префиксы CB, ED, DD, FD
  * и составные команды DD CB d op / FD CB d op.
  */
 public final class DisAsmZ80 implements DisAsm {
-    // Максимальное количество байтов данных в команде Z80 (без кода операции/префикса)
-    public  static final int MAX_CMD_BYTES  = 3;
     // Максимальная длина команды Z80 (DD CB d op / FD CB d op)
-    public  static final int MAX_CMD_LENGTH = 4;
+    public  static final int MAX_CMD_LENGTH  = 4;
     // Длина составной команды DD CB d op / FD CB d op
-    private static final int INDEX_CB_LENGTH = 4;
+    private static final int INDEX_CB_LENGTH = MAX_CMD_LENGTH;
     // Отображаемая длина команды с префиксом DD/FD
     private static final int INDEX_LENGTH = 2;
 
@@ -163,8 +165,8 @@ public final class DisAsmZ80 implements DisAsm {
         final String cond = CONDS[(code >> 3) & 7];
         // Байт данных идущий после кода операции
         final String data = hex8(bt1);
-        // 16-битное значение, записанное в команде: младший байт первым
-        final String addr = hex16(bt1, bt2);
+        // 16-битное значение, записанное в команде
+        final String addr = hex16(bt2, bt1);
         final String text;
 
         switch (code) {
@@ -326,8 +328,8 @@ public final class DisAsmZ80 implements DisAsm {
         final String text;
         // Смещение (IX+d)/(IY+d) - знаковый байт
         final String disp = hexDisp(bt2);
-        // 16-битное значение, записанное в команде: младший байт первым
-        final String addr = hex16(bt2, bt3);
+        // 16-битное значение, записанное в команде
+        final String addr = hex16(bt3, bt2);
         final int cmdLen = lengthOfIndex(bt1);
         switch (bt1) {
             case 0x09: text = "ADD  " + pair + ",BC"; break;
@@ -444,28 +446,62 @@ public final class DisAsmZ80 implements DisAsm {
         if (bt1 < 0) {
             return new DisAsmResult(len, "ED", false, false);
         }
-        final String  text;
+        final String text;
         final boolean isJmp;
-        final String  pair = PAIRS_HL[(bt1 >> 4) & 3];
-        final String  addr = hex16(bt2, bt3);
+        final String pair = PAIRS_HL[(bt1 >> 4) & 3];
+        final String addr = hex16(bt3, bt2);
         // Код операции ED кодирует пару в битах 5-4
         switch (bt1) {
             case 0x40: case 0x48: case 0x50: case 0x58: case 0x60: case 0x68: case 0x70: case 0x78:
-                text = "IN   " + ED_REGS[(bt1 >> 3) & 7] + ",(C)";  isJmp = false; break;
+                text  = "IN   " + ED_REGS[(bt1 >> 3) & 7] + ",(C)";
+                isJmp = false;
+                break;
+
             case 0x41: case 0x49: case 0x51: case 0x59: case 0x61: case 0x69: case 0x71: case 0x79:
-                text = "OUT  (C)," + ED_REGS[(bt1 >> 3) & 7];      isJmp = false; break;
-            case 0x44: case 0x4C: case 0x54: case 0x5C:
-            case 0x64: case 0x6C: case 0x74: case 0x7C:
-                text = "NEG";                                     isJmp = false; break;
-            case 0x45: case 0x4D: case 0x55: case 0x5D:
-            case 0x65: case 0x6D: case 0x75: case 0x7D:
-                text = "RETN";                                    isJmp = true ; break;
-            case 0x47: text = "LD   I,A"; isJmp = false; break;
-            case 0x4F: text = "LD   R,A"; isJmp = false; break;
-            case 0x57: text = "LD   A,I"; isJmp = false; break;
-            case 0x5F: text = "LD   A,R"; isJmp = false; break;
-            case 0x67: text = "RRD";      isJmp = false; break;
-            case 0x6F: text = "RLD";      isJmp = false; break;
+                text  = "OUT  (C)," + ED_REGS[(bt1 >> 3) & 7];
+                isJmp = false;
+                break;
+
+            case 0x44: case 0x4C: case 0x54: case 0x5C: case 0x64: case 0x6C: case 0x74: case 0x7C:
+                text  = "NEG";
+                isJmp = false;
+                break;
+
+            case 0x45: case 0x4D: case 0x55: case 0x5D: case 0x65: case 0x6D: case 0x75: case 0x7D:
+                text  = "RETN";
+                isJmp =   true;
+                break;
+
+            case 0x47:
+                text  = "LD   I,A";
+                isJmp = false;
+                break;
+
+            case 0x4F:
+                text  = "LD   R,A";
+                isJmp = false;
+                break;
+
+            case 0x57:
+                text  = "LD   A,I";
+                isJmp = false;
+                break;
+
+            case 0x5F:
+                text  = "LD   A,R";
+                isJmp = false;
+                break;
+
+            case 0x67:
+                text  = "RRD";
+                isJmp = false;
+                break;
+
+            case 0x6F:
+                text  = "RLD";
+                isJmp = false;
+                break;
+
             default:
                 text  = disAsmEDMem(bt1, pair, addr);
                 isJmp = false;
@@ -503,40 +539,6 @@ public final class DisAsmZ80 implements DisAsm {
             return ((bt1 & 8) == 0) ? block : block.concat("R");
         }
         return "ED";
-    }
-
-    /**
-     * Возвращает байт команды по индексу.
-     *
-     * @param bytes байты команды
-     * @param index индекс байта
-     * @return байт или {@link DisAsmResult#EMPTY}
-     */
-    private static int byteAt(final int[] bytes, final int index) {
-        return (index < bytes.length) ? bytes[index] : DisAsmResult.EMPTY;
-    }
-
-    /**
-     * Формирует строку из одного байта.
-     *
-     * @param value байт
-     * @return два hex-символа или пустая строка
-     */
-    @NotNull
-    private static String hex8(final int value) {
-        return (value >= 0) ? String.format("%02X", value) : "";
-    }
-
-    /**
-     * Формирует строку из двух байтов, записанных в команде в порядке младший-старший.
-     *
-     * @param low  младший байт
-     * @param high старший байт
-     * @return четыре hex-символа или пустая строка
-     */
-    @NotNull
-    private static String hex16(final int low, final int high) {
-        return ((low >= 0) && (high >= 0)) ? String.format("%02X%02X", high, low) : "";
     }
 
     /**
@@ -598,9 +600,7 @@ public final class DisAsmZ80 implements DisAsm {
      */
     private static int[] buildMainLength() {
         final int[] length = new int[0x100];
-        for (int code = 0; code < length.length; code++) {
-            length[code] = 1;
-        }
+        Arrays.fill(length, 1);
         // LD r,n
         for (int code = 0x06; code <= 0x3E; code += 0x08) {
             length[code] = 2;
