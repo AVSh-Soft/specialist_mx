@@ -25,7 +25,7 @@ public final class TestHelper {
      * @param timeout     тайм-аут, который не должна превысить исполняемая программа
      * @return содержимое текстового буфера, сформированного CP/M-программой
      */
-    public static String loadAndExecuteCpmFile(final boolean isZ80,
+    public static String loadAndExecuteCpmProg(final boolean isZ80,
                                                final @NotNull String cpmProgName,
                                                final @NotNull Duration timeout) {
 
@@ -76,7 +76,9 @@ public final class TestHelper {
                 }
             }
         });
-        return stringBuffer.toString().replaceAll("\\R", "\n");
+        return stringBuffer.toString()
+                .replace("\n\r", "\n")
+                .replaceAll("\\R", "\n");
     }
 
     private static boolean callBDOS(final @NotNull CpuCore cpu,
