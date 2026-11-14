@@ -1025,7 +1025,7 @@ public final class CpuI8080 implements CpuDebugCore {
             default:
                 break;
         }
-        // Проверям ловушку для следующей команды CPU
+        // Проверяем ловушку для следующей команды CPU
         if (fTrapsFlag) {
             // Здесь без порождения новых объектов (для скорости)
             fCompareTrap.change((fSpMX != null) ? fSpMX.getPage() : 0, getPC());
