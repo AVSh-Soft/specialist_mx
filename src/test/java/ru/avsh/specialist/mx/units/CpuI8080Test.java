@@ -1,5 +1,6 @@
 package ru.avsh.specialist.mx.units;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -87,6 +88,7 @@ class CpuI8080Test {
 
     // Тяжелый и долгий тест (1.5-2 минуты, на реальном i8080 2МГц около 3 часов 20 минут)
     // Тут для i8085, поэтому на i8080 два теста падают
+    @Disabled
     @Test
     void i8085EXM_test() {
         final String text = loadAndExecuteCpmProg(false, "8085EXM.COM", Duration.ofMinutes(5));

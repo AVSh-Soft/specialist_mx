@@ -17,19 +17,31 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Класс "Процессор Zilog Z80".
  * <p>
- * Реализован базовый (документированный) набор команд Z80, а также префиксные наборы
- * {@code CB}, {@code ED}, {@code DD} и {@code FD}, включая альтернативный регистровый
- * файл {@code AF'}, {@code BC'}, {@code DE'}, {@code HL'} (команды {@code EX AF,AF'} и {@code EXX}).
- * <p>
- * Сознательно НЕ реализованы:
+ * Реализован полный набор команд Zilog NMOS Z80 (микросхема Z0840004), включая
+ * недокументированные команды и недокументированные флаги:
  * <ul>
- *     <li>недокументированные команды — {@code SLL}, обращения к {@code IXH}/{@code IXL}/{@code IYH}/{@code IYL},
- *         недокументированные формы {@code ED} ({@code IN F,(C)}, {@code OUT (C),0});</li>
- *     <li>режимы прерываний {@code IM 0/1/2} и регистры {@code I}, {@code R}.</li>
+ *     <li>основной набор, наборы {@code CB}, {@code ED}, {@code DD}/{@code FD}, {@code DD CB}/{@code FD CB};</li>
+ *     <li>недокументированные {@code SLL}, обращение к половинам индексных регистров
+ *         {@code IXH/IXL/IYH/IYL} (в том числе в {@code LD} и арифметико-логических командах),
+ *         {@code IN F,(C)}, {@code OUT (C),0};</li>
+ *     <li>пара регистров {@code AF'}/{@code BC'}/{@code DE'}/{@code HL'} ({@code EX AF,AF'} и {@code EXX});</li>
+ *     <li>внутренний регистр {@code MEMPTR} (он же {@code WZ}) — недокументированный
+ *         16-битный регистр, который виден через недокументированные флаги {@code bit 5}/{@code bit 3},
+ *         и регистр {@code Q} — значение, записанное в {@code F} последней операцией,
+ *         зависящей от флагов; от него зависят {@code SCF}/{@code CCF}.</li>
  * </ul>
- * Любой недокументированный байт выполняется как {@code NOP}: команда занимает 4 такта,
- * регистры и флаги не меняются. Это детерминированное правило — эмулятор
- * никогда не падает на неизвестном байте.
+ * Недокументированные флаги {@code F5} (бит 5) и {@code F3} (бит 3) вычисляются
+ * по правилам справочника "The Undocumented Z80 Documented" и справочной таблицы
+ * флагов z80.info, а не "просто копируются из результата": для 8-битных
+ * арифметических команд {@code ADD}/{@code SUB}/{@code INC}/{@code DEC}/{@code NEG} и для
+ * {@code BIT n,r} они берутся из операнда, для 16-битных {@code ADD HL,ss}/{@code ADC}/{@code SBC}
+ * — из старшего байта результата, для блочных команд — из результата переноса,
+ * для {@code LD A,I}/{@code LD A,R} — из аккумулятора.
+ * <p>
+ * Сознательно НЕ реализованы режимы прерываний {@code IM 0/1/2} и вход {@code INT}/{@code NMI}:
+ * процессор в эмуляторе прерывания не принимает. Внутренние регистры {@code I} и {@code R}
+ * объявлены и обслуживаются ({@code LD A,I}, {@code LD A,R}, {@code LD I,A}, {@code LD R,A},
+ * инкремент {@code R} на выборке байта команды), но прерывания по ним не формируются.
  * <p>
  * Тактирование: процессор использует общий с i8080 тактовый генератор,
  * собственной тактовой частоты нет.
@@ -110,12 +122,15 @@ public final class CpuZ80 implements CpuDebugCore {
     private final AtomicBoolean fIsDebugRun;
 
     private final SortedSet<Trap> fTraps      ;
-    private final Trap            fCompareTrap;
 
     private int     fOpCode   ;
     private int     fIX       ; // Регистр IX
     private int     fIY       ; // Регистр IY
     private int     fIndexMode; // INDEX_NONE / INDEX_IX / INDEX_IY
+    private int     fMemPtr   ; // Недокументированный регистр MEMPTR (WZ)
+    private int     fQ        ; // Значение, записанное в F последней операцией, зависящей от флагов
+    private int     fI        ; // Регистр I
+    private int     fR        ; // Регистр R (старший бит сохраняется как записан)
     private boolean fHalted   ;
     private boolean fInterruptEnabled;
 
@@ -138,12 +153,16 @@ public final class CpuZ80 implements CpuDebugCore {
         fRegs    = new int[10]; // B, C, D, E, H, L, F, A, SP, PC
         fRegs[F] = 0b0000_0000; // Флаги по умолчанию SZ5H3PNC
         fRegsAlt = new int[ 8]; // B', C', D', E', H', L', F', A'
+        fIndexMode = INDEX_NONE;
+        fMemPtr    = 0;
+             fQ    = 0;
+              fI   = 0;
+              fR   = 0;
 
              fCycles = new AtomicInteger();
          fIsDebugRun = new AtomicBoolean();
           fHoldPhase = new AtomicInteger();
              fActive = new AtomicBoolean();
-        fCompareTrap = new Trap(0, 0);
               fTraps = new ConcurrentSkipListSet<>();
     }
 
@@ -491,6 +510,8 @@ public final class CpuZ80 implements CpuDebugCore {
         if (codePair == P_PSW) {
             fRegs[F] =  value       & 0xFF;
             fRegs[A] = (value >> 8) & 0xFF;
+            // POP AF записывает F командой, зависящей от флагов: Q получает её значение
+            fQ = fRegs[F];
         } else {
             fRegs[codePair    ] = (value >> 8) & 0xFF;
             fRegs[codePair + 1] =  value       & 0xFF;
@@ -557,6 +578,18 @@ public final class CpuZ80 implements CpuDebugCore {
         return fMemManager.readByte(pc);
     }
 
+    /**
+     * Выбирает байт команды по адресу PC с инкрементом регистра R.
+     * Каждая выборка (байт префикса и байт кода операции, но не байты операндов)
+     * увеличивает младшие семь бит R; старший бит R сохраняется.
+     *
+     * @return считанный из памяти байт
+     */
+    private int fetchPC() {
+        fR = (fR & 0x80) | ((fR + 1) & 0x7F);
+        return nextBytePC();
+    }
+
     private int nextWordPC() {
         final int lo = nextBytePC();
         final int hi = nextBytePC();
@@ -569,46 +602,108 @@ public final class CpuZ80 implements CpuDebugCore {
         return (fRegs[F] & flag) != 0;
     }
 
-    private void setFlag(final int flag, final boolean value) {
-        if (value) {
-            fRegs[F] |=  flag;
-        } else {
-            fRegs[F] &= ~flag;
-        }
-        fRegs[F] &= 0xFF;
-    }
-
     private boolean getFlagC() {
         return getFlag(FLAG_C);
     }
 
-    private void setFlagC(final boolean value) {
-        setFlag(FLAG_C, value);
-    }
-
     /**
-     * Устанавливает флаги S, Z, F5, F3 и P/V по значению байта.
-     * Используется для логических операций и результата пересылки.
+     * Записывает регистр F значением, вычисленным текущей командой.
+     * Одновременно запоминает это значение в регистре Q: от него зависят
+     * недокументированные F5/F3 команд SCF и CCF.
+     *
+     * @param flags новое значение регистра F
      */
-    private void setFlagsSZ5H3P(final int r) {
-        final int v = r & 0xFF;
-        fRegs[F] = (v & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (v == 0 ? FLAG_Z : 0)
-                 | (PARITY[v] ? FLAG_PV : 0);
+    private void setF(final int flags) {
+        fRegs[F] = flags & 0xFF;
+            fQ   = fRegs[F];
     }
 
     /**
-     * Устанавливает флаги S, Z, F5, F3 по значению байта без изменения C, P/V, N, H.
+     * Устанавливает флаги сдвигов/вращений CB: S, Z, F5, F3 и P/V — из результата,
+     * C — из выдвинутого бита, H и N сбрасываются.
+     *
+     * @param result результат операции
+     * @param carry  флаг переноса (FLAG_C или 0)
      */
-    private void setFlagsSZ5H3(final int r) {
-        final int v = r & 0xFF;
-        fRegs[F] = (fRegs[F] & (FLAG_C | FLAG_PV | FLAG_N | FLAG_H))
-                 | (v & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (v == 0 ? FLAG_Z : 0);
+    private void setFlagsShiftRotate(final int result, final int carry) {
+        final int v = result & 0xFF;
+        setF((v & (FLAG_S | FLAG_F5 | FLAG_F3))
+           | (v == 0 ? FLAG_Z : 0)
+           | (PARITY[v] ? FLAG_PV : 0)
+           | (carry & FLAG_C));
     }
 
     /**
-     * Считает флаги результата команды INC/DEC (флаг C сохраняется вызывающим кодом).
+     * Недокументированные флаги F5/F3 для SCF и CCF.
+     * <p>
+     * По документации Zilog они равны {@code A.5 | (F.5 ^ Q.5)} и {@code A.3 | (F.3 ^ Q.3)},
+     * где Q — значение F, записанное предыдущей командой, менявшей флаги. Если
+     * предыдущая команда флаги не меняла, Q совпадает с F и выражение сводится к
+     * копии битов аккумулятора.
+     *
+     * @return маска F5/F3
+     */
+    private int undocumentedYX() {
+        return ((fRegs[F] ^ fQ) | fRegs[A]) & (FLAG_F5 | FLAG_F3);
+    }
+
+    /**
+     * Флаги ADD/ADC A,s.
+     *
+     * @param a     аккумулятор
+     * @param b     операнд
+     * @param carry значение флага переноса (0 или 1)
+     */
+    private void addFlags8(final int a, final int b, final int carry) {
+        final int res = a + b + carry;
+        final int v   = res & 0xFF;
+        setF((v & (FLAG_S | FLAG_F5 | FLAG_F3))
+           | (v == 0 ? FLAG_Z : 0)
+           | (((a & 0x0F) + (b & 0x0F) + carry) > 0x0F ? FLAG_H : 0)
+           | (((a ^ res) & (b ^ res) & 0x80) != 0 ? FLAG_PV : 0)
+           | ((res > 0xFF) ? FLAG_C : 0));
+    }
+
+    /**
+     * Флаги SUB/SBC/CP s.
+     *
+     * @param a     аккумулятор
+     * @param b     операнд
+     * @param carry значение флага переноса (0 или 1)
+     */
+    private void subFlags8(final int a, final int b, final int carry) {
+        final int res = a - b - carry;
+        final int v   = res & 0xFF;
+        setF((v & (FLAG_S | FLAG_F5 | FLAG_F3))
+           | (v == 0 ? FLAG_Z : 0)
+           | (((a & 0x0F) - (b & 0x0F) - carry) < 0 ? FLAG_H : 0)
+           | (((a ^ b) & (a ^ res) & 0x80) != 0 ? FLAG_PV : 0)
+           | FLAG_N
+           | ((res < 0) ? FLAG_C : 0));
+    }
+
+    /**
+     * Флаги CP s: в отличие от SUB, недокументированные F5/F3 берутся
+     * из операнда, а не из результата.
+     *
+     * @param a аккумулятор
+     * @param b операнд
+     */
+    private void cpFlags8(final int a, final int b) {
+        final int res = a - b;
+        final int v   = res & 0xFF;
+        setF((v & FLAG_S)
+           | (v == 0 ? FLAG_Z : 0)
+           | (b & (FLAG_F5 | FLAG_F3))
+           | (((a & 0x0F) - (b & 0x0F)) < 0 ? FLAG_H : 0)
+           | (((a ^ b) & (a ^ res) & 0x80) != 0 ? FLAG_PV : 0)
+           | FLAG_N
+           | ((res < 0) ? FLAG_C : 0));
+    }
+
+    /**
+     * Считает флаги результата команды INC/DEC (флаг C и Q устанавливает вызывающий код).
+     * Недокументированные F5/F3 берутся из результата, как у NMOS Z80.
      */
     private static int incDecFlags(final int r, final int delta) {
         final int v = (r + delta) & 0xFF;
@@ -625,111 +720,91 @@ public final class CpuZ80 implements CpuDebugCore {
     }
 
     private int addByte(final int a, final int b, final boolean withCarry) {
-        final int c   = withCarry ? (getFlagC() ? 1 : 0) : 0;
-        final int res = a + b + c;
-        final int h   = ((a & 0x0F) + (b & 0x0F) + c) > 0x0F ? FLAG_H : 0;
-        final int ovf = (((a ^ res) & (b ^ res) & 0x80) != 0) ? FLAG_PV : 0;
-        fRegs[A] = res & 0xFF;
-        fRegs[F] = (fRegs[A] & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (fRegs[A] == 0 ? FLAG_Z : 0)
-                 | h | ovf | ((res > 0xFF) ? FLAG_C : 0);
-        return fRegs[A];
+        final int carry = withCarry ? (getFlagC() ? 1 : 0) : 0;
+        final int v     = (a + b + carry) & 0xFF;
+        addFlags8(a, b, carry);
+        fRegs[A] = v;
+        return v;
     }
 
     private int subByte(final int a, final int b, final boolean withCarry, final boolean storeResult) {
-        final int c   = withCarry ? (getFlagC() ? 1 : 0) : 0;
-        final int res = a - b - c;
-        final int h   = ((a & 0x0F) - (b & 0x0F) - c) < 0 ? FLAG_H : 0;
-        final int ovf = (((a ^ b) & (a ^ res) & 0x80) != 0) ? FLAG_PV : 0;
-        final int v   = res & 0xFF;
+        final int carry = withCarry ? (getFlagC() ? 1 : 0) : 0;
+        final int v     = (a - b - carry) & 0xFF;
         if (storeResult) {
             fRegs[A] = v;
+            subFlags8(a, b, carry);
+        } else {
+            cpFlags8(a, b);
         }
-        fRegs[F] = (v & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (v == 0 ? FLAG_Z : 0)
-                 | h | ovf | FLAG_N | ((res < 0) ? FLAG_C : 0);
         return v;
     }
 
     private int andByte(final int a, final int b) {
         final int v = a & b;
         fRegs[A] = v;
-        fRegs[F] = (v & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (v == 0 ? FLAG_Z : 0)
-                 | (PARITY[v] ? FLAG_PV : 0)
-                 | FLAG_H;
+        setF((v & (FLAG_S | FLAG_F5 | FLAG_F3))
+           | (v == 0 ? FLAG_Z : 0)
+           | (PARITY[v] ? FLAG_PV : 0)
+           | FLAG_H);
         return v;
     }
 
     private int xorByte(final int a, final int b) {
         final int v = (a ^ b) & 0xFF;
         fRegs[A] = v;
-        fRegs[F] = (v & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (v == 0 ? FLAG_Z : 0)
-                 | (PARITY[v] ? FLAG_PV : 0);
+        setF((v & (FLAG_S | FLAG_F5 | FLAG_F3))
+           | (v == 0 ? FLAG_Z : 0)
+           | (PARITY[v] ? FLAG_PV : 0));
         return v;
     }
 
     private int orByte(final int a, final int b) {
         final int v = (a | b) & 0xFF;
         fRegs[A] = v;
-        fRegs[F] = (v & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (v == 0 ? FLAG_Z : 0)
-                 | (PARITY[v] ? FLAG_PV : 0);
+        setF((v & (FLAG_S | FLAG_F5 | FLAG_F3))
+           | (v == 0 ? FLAG_Z : 0)
+           | (PARITY[v] ? FLAG_PV : 0));
         return v;
     }
 
     private int incByte(final int v) {
-        final int c = fRegs[F] & FLAG_C;
-        fRegs[F] = incDecFlags(v, +1) | c;
+        setF(incDecFlags(v, +1) | (fQ & FLAG_C));
         return (v + 1) & 0xFF;
     }
 
     private int decByte(final int v) {
-        final int c = fRegs[F] & FLAG_C;
-        fRegs[F] = incDecFlags(v, -1) | c;
+        setF(incDecFlags(v, -1) | (fQ & FLAG_C));
         return (v - 1) & 0xFF;
     }
 
     private void cmdDAA() {
-        final int     a   = fRegs[A];
-        final boolean n   = getFlag(FLAG_N);
-        final boolean h   = getFlag(FLAG_H);
-        final boolean c   = getFlag(FLAG_C);
-        int     correction = 0;
-        boolean setCarry   = c;
+        final int     a = fRegs[A];
+        final boolean n = getFlag(FLAG_N);
+        final boolean h = getFlag(FLAG_H);
+        final boolean c = getFlag(FLAG_C);
+        int correction  = 0;
 
-        // Документированный алгоритм Z80: при N=1 проверка тетрад не выполняется,
-        // коррекция определяется только флагами H и C (в i8080 иначе)
-        if (h || (!n && ((a & 0x0F) > 9))) {
+        // Коррекция тетрад выполняется и при вычитании: условие (a & 0x0F) > 9
+        // от N не зависит, от N зависит лишь знак коррекции
+        if (h || ((a & 0x0F) > 9)) {
             correction |= 0x06;
         }
-        if (c || (!n && (a > 0x99))) {
+        if (c || (a > 0x99)) {
             correction |= 0x60;
-            setCarry    = true;
-        } else if (h && (a > 0xF9)) {
-            setCarry = true;
         }
 
-        final int     newA;
-        final boolean newH;
-        if (n) {
-            // Вычитание: коррекция выполняется вычитанием
-            newA = (a - correction) & 0xFF;
-            newH = h && (((a & 0x0F) < (correction & 0x0F)));
-        } else {
-            // Сложение: коррекция выполняется сложением
-            newA = (a + correction) & 0xFF;
-            newH = ((a & 0x0F) + (correction & 0x0F)) > 0x0F;
-        }
+        final int newA = n ? (a - correction) & 0xFF : (a + correction) & 0xFF;
 
+        // H — перенос/заимствование через бит 4: бит 4 исходного и результата различаются
+        // C не сбрасывается: C' = C | (A > 0x99) (одинаково для сложения и вычитания)
         fRegs[A] = newA;
-        fRegs[F] = (fRegs[F] & FLAG_N)
-                 | (newA & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (newA == 0 ? FLAG_Z : 0)
-                 | (newH ? FLAG_H : 0)
-                 | (PARITY[newA] ? FLAG_PV : 0)
-                 | (setCarry ? FLAG_C : 0);
+        setF((fRegs[F] & FLAG_N)
+           | (newA & FLAG_S)
+           | (newA == 0 ? FLAG_Z : 0)
+           | (newA & (FLAG_F5 | FLAG_F3))
+           | (((a ^ newA) & 0x10) != 0 ? FLAG_H : 0)
+           | (PARITY[newA] ? FLAG_PV : 0)
+           | ((c || (a > 0x99)) ? FLAG_C : 0));
     }
 
     private boolean testFlags(final int codeCondition) {
@@ -783,7 +858,7 @@ public final class CpuZ80 implements CpuDebugCore {
             return 4;
         }
         fIndexMode = INDEX_NONE;
-        fOpCode    = nextBytePC();
+        fOpCode    = fetchPC(); // Байт кода операции (R увеличивается в fetchPC())
         return cmdExec();
     }
 
@@ -795,6 +870,10 @@ public final class CpuZ80 implements CpuDebugCore {
             fIX        = 0;
             fIY        = 0;
             fIndexMode = INDEX_NONE;
+            fMemPtr    = 0;
+            fQ         = 0;
+            fI         = 0;
+            fR         = 0;
             fHalted    = false;
             fInterruptEnabled = false;
         } else {
@@ -875,7 +954,7 @@ public final class CpuZ80 implements CpuDebugCore {
                 fIndexMode = INDEX_IY;
                 return execPrefixed();
             case 0xCB: // Набор CB без индексного префикса
-                return execCB(nextBytePC(), false);
+                return execCB(fetchPC());
             case 0xED: // Набор ED
                 return execED();
             default:
@@ -885,10 +964,11 @@ public final class CpuZ80 implements CpuDebugCore {
 
     /**
      * Выполняет команду после префикса DD/FD.
-     * Повторный префикс и префикс ED выполняются как NOP.
+     * Байт кода операции увеличивает R; повторный префикс и префикс ED
+     * выполняются как NOP, оставляя активным последний индексный префикс.
      */
     private int execPrefixed() {
-        final int op = nextBytePC();
+        final int op = fetchPC();
 
         switch (op) {
             case 0xDD:
@@ -899,9 +979,9 @@ public final class CpuZ80 implements CpuDebugCore {
                 return 4;
             case 0xED:
                 return 4;
-            case 0xCB: { // Индексный набор CB
-                final int d = (byte) nextBytePC();
-                final int cbOp = nextBytePC();
+            case 0xCB: { // Смещение и код операции индексного набора CB
+                final int d    = (byte) nextBytePC();
+                final int cbOp = fetchPC();
                 return execIndexedCB(d, cbOp);
             }
             default:
@@ -915,27 +995,41 @@ public final class CpuZ80 implements CpuDebugCore {
 
     /**
      * Выполняет команду CB с индексным операндом (IX+d)/(IY+d).
-     * Для кодов, отличных от (IX+d), выполняется NOP (обращения к IXH/IXL не поддерживаются).
+     * Коды, у которых в младших трёх битах записан код регистра r, дополнительно
+     * записывают результат (или прочитанный байт для BIT) в этот регистр —
+     * так же, как это делает реальный Z80.
+     *
+     * @param d  смещение от индексного регистра
+     * @param op код операции CB
+     * @return количество тактов
      */
     private int execIndexedCB(final int d, final int op) {
-        final int group = op >> 6;
-        final int yyy   = (op >> 3) & 0b111;
+        final int group   = op >> 6;
+        final int yyy     = (op >> 3) & 0b111;
+        final int r       =  op       & 0b111;
         final int address = (getIndex() + d) & 0xFFFF;
         final int operand = fMemManager.readByte(address);
+        fMemPtr = address;
         fIndexMode = INDEX_NONE;
 
         if (group == 1) {
-            // BIT b,(IX+d) — запись в регистр не выполняется (недокументированная форма)
-            checkBit(operand, yyy, address);
+            // BIT b,(IX+d): результат в память не пишется, но недокументированная
+            // форма с r != 6 копирует прочитанный байт в регистр r
+            checkBit(operand, yyy, (fMemPtr >> 8) & 0xFF);
+            if (r != M) {
+                fRegs[r] = operand;
+            }
             return 20;
         }
 
         final int result = applyCBGroup(group, yyy, operand);
         fMemManager.writeByte(address, result);
-        final boolean carry = getFlagC();
-        setFlagsSZ5H3P(result);
-        setFlagC(carry);
-        // Недокументированную запись результата в регистр r не реализуем
+        if (group == 0) {
+            setFlagsShiftRotate(result, carryOut(yyy, operand));
+        }
+        if (r != M) {
+            fRegs[r] = result;
+        }
         return 23;
     }
 
@@ -950,13 +1044,38 @@ public final class CpuZ80 implements CpuDebugCore {
         }
     }
 
-    private void checkBit(final int operand, final int bit, final int address) {
+    /**
+     * Возвращает флаг C для сдвигов/вращений CB — выдвинутый за пределы байта бит.
+     *
+     * @param kind    вид операции (младшие три бита кода CB)
+     * @param operand исходное значение операнда
+     * @return FLAG_C или 0
+     */
+    private int carryOut(final int kind, final int operand) {
+        switch (kind) {
+            case 0: case 2: case 4: case 6: // RLC/RL/SLA/SLL — выдвигается старший бит
+                return (operand & 0x80) != 0 ? FLAG_C : 0;
+            default:                         // RRC/RR/SRA/SRL — младший бит
+                return (operand & 0x01) != 0 ? FLAG_C : 0;
+        }
+    }
+
+    /**
+     * Устанавливает флаги команды BIT.
+     * S — только для бита 7; F5/F3 — из старшего байта MEMPTR, если адрес задан
+     * (BIT n,(HL) и BIT n,(IX+d)), иначе из операнда; C сохраняется.
+     *
+     * @param operand операнд
+     * @param bit     номер бита
+     * @param f5f3Src байт-источник недокументированных флагов или -1 для случая BIT n,r
+     */
+    private void checkBit(final int operand, final int bit, final int f5f3Src) {
         final boolean set = (operand & (1 << bit)) != 0;
-        fRegs[F] = (fRegs[F] & FLAG_C)
-                 | (set ? 0 : (FLAG_Z | FLAG_PV))
-                 | (set && (bit == 7) ? FLAG_S : 0)
-                 | FLAG_H
-                 | ((address >> 8) & (FLAG_F5 | FLAG_F3));
+        setF((fQ & FLAG_C)
+           | (set ? 0 : (FLAG_Z | FLAG_PV))
+           | (set && (bit == 7) ? FLAG_S : 0)
+           | FLAG_H
+           | ((f5f3Src < 0 ? operand : f5f3Src) & (FLAG_F5 | FLAG_F3)));
     }
 
     /**
@@ -965,69 +1084,65 @@ public final class CpuZ80 implements CpuDebugCore {
      * @param op код операции CB
      * @return количество тактов
      */
-    private int execCB(final int op, final boolean withIndex) {
+    private int execCB(final int op) {
         final int group = op >> 6;
         final int yyy   = (op >> 3) & 0b111;
         final int r     =  op       & 0b111;
         final int operand = getReg(r);
 
         if (group == 1) {
-            // BIT b,r
-            checkBit(operand, yyy, 0);
-            return 8;
+            // BIT b,r; для BIT b,(HL) недокументированные F5/F3 берутся из HL
+            // (адрес операнда), для BIT b,(IX+d) — из IX+d (это же значение хранит MEMPTR)
+            checkBit(operand, yyy, (r == M) ? ((getHL() >> 8) & 0xFF) : -1);
+            return (r == M) ? 12 : 8;
         }
 
         // RLC/RRC/RL/RR/SLA/SRA/SLL/SRL, RES b,r, SET b,r
         final int result = applyCBGroup(group, yyy, operand);
         setReg(r, result);
-        final boolean carry = getFlagC();
-        setFlagsSZ5H3P(result);
-        setFlagC(carry);
-        return 8;
+        if (group == 0) {
+            setFlagsShiftRotate(result, carryOut(yyy, operand));
+        }
+        return (r == M) ? 15 : 8;
     }
 
     private int shiftRotate(final int kind, final int operand) {
-        final int v = operand & 0xFF;
+        final int v      = operand & 0xFF;
+        final int carry  = getFlagC() ? 1 : 0;
         final int result;
         switch (kind) {
             case 0: // RLC
                 result = ((v << 1) | (v >> 7)) & 0xFF;
-                setFlagC((v & 0x80) != 0);
                 break;
             case 1: // RRC
                 result = ((v >> 1) | (v << 7)) & 0xFF;
-                setFlagC((v & 0x01) != 0);
                 break;
             case 2: // RL
-                result = ((v << 1) | (getFlagC() ? 1 : 0)) & 0xFF;
-                setFlagC((v & 0x80) != 0);
+                result = ((v << 1) | carry) & 0xFF;
                 break;
             case 3: // RR
-                result = ((v >> 1) | (getFlagC() ? 0x80 : 0)) & 0xFF;
-                setFlagC((v & 0x01) != 0);
+                result = ((v >> 1) | (carry << 7)) & 0xFF;
                 break;
             case 4: // SLA
                 result = (v << 1) & 0xFF;
-                setFlagC((v & 0x80) != 0);
                 break;
             case 5: // SRA
-                result = ((v >> 1) | (v & 0x80)) & 0xFF;
-                setFlagC((v & 0x01) != 0);
+                result = (v >> 1) | (v & 0x80);
                 break;
-            case 6: // SLL — недокументированная команда, выполняем как SLA
-                result = (v << 1) & 0xFF;
-                setFlagC((v & 0x80) != 0);
+            case 6: // SLL — недокументированная команда: сдвиг влево с единицей в младший бит
+                result = ((v << 1) | 1) & 0xFF;
                 break;
             default: // SRL
-                result = (v >> 1) & 0xFF;
-                setFlagC((v & 0x01) != 0);
+                result = v >> 1;
                 break;
         }
+        // Флаги сдвигов/вращений устанавливает вызывающий код: C — из выдвинутого
+        // бита (carryOut), S/Z/F5/F3/PV — из результата
         return result & 0xFF;
     }
 
     private int execED() {
-        final int op = nextBytePC();
+        final int op = fetchPC();
 
         // Блочные команды
         switch (op) {
@@ -1054,35 +1169,82 @@ public final class CpuZ80 implements CpuDebugCore {
         switch (op) {
             case 0x44: case 0x4C: case 0x54: case 0x5C: // NEG
             case 0x64: case 0x6C: case 0x74: case 0x7C: {
+                // A = 0 - A; F5/F3 — из исходного A
                 final int a = fRegs[A];
-                fRegs[A] = 0;
-                subByte(0, a, false, true);
+                subFlags8(0, a, 0);
+                fRegs[A] = (0 - a) & 0xFF;
                 return 8;
             }
             case 0x45: case 0x4D: case 0x55: case 0x5D: // RETN
-            case 0x65: case 0x6D: case 0x75: case 0x7D: // RETI
-                setPC(popWord());
+            case 0x65: case 0x6D: case 0x75: case 0x7D: { // RETI
+                final int addr = popWord();
+                fMemPtr = addr;
+                setPC(addr);
                 fInterruptEnabled = true;
                 return 14;
+            }
 
             case 0x46: case 0x4E: case 0x66: case 0x6E: // IM 0 / IM 0/1
             case 0x56: case 0x76:                        // IM 1
             case 0x5E: case 0x7E:                        // IM 2
-                // Режимы прерываний вне поддерживаемого набора
+                // Режимы прерываний вне поддерживаемого набора: команда ничего не меняет
                 return 8;
 
-            case 0x57: // LD A,I
-            case 0x5F: // LD A,R
-                // Регистры I и R считаем нулевыми
-                fRegs[A] = 0;
-                setFlagsSZ5H3(0);
-                if (fInterruptEnabled) {
-                    fRegs[F] |= FLAG_PV;
-                }
+            case 0x73: { // LD (nn),SP
+                final int address = nextWordPC();
+                final int sp      = getSP();
+                fMemManager.writeByte(address, sp & 0xFF);
+                fMemManager.writeByte((address + 1) & 0xFFFF, (sp >> 8) & 0xFF);
+                fMemPtr = (address + 1) & 0xFFFF;
+                return 20;
+            }
+            case 0x7B: { // LD SP,(nn)
+                final int address = nextWordPC();
+                final int sp = fMemManager.readByte(address)
+                             | (fMemManager.readByte((address + 1) & 0xFFFF) << 8);
+                setSP(sp);
+                fMemPtr = (address + 1) & 0xFFFF;
+                return 20;
+            }
+            case 0x43: case 0x53: case 0x63: { // LD (nn),BC/DE/HL
+                final int address = nextWordPC();
+                final int value   = getRegPair(((op >> 4) & 0b11) * 2);
+                fMemManager.writeByte(address, value & 0xFF);
+                fMemManager.writeByte((address + 1) & 0xFFFF, (value >> 8) & 0xFF);
+                fMemPtr = (address + 1) & 0xFFFF;
+                return 20;
+            }
+            case 0x4B: case 0x5B: case 0x6B: { // LD BC/DE/HL,(nn)
+                final int address = nextWordPC();
+                final int value   = fMemManager.readByte(address)
+                                  | (fMemManager.readByte((address + 1) & 0xFFFF) << 8);
+                setRegPair(((op >> 4) & 0b11) * 2, value & 0xFFFF);
+                fMemPtr = (address + 1) & 0xFFFF;
+                return 20;
+            }
+            case 0x57: { // LD A,I
+                final boolean ie = fInterruptEnabled;
+                fRegs[A] = fI;
+                setF((fRegs[A] & (FLAG_S | FLAG_F5 | FLAG_F3))
+                   | (fRegs[A] == 0 ? FLAG_Z : 0)
+                   | (ie ? FLAG_PV : 0)
+                   | (fQ & FLAG_C));
                 return 9;
+            }
+            case 0x5F: { // LD A,R
+                final boolean ie = fInterruptEnabled;
+                fRegs[A] = fR;
+                setF((fRegs[A] & (FLAG_S | FLAG_F5 | FLAG_F3))
+                   | (fRegs[A] == 0 ? FLAG_Z : 0)
+                   | (ie ? FLAG_PV : 0)
+                   | (fQ & FLAG_C));
+                return 9;
+            }
             case 0x47: // LD I,A
+                fI = fRegs[A];
+                return 9;
             case 0x4F: // LD R,A
-                // Регистры I и R не реализуются
+                fR = fRegs[A];
                 return 9;
 
             case 0x67: // RRD
@@ -1090,17 +1252,16 @@ public final class CpuZ80 implements CpuDebugCore {
                 final int hl  = getHL();
                 final int mem = fMemManager.readByte(hl);
                 final int a   = fRegs[A];
-                if (op == 0x67) { // RRD
+                if (op == 0x67) { // RRD: (HL) = A[3:0] | (HL)[7:4], A[3:0] = (HL)[3:0]
                     fMemManager.writeByte(hl, ((a & 0x0F) << 4) | (mem >> 4));
                     fRegs[A] = (a & 0xF0) | (mem & 0x0F);
-                } else {          // RLD
+                } else {          // RLD: (HL) = (HL)<<4 | A[3:0], A[3:0] = (HL)[7:4]
                     fMemManager.writeByte(hl, ((mem << 4) | (a & 0x0F)) & 0xFF);
                     fRegs[A] = (a & 0xF0) | (mem >> 4);
                 }
-                fRegs[F] = (fRegs[F] & FLAG_C)
-                         | (fRegs[A] & (FLAG_S | FLAG_F5 | FLAG_F3))
-                         | (fRegs[A] == 0 ? FLAG_Z : 0)
-                         | (PARITY[fRegs[A]] ? FLAG_PV : 0);
+                fMemPtr = (hl + 1) & 0xFFFF;
+                // S/Z/F5/F3/PV — из нового A, C сохраняется, H и N сбрасываются
+                setFlagsShiftRotate(fRegs[A], fRegs[F]);
                 return 18;
             }
 
@@ -1108,18 +1269,23 @@ public final class CpuZ80 implements CpuDebugCore {
                 break;
         }
 
-        if ((op & 0b1100_0111) == 0b0100_0000) { // IN r,(C)
+        if ((op & 0b1100_0111) == 0b0100_0000) { // IN r,(C): r = 6 — недокументированное IN F,(C)
             final int value = inPort(fRegs[C]);
-            setFlagsSZ5H3P(value);
+            setF((value & (FLAG_S | FLAG_F5 | FLAG_F3))
+               | (value == 0 ? FLAG_Z : 0)
+               | (PARITY[value] ? FLAG_PV : 0)
+               | (fQ & FLAG_C));
             final int dst = (op >> 3) & 0b111;
-            if (dst != 0b110) {
-                fRegs[dst] = value & 0xFF;
+            if (dst != M) {
+                fRegs[dst] = value;
             }
+            fMemPtr = (getRegPair(P_BC) + 1) & 0xFFFF;
             return 12;
         }
-        if ((op & 0b1100_0111) == 0b0100_0001) { // OUT (C),r
+        if ((op & 0b1100_0111) == 0b0100_0001) { // OUT (C),r: r = 6 — недокументированное OUT (C),0
             final int src = (op >> 3) & 0b111;
-            outPort(fRegs[C], src == 0b110 ? 0 : fRegs[src]);
+            outPort(fRegs[C], (src == M) ? 0 : fRegs[src]);
+            fMemPtr = (getRegPair(P_BC) + 1) & 0xFFFF;
             return 12;
         }
 
@@ -1137,35 +1303,40 @@ public final class CpuZ80 implements CpuDebugCore {
                 break;
         }
 
-        // Остальные ED-коды — недокументированные, выполняем как NOP
+        // Остальные ED-коды реальный Z80 выполняет как NOP длиной два байта
         return 8;
     }
 
     private int adcHL(final int value) {
-        final int hl  = getHL();
-        final int c   = getFlagC() ? 1 : 0;
-        final int res = hl + value + c;
-        final int h   = ((hl & 0x0FFF) + (value & 0x0FFF) + c) > 0x0FFF ? FLAG_H : 0;
-        final int ovf = ((((hl ^ res) & (value ^ res)) & 0x8000) != 0) ? FLAG_PV : 0;
-        final int r   = res & 0xFFFF;
+        final int hl    = getHL();
+        final int carry = getFlagC() ? 1 : 0;
+        final int res   = hl + value + carry;
+        final int r     = res & 0xFFFF;
         setHL(r);
-        fRegs[F] = ((r >> 8) & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (r == 0 ? FLAG_Z : 0)
-                 | h | ovf | ((res > 0xFFFF) ? FLAG_C : 0);
+        setF(((r >> 8) & FLAG_S)
+           | (r == 0 ? FLAG_Z : 0)
+           | ((r >> 8) & (FLAG_F5 | FLAG_F3))
+           | (((hl & 0x0FFF) + (value & 0x0FFF) + carry) > 0x0FFF ? FLAG_H : 0)
+           | ((((hl ^ res) & (value ^ res)) & 0x8000) != 0 ? FLAG_PV : 0)
+           | ((res > 0xFFFF) ? FLAG_C : 0));
+        fMemPtr = (hl + 1) & 0xFFFF;
         return 15;
     }
 
     private int sbcHL(final int value) {
-        final int hl  = getHL();
-        final int c   = getFlagC() ? 1 : 0;
-        final int res = hl - value - c;
-        final int h   = ((hl & 0x0FFF) - (value & 0x0FFF) - c) < 0 ? FLAG_H : 0;
-        final int ovf = ((((hl ^ value) & (hl ^ res)) & 0x8000) != 0) ? FLAG_PV : 0;
-        final int r   = res & 0xFFFF;
+        final int hl    = getHL();
+        final int carry = getFlagC() ? 1 : 0;
+        final int res   = hl - value - carry;
+        final int r     = res & 0xFFFF;
         setHL(r);
-        fRegs[F] = ((r >> 8) & (FLAG_S | FLAG_F5 | FLAG_F3))
-                 | (r == 0 ? FLAG_Z : 0)
-                 | h | ovf | FLAG_N | ((res < 0) ? FLAG_C : 0);
+        setF(((r >> 8) & FLAG_S)
+           | (r == 0 ? FLAG_Z : 0)
+           | ((r >> 8) & (FLAG_F5 | FLAG_F3))
+           | (((hl & 0x0FFF) - (value & 0x0FFF) - carry) < 0 ? FLAG_H : 0)
+           | ((((hl ^ value) & (hl ^ res)) & 0x8000) != 0 ? FLAG_PV : 0)
+           | FLAG_N
+           | ((res < 0) ? FLAG_C : 0));
+        fMemPtr = (hl + 1) & 0xFFFF;
         return 15;
     }
 
@@ -1179,12 +1350,18 @@ public final class CpuZ80 implements CpuDebugCore {
         setRegPair(P_DE, (de + step) & 0xFFFF);
         final int bc = (getRegPair(P_BC) - 1) & 0xFFFF;
         setRegPair(P_BC, bc);
+        // Внутренняя операция LDI/LDD: A + пересланный байт (для последующего BIT после LDIR)
+        final int sum = fRegs[A] + val;
 
-        fRegs[F] = (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_C))
-                 | (bc != 0 ? FLAG_PV : 0);
+        // S, Z, C сохраняются; H, N сбрасываются; F5 и F3 — оба из суммы A + байт
+        setF((fQ & (FLAG_S | FLAG_Z | FLAG_C))
+           | ((sum << 4) & FLAG_F5)
+           | (sum & FLAG_F3)
+           | (bc != 0 ? FLAG_PV : 0));
 
         if (repeat && (bc != 0)) {
             setPC((getPC() - 2) & 0xFFFF);
+            fMemPtr = (getPC() + 1) & 0xFFFF;
             return 21;
         }
         return 16;
@@ -1196,21 +1373,31 @@ public final class CpuZ80 implements CpuDebugCore {
         final int val  = fMemManager.readByte(hl);
         final int a    = fRegs[A];
         final int res  = (a - val) & 0xFF;
+        // Полуперенос, как у SUB (H до сравнения нужен для внутренней операции)
         final int h    = ((a & 0x0F) - (val & 0x0F)) < 0 ? FLAG_H : 0;
 
         setHL((hl + step) & 0xFFFF);
         final int bc = (getRegPair(P_BC) - 1) & 0xFFFF;
         setRegPair(P_BC, bc);
+        // Внутренняя операция CPI/CPD: A - (HL) - H (вычитание переноса H)
+        final int sum = (res - (h != 0 ? 1 : 0)) & 0xFF;
 
-        fRegs[F] = (fRegs[F] & FLAG_C)
-                 | (res & (FLAG_S | FLAG_F3 | FLAG_F5))
-                 | (res == 0 ? FLAG_Z : 0)
-                 | h
-                 | (bc != 0 ? FLAG_PV : 0)
-                 | FLAG_N;
+        // F5 — бит 1, F3 — бит 3 внутренней операции (общий источник)
+        setF((fQ & FLAG_C)
+           | (res & FLAG_S)
+           | (res == 0 ? FLAG_Z : 0)
+           | ((sum << 4) & FLAG_F5)
+           | (sum & FLAG_F3)
+           | h
+           | (bc != 0 ? FLAG_PV : 0)
+           | FLAG_N);
+
+        // Внутренняя операция CPI/CPD: MEMPTR = HL ± 1 (по уже изменённому HL)
+        fMemPtr = getHL();
 
         if (repeat && (bc != 0) && (res != 0)) {
             setPC((getPC() - 2) & 0xFFFF);
+            fMemPtr = (getPC() + 1) & 0xFFFF;
             return 21;
         }
         return 16;
@@ -1220,15 +1407,25 @@ public final class CpuZ80 implements CpuDebugCore {
         final int value = inPort(fRegs[C]);
         fMemManager.writeByte(getHL(), value);
         setHL((getHL() + (decrement ? -1 : 1)) & 0xFFFF);
-        final int b = (fRegs[B] - 1) & 0xFF;
+        // Внутренняя операция INI/IND: MEMPTR = BC ± 1 по значению B до уменьшения
+        fMemPtr = (getRegPair(P_BC) + (decrement ? -1 : 1)) & 0xFFFF;
+        final int b   = (fRegs[B] - 1) & 0xFF;
         fRegs[B] = b;
-        fRegs[F] = (fRegs[F] & FLAG_C)
-                 | (value & (FLAG_S | FLAG_F3 | FLAG_F5))
-                 | (b == 0 ? FLAG_Z : 0)
-                 | FLAG_N;
+        // Внутренняя операция INI/IND: значение + ((C ± 1) & 0xFF)
+        final int sum = (value + ((fRegs[C] + (decrement ? -1 : 1)) & 0xFF)) & 0x1FF;
+        final boolean pv = PARITY[(sum & 0x07) ^ b];
+
+        setF((value & FLAG_S)
+           | (b == 0 ? FLAG_Z : 0)
+           | (value & FLAG_F3)
+           | (sum > 0xFF ? (FLAG_H | FLAG_C) : 0)
+           | (pv ? FLAG_PV : 0)
+           | FLAG_N
+           | (pv ? 0 : (sum & FLAG_F5)));
 
         if (repeat && (b != 0)) {
             setPC((getPC() - 2) & 0xFFFF);
+            fMemPtr = (getPC() + 1) & 0xFFFF;
             return 21;
         }
         return 16;
@@ -1236,32 +1433,54 @@ public final class CpuZ80 implements CpuDebugCore {
 
     private int blockOutPort(final boolean decrement, final boolean repeat) {
         final int value = fMemManager.readByte(getHL());
+        final int b     = (fRegs[B] - 1) & 0xFF;
         outPort(fRegs[C], value);
         setHL((getHL() + (decrement ? -1 : 1)) & 0xFFFF);
-        final int b = (fRegs[B] - 1) & 0xFF;
         fRegs[B] = b;
-        fRegs[F] = (fRegs[F] & FLAG_C)
-                 | (value & (FLAG_S | FLAG_F3 | FLAG_F5))
-                 | (b == 0 ? FLAG_Z : 0)
-                 | FLAG_N;
+        // Внутренняя операция OUTI/OUTD: MEMPTR = BC ± 1 по значению B после уменьшения
+        fMemPtr = ((b << 8) | fRegs[C]) + (decrement ? -1 : 1);
+        fMemPtr &= 0xFFFF;
+        // Внутренняя операция OUTI/OUTD: значение + L
+        final int sum = (value + fRegs[L]) & 0x1FF;
+        final boolean pv = PARITY[(sum & 0x07) ^ b];
+
+        setF((value & FLAG_S)
+           | (b == 0 ? FLAG_Z : 0)
+           | (value & FLAG_F3)
+           | (sum > 0xFF ? (FLAG_H | FLAG_C) : 0)
+           | (pv ? FLAG_PV : 0)
+           | FLAG_N
+           | (pv ? 0 : (sum & FLAG_F5)));
 
         if (repeat && (b != 0)) {
             setPC((getPC() - 2) & 0xFFFF);
+            fMemPtr = (getPC() + 1) & 0xFFFF;
             return 21;
         }
         return 16;
     }
 
     /**
-     * Читает порт ввода. При отсутствии менеджера устройств ввода/вывода
-     * используется та же схема, что и в CPUi8080: чтение по адресу (port | port &lt;&lt; 8) в памяти.
+     * Читает порт ввода. Адрес порта — 16-битный: младший байт всегда равен номеру
+     * порта команды, старший байт у {@code IN r,(C)} и блочных команд берётся из B,
+     * а у {@code IN A,(n)} — из A (так же, как у реального Z80).
+     * <p>
+     * При отсутствии менеджера устройств ввода/вывода используется та же схема,
+     * что и в CPUi8080: порт "просвечивает" через память по адресу (port | port &lt;&lt; 8).
+     *
+     * @param port номер порта (младший байт адреса)
+     * @return прочитанный байт
      */
     private int inPort(final int port) {
+        return inPort(port, fRegs[B]);
+    }
+
+    private int inPort(final int port, final int high) {
         final int p = port & 0xFF;
         if (fIoManager == null) {
             return fMemManager.readByte(p | (p << 8));
         }
-        return fIoManager.readByte(p);
+        return fIoManager.readByte(((high << 8) | p) & 0xFFFF) & 0xFF;
     }
 
     private void outPort(final int port, final int value) {
@@ -1269,7 +1488,7 @@ public final class CpuZ80 implements CpuDebugCore {
         if (fIoManager == null) {
             fMemManager.writeByte(p | (p << 8), value & 0xFF);
         } else {
-            fIoManager.writeByte(p, value & 0xFF);
+            fIoManager.writeByte(((fRegs[B] << 8) | p) & 0xFFFF, value & 0xFF);
         }
     }
 
@@ -1284,17 +1503,20 @@ public final class CpuZ80 implements CpuDebugCore {
 
             case 0x08: // EX AF,AF'
                 swapRegs(A, F);
+                fQ = 0;
                 return 4;
             case 0xD9: // EXX
                 swapRegs(B, C);
                 swapRegs(D, E);
                 swapRegs(H, L);
+                fQ = 0;
                 return 4;
             case 0x76: // HALT
                 fHalted = true;
                 // Оставляем PC на байте HALT: отладчик показывает остановленную команду,
                 // а продолжение исполнения сдвигает PC с неё (см. debugResumeFromHalt)
                 setPC((getPC() - 1) & 0xFFFF);
+                fQ = 0;
                 startDebugger();
                 return 4;
 
@@ -1317,32 +1539,51 @@ public final class CpuZ80 implements CpuDebugCore {
                 setSP(nextWordPC());
                 return 10;
 
-            case 0x02: // LD (BC),A
-                fMemManager.writeByte(getRegPair(P_BC), fRegs[A]);
+            case 0x02: { // LD (BC),A
+                final int bc = getRegPair(P_BC);
+                fMemManager.writeByte(bc, fRegs[A]);
+                fMemPtr = ((fRegs[A] << 8) | ((bc + 1) & 0xFF)) & 0xFFFF;
                 return 7;
-            case 0x12: // LD (DE),A
-                fMemManager.writeByte(getRegPair(P_DE), fRegs[A]);
+            }
+            case 0x12: { // LD (DE),A
+                final int de = getRegPair(P_DE);
+                fMemManager.writeByte(de, fRegs[A]);
+                fMemPtr = ((fRegs[A] << 8) | ((de + 1) & 0xFF)) & 0xFFFF;
                 return 7;
+            }
             case 0x22: { // LD (nn),HL / LD (nn),IX / LD (nn),IY
                 final int addr = nextWordPC();
+                fMemPtr = (addr + 1) & 0xFFFF;
                 final int word = indexed ? getIndex() : getHL();
                 fMemManager.writeByte(addr, word & 0xFF);
                 fMemManager.writeByte((addr + 1) & 0xFFFF, (word >> 8) & 0xFF);
                 return indexed ? 20 : 16;
             }
-            case 0x32: // LD (nn),A
-                fMemManager.writeByte(nextWordPC(), fRegs[A]);
+            case 0x32: { // LD (nn),A
+                final int addr = nextWordPC();
+                fMemManager.writeByte(addr, fRegs[A]);
+                // Внутренняя операция LD (nn),A: старший байт MEMPTR — аккумулятор,
+                // младший — младший байт адреса + 1
+                fMemPtr = ((fRegs[A] << 8) | ((addr + 1) & 0xFF)) & 0xFFFF;
                 return 13;
+            }
 
-            case 0x0A: // LD A,(BC)
-                fRegs[A] = fMemManager.readByte(getRegPair(P_BC));
+            case 0x0A: { // LD A,(BC)
+                final int bc = getRegPair(P_BC);
+                fRegs[A] = fMemManager.readByte(bc);
+                fMemPtr = (bc + 1) & 0xFFFF;
                 return 7;
-            case 0x1A: // LD A,(DE)
-                fRegs[A] = fMemManager.readByte(getRegPair(P_DE));
+            }
+            case 0x1A: { // LD A,(DE)
+                final int de = getRegPair(P_DE);
+                fRegs[A] = fMemManager.readByte(de);
+                fMemPtr = (de + 1) & 0xFFFF;
                 return 7;
+            }
             case 0x2A: { // LD HL,(nn) / LD IX,(nn) / LD IY,(nn)
                 final int addr = nextWordPC();
                 final int word = fMemManager.readByte(addr) | (fMemManager.readByte((addr + 1) & 0xFFFF) << 8);
+                fMemPtr = (addr + 1) & 0xFFFF;
                 if (indexed) {
                     setIndex(word);
                     return 20;
@@ -1350,9 +1591,12 @@ public final class CpuZ80 implements CpuDebugCore {
                 setHL(word);
                 return 16;
             }
-            case 0x3A: // LD A,(nn)
-                fRegs[A] = fMemManager.readByte(nextWordPC());
+            case 0x3A: { // LD A,(nn)
+                final int address = nextWordPC();
+                fRegs[A] = fMemManager.readByte(address);
+                fMemPtr  = (address + 1) & 0xFFFF;
                 return 13;
+            }
 
             case 0x03: // INC BC
                 setRegPair(P_BC, (getRegPair(P_BC) + 1) & 0xFFFF);
@@ -1421,36 +1665,36 @@ public final class CpuZ80 implements CpuDebugCore {
                 final int a = fRegs[A];
                 final boolean c = (a & 0x80) != 0;
                 fRegs[A] = ((a << 1) | (c ? 1 : 0)) & 0xFF;
-                fRegs[F] = (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
-                         | (fRegs[A] & (FLAG_F5 | FLAG_F3))
-                         | (c ? FLAG_C : 0);
+                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                   | (fRegs[A] & (FLAG_F5 | FLAG_F3))
+                   | (c ? FLAG_C : 0));
                 return 4;
             }
             case 0x0F: { // RRCA
                 final int a = fRegs[A];
                 final boolean c = (a & 0x01) != 0;
                 fRegs[A] = ((a >> 1) | (c ? 0x80 : 0)) & 0xFF;
-                fRegs[F] = (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
-                         | (fRegs[A] & (FLAG_F5 | FLAG_F3))
-                         | (c ? FLAG_C : 0);
+                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                   | (fRegs[A] & (FLAG_F5 | FLAG_F3))
+                   | (c ? FLAG_C : 0));
                 return 4;
             }
             case 0x17: { // RLA
                 final int a = fRegs[A];
                 final boolean c = (a & 0x80) != 0;
                 fRegs[A] = ((a << 1) | (getFlagC() ? 1 : 0)) & 0xFF;
-                fRegs[F] = (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
-                         | (fRegs[A] & (FLAG_F5 | FLAG_F3))
-                         | (c ? FLAG_C : 0);
+                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                   | (fRegs[A] & (FLAG_F5 | FLAG_F3))
+                   | (c ? FLAG_C : 0));
                 return 4;
             }
             case 0x1F: { // RRA
                 final int a = fRegs[A];
                 final boolean c = (a & 0x01) != 0;
                 fRegs[A] = ((a >> 1) | (getFlagC() ? 0x80 : 0)) & 0xFF;
-                fRegs[F] = (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
-                         | (fRegs[A] & (FLAG_F5 | FLAG_F3))
-                         | (c ? FLAG_C : 0);
+                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                   | (fRegs[A] & (FLAG_F5 | FLAG_F3))
+                   | (c ? FLAG_C : 0));
                 return 4;
             }
             case 0x27: // DAA
@@ -1458,19 +1702,19 @@ public final class CpuZ80 implements CpuDebugCore {
                 return 4;
             case 0x2F: // CPL
                 fRegs[A] = (~fRegs[A]) & 0xFF;
-                fRegs[F] = (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV | FLAG_C))
-                         | (fRegs[A] & (FLAG_F5 | FLAG_F3))
-                         | FLAG_H | FLAG_N;
+                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV | FLAG_C))
+                   | (fRegs[A] & (FLAG_F5 | FLAG_F3))
+                   | FLAG_H | FLAG_N);
                 return 4;
             case 0x37: // SCF
-                fRegs[F] = (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
-                         | (fRegs[A] & (FLAG_F5 | FLAG_F3))
-                         | FLAG_C;
+                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                   | undocumentedYX()
+                   | FLAG_C);
                 return 4;
             case 0x3F: // CCF
-                fRegs[F] = (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
-                         | (fRegs[A] & (FLAG_F5 | FLAG_F3))
-                         | (getFlagC() ? FLAG_H : FLAG_C);
+                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                   | undocumentedYX()
+                   | (getFlagC() ? FLAG_H : FLAG_C));
                 return 4;
 
             case 0x09: // ADD HL,BC / ADD IX,BC / ADD IY,BC
@@ -1562,14 +1806,19 @@ public final class CpuZ80 implements CpuDebugCore {
             case 0xC0: case 0xC8: case 0xD0: case 0xD8: // RET cc
             case 0xE0: case 0xE8: case 0xF0: case 0xF8:
                 if (testFlags((op >> 3) & 0b111)) {
-                    setPC(popWord());
+                    final int addr = popWord();
+                    fMemPtr = addr;
+                    setPC(addr);
                     return 11;
                 }
                 return 5;
 
-            case 0xC9: // RET
-                setPC(popWord());
+            case 0xC9: { // RET
+                final int addr = popWord();
+                fMemPtr = addr;
+                setPC(addr);
                 return 10;
+            }
 
             case 0xC1: // POP BC
                 setRegPair(P_BC, popWord());
@@ -1608,18 +1857,23 @@ public final class CpuZ80 implements CpuDebugCore {
             case 0xC2: case 0xCA: case 0xD2: case 0xDA: // JP cc,nn
             case 0xE2: case 0xEA: case 0xF2: case 0xFA: {
                 final int addr = nextWordPC();
+                fMemPtr = addr;
                 if (testFlags((op >> 3) & 0b111)) {
                     setPC(addr);
                 }
                 return 10;
             }
-            case 0xC3: // JP nn
-                setPC(nextWordPC());
+            case 0xC3: { // JP nn
+                final int addr = nextWordPC();
+                fMemPtr = addr;
+                setPC(addr);
                 return 10;
+            }
 
             case 0xC4: case 0xCC: case 0xD4: case 0xDC: // CALL cc,nn
             case 0xE4: case 0xEC: case 0xF4: case 0xFC: {
                 final int addr = nextWordPC();
+                fMemPtr = addr;
                 if (testFlags((op >> 3) & 0b111)) {
                     pushWord(getPC());
                     setPC(addr);
@@ -1629,6 +1883,7 @@ public final class CpuZ80 implements CpuDebugCore {
             }
             case 0xCD: { // CALL nn
                 final int addr = nextWordPC();
+                fMemPtr = addr;
                 pushWord(getPC());
                 setPC(addr);
                 return 17;
@@ -1662,11 +1917,14 @@ public final class CpuZ80 implements CpuDebugCore {
             case 0xD3: { // OUT (n),A
                 final int port = nextBytePC();
                 outPort(port, fRegs[A]);
+                fMemPtr = ((fRegs[A] << 8) | ((port + 1) & 0xFF)) & 0xFFFF;
                 return 11;
             }
-            case 0xDB: { // IN A,(n)
+            case 0xDB: { // IN A,(n): на шину адреса выставляется A:n, значение порта заменяет A
                 final int port = nextBytePC();
-                fRegs[A] = inPort(port) & 0xFF;
+                final int value = inPort(port, fRegs[A]);
+                fMemPtr = (((fRegs[A] << 8) | (port & 0xFF)) + 1) & 0xFFFF;
+                fRegs[A] = value;
                 return 11;
             }
 
@@ -1676,6 +1934,7 @@ public final class CpuZ80 implements CpuDebugCore {
                 final int reg = indexed ? getIndex() : getHL();
                 fMemManager.writeByte(sp, reg & 0xFF);
                 fMemManager.writeByte((sp + 1) & 0xFFFF, (reg >> 8) & 0xFF);
+                fMemPtr = mem;
                 if (indexed) {
                     setIndex(mem);
                     return 23;
@@ -1704,10 +1963,13 @@ public final class CpuZ80 implements CpuDebugCore {
                 return 4;
 
             case 0xC7: case 0xCF: case 0xD7: case 0xDF: // RST
-            case 0xE7: case 0xEF: case 0xF7: case 0xFF:
+            case 0xE7: case 0xEF: case 0xF7: case 0xFF: {
+                final int vector = op & 0b0011_1000;
                 pushWord(getPC());
-                setPC(op & 0b0011_1000);
+                fMemPtr = vector;
+                setPC(vector);
                 return 11;
+            }
 
             default:
                 // Недокументированный байт — NOP
@@ -1727,15 +1989,18 @@ public final class CpuZ80 implements CpuDebugCore {
 
         if (fIndexMode != INDEX_NONE) {
             if ((r == H) || (r == L)) {
-                // IXH/IXL — недокументированные, выполняем как NOP
-                return 11;
+                // Недокументированные команды с IXH/IXL/IYH/IYL
+                execALUOperation(kind, getIndexHalf(r));
+                return 8;
             }
-            final int d = (byte) nextBytePC();
-            final int operand = (r == M)
-                              ? fMemManager.readByte((getIndex() + d) & 0xFFFF)
-                              : fRegs[r];
-            execALUOperation(kind, operand);
-            return (r == M) ? 19 : 11;
+            if (r == M) {
+                final int d = (byte) nextBytePC();
+                final int address = (getIndex() + d) & 0xFFFF;
+                execALUOperation(kind, fMemManager.readByte(address));
+                return 19;
+            }
+            execALUOperation(kind, fRegs[r]);
+            return 11;
         }
 
         execALUOperation(kind, getReg(r));
@@ -1783,7 +2048,9 @@ public final class CpuZ80 implements CpuDebugCore {
             return 23;
         }
         if ((r == H) || (r == L)) {
-            // IXH/IXL — недокументированные, выполняем как NOP
+            // Недокументированные INC/DEC IXH/IXL/IYH/IYL
+            final int value = getIndexHalf(r);
+            setIndexHalf(r, increment ? incByte(value) : decByte(value));
             return 8;
         }
         fRegs[r] = increment ? incByte(fRegs[r]) : decByte(fRegs[r]);
@@ -1801,7 +2068,8 @@ public final class CpuZ80 implements CpuDebugCore {
             return 19;
         }
         if ((r == H) || (r == L)) {
-            // IXH/IXL — недокументированные, выполняем как NOP
+            // Недокументированное LD IXH/IXL/IYH/IYL,n
+            setIndexHalf(r, nextBytePC());
             return 11;
         }
         fRegs[r] = nextBytePC();
@@ -1810,28 +2078,60 @@ public final class CpuZ80 implements CpuDebugCore {
 
     /**
      * LD r,r' при индексном префиксе.
+     * Если один из операндов — (IX+d)/(IY+d), команда читает (и записывает) память
+     * по этому адресу; иначе операнды — регистры, включая недокументированные
+     * IXH/IXL/IYH/IYL вместо H/L.
      */
     private int execIndexedLoad(final int dst, final int src) {
-        if ((dst == M) && (src == M)) {
-            // LD (IX+d),(IX+d) — недокументированная, выполняем как NOP
-            return 19;
-        }
         if ((dst == M) || (src == M)) {
             final int d = (byte) nextBytePC();
             final int address = (getIndex() + d) & 0xFFFF;
+            fMemPtr = address;
             if (dst == M) {
+                // LD (IX+d),r: адресуются обычные регистры, IXH/IXL сюда не попадают
                 fMemManager.writeByte(address, fRegs[src]);
             } else {
+                // LD r,(IX+d): точно так же — обычный H/L, а не IXH/IXL
                 fRegs[dst] = fMemManager.readByte(address);
             }
             return 19;
         }
         if ((dst == H) || (dst == L) || (src == H) || (src == L)) {
-            // IXH/IXL/IYH/IYL — недокументированные, выполняем как NOP
-            return 11;
+            // Недокументированные пересылки с IXH/IXL/IYH/IYL: подменяется
+            // только та сторона, которая кодирует H или L
+            final int value = ((src == H) || (src == L)) ? getIndexHalf(src) : fRegs[src];
+            if ((dst == H) || (dst == L)) {
+                setIndexHalf(dst, value);
+            } else {
+                fRegs[dst] = value;
+            }
+            return 8;
         }
         fRegs[dst] = fRegs[src];
-        return 11;
+        return 8;
+    }
+
+    /**
+     * Возвращает значение половины активного индексного регистра.
+     *
+     * @param half H — старший байт IX/IY, L — младший байт
+     */
+    private int getIndexHalf(final int half) {
+        final int index = getIndex();
+        return (half == H) ? ((index >> 8) & 0xFF) : (index & 0xFF);
+    }
+
+    /**
+     * Устанавливает значение половины активного индексного регистра.
+     *
+     * @param half  H — старший байт IX/IY, L — младший байт
+     * @param value новое значение байта
+     */
+    private void setIndexHalf(final int half, final int value) {
+        final int index = (half == H)
+                        ? ((value & 0xFF) << 8) | (getIndex() & 0xFF)
+                        : (getIndex() & 0xFF00) | (value & 0xFF);
+        setIndex(index);
     }
 
     /**
@@ -1848,7 +2148,7 @@ public final class CpuZ80 implements CpuDebugCore {
     private int addWordFlags(final int a, final int b, final int res) {
         final int r = res & 0xFFFF;
         final int h = ((a & 0x0FFF) + (b & 0x0FFF)) > 0x0FFF ? FLAG_H : 0;
-        return (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
+        return (fQ & (FLAG_S | FLAG_Z | FLAG_PV))
              | ((r >> 8) & (FLAG_F5 | FLAG_F3))
              | h | ((res > 0xFFFF) ? FLAG_C : 0);
     }
@@ -1867,6 +2167,8 @@ public final class CpuZ80 implements CpuDebugCore {
         } else {
             setHL(res & 0xFFFF);
         }
-        fRegs[F] = addWordFlags(dst, value, res);
+        setF(addWordFlags(dst, value, res));
+        // Внутренняя операция ADD HL,ss записывает в MEMPTR исходное значение HL + 1
+        fMemPtr = (dst + 1) & 0xFFFF;
     }
 }

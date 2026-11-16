@@ -31,8 +31,6 @@ public final class DisAsmZ80 implements DisAsm {
     private static final String[] REGS_IY = { "B", "C", "D", "E", "IYH", "IYL", "(IY+d)", "A" };
     // Имена 16-битных регистровых пар в кодировке команды
     private static final String[] PAIRS_HL = { "BC", "DE", "HL", "SP" };
-    private static final String[] PAIRS_IX = { "BC", "DE", "IX", "SP" };
-    private static final String[] PAIRS_IY = { "BC", "DE", "IY", "SP" };
     // Коды условий
     private static final String[] CONDS = { "NZ", "Z", "NC", "C", "PO", "PE", "P", "M" };
     // Мнемоники АЛУ в кодировке команды
@@ -42,8 +40,12 @@ public final class DisAsmZ80 implements DisAsm {
     private static final String[] CB_BIT_OPS = { "BIT  ", "RES  ", "SET  " };
     // Имена регистров специального назначения для команд ED (IN/OUT)
     private static final String[] ED_REGS = { "B", "C", "D", "E", "H", "L", null, "A" };
-    // Имена блоковых команд ED A0..BB (без суффикса R)
+    // Блочные команды ED A0..BB: индекс — код со снятым битом 3 (шаг вперёд/назад)
     private static final String[] ED_BLOCK = { "LDI", "CPI", "INI", "OUTI", "LDD", "CPD", "IND", "OUTD" };
+    // Режимы прерываний ED 46..7E. Бит 4 (пара) и бит 3 (RETN/RETI) на режим не влияют,
+    // поэтому IM повторяется в обеих половинах диапазона: 46 и 66 — IM 0, 4E и 6E — IM 0/1,
+    // 56 и 76 — IM 1, 5E и 7E — IM 2
+    private static final String[] ED_IM = { "IM   0", "IM   0/1", "IM   1", "IM   2" };
     // Номера векторов RST
     private static final String[] RST = { "00H", "08H", "10H", "18H", "20H", "28H", "30H", "38H" };
 
@@ -95,6 +97,11 @@ public final class DisAsmZ80 implements DisAsm {
             case 0x21: case 0x22: case 0x2A: // LD IX,nn / LD (nn),IX / LD IX,(nn)
             case 0x36:                       // LD (IX+d),n
                 return 4;
+            // HALT — единственный код в поле назначения LD (IX+d),r, у которого нет смещения.
+            // Эмулятор читает его как один байт после префикса, и дизассемблер обязан
+            // показывать ту же длину, иначе таблица отладчика разъедется с исполнением.
+            case 0x76:
+                return INDEX_LENGTH;
             default:
                 return usesIndexDisplacement(bt1) ? 3 : INDEX_LENGTH;
         }
@@ -335,23 +342,47 @@ public final class DisAsmZ80 implements DisAsm {
             case 0xE5: text = "PUSH " + pair; break;
             case 0xE9: text = "JP   (" + pair + ")"; break;
             case 0xF9: text = "LD   SP," + pair; break;
+            // LD (IX+d),r: записывается обычный регистр, включая H и L
+            case 0x70: case 0x71: case 0x72: case 0x73:
+            case 0x74: case 0x75: case 0x77:
+                text = "LD   (" + pair + disp + ")," + REGS[bt1 & 7];
+                break;
+            // ED после префикса DD/FD выполняется как NOP, префикс не действует
+            case PREFIX_ED: text = "ED"; break;
             default:
-                text = disAsmIndexReg(bt1, bt2, isIX);
+                text = disAsmIndexReg(bt1, bt2, bt3, isIX);
                 break;
         }
         return new DisAsmResult(cmdLen, text, bt1 == 0xE9, false);
     }
 
     /**
-     * Проверяет, содержит ли команда DD/FD байт смещения для (IX+d)/(IY+d).
+     * Проверяет, содержит ли команда DD/FD байт смещения для (IX+d)/(IY+d)
+     * либо байт данных для недокументированного LD IXH/IXL/IYH/IYL,n.
      *
      * @param bt1 код операции после префикса
-     * @return true = команда содержит байт смещения
+     * @return true = команда содержит байт смещения или данных
      */
     private static boolean usesIndexDisplacement(final int bt1) {
-        return ((bt1 >= 0x40) && (bt1 < 0x80) && (bt1 != 0x76) && ((bt1 & 7) == 6))
-            || ((bt1 >= 0x80) && (bt1 < 0xC0) && ((bt1 & 7) == 6))
-            || (bt1 == 0x34) || (bt1 == 0x35); // INC (IX+d) / DEC (IX+d): поле r в битах 5-3
+        // LD H,n / LD L,n — при индексном префиксе это LD IXH,n / LD IXL,n
+        if ((bt1 == 0x26) || (bt1 == 0x2E)) {
+            return true;
+        }
+        // LD (IX+d),r — поле назначения в битах 5-3 равно 6; проверяется раньше,
+        // потому что поле r в битах 2-0 при этом может быть любым
+        if ((bt1 >= 0x70) && (bt1 <= 0x77)) {
+            return true;
+        }
+        // LD r,(IX+d) — поле r в битах 2-0 равно 6
+        if ((bt1 >= 0x40) && (bt1 < 0x80)) {
+            return (bt1 & 7) == 6;
+        }
+        // ALU A,(IX+d) — поле r в битах 2-0 равно 6
+        if ((bt1 >= 0x80) && (bt1 < 0xC0)) {
+            return (bt1 & 7) == 6;
+        }
+        // INC (IX+d) / DEC (IX+d): поле r в битах 5-3
+        return (bt1 == 0x34) || (bt1 == 0x35);
     }
 
     /**
@@ -366,25 +397,67 @@ public final class DisAsmZ80 implements DisAsm {
 
     /**
      * Дизассемблирует команды с префиксом DD/FD, работающие с 8-битными регистрами
-     * IXH/IXL/IYH/IYL или с ячейкой (IX+d)/(IY+d).
+     * IXH/IXL/IYH/IYL или с ячейкой (IX+d)/(IY+d), а также команды, на которые
+     * индексный префикс не влияет (они выполняются как обычные).
      *
      * @param bt1  код операции после префикса
      * @param bt2  байт смещения
+     * @param bt3  байт за смещением (для команд, на которые префикс не влияет)
      * @param isIX true = префикс DD (IX), false = префикс FD (IY)
      * @return текст команды
      */
     @NotNull
-    private static String disAsmIndexReg(final int bt1, final int bt2, final boolean isIX) {
+    private static String disAsmIndexReg(final int bt1, final int bt2, final int bt3, final boolean isIX) {
         final String[] regs = isIX ? REGS_IX : REGS_IY;
-        final String text;
-        if ((bt1 >= 0x40) && (bt1 < 0x80)) {
-            text = "LD   " + regs[(bt1 >> 3) & 7] + "," + regs[bt1 & 7];
-        } else if ((bt1 >= 0x80) && (bt1 < 0xC0)) {
-            text = ALU[(bt1 >> 3) & 7] + regs[bt1 & 7];
-        } else {
-            return isIX ? "DD" : "FD";
+        if (bt1 == 0x76) { // HALT — префикс на него не влияет
+            return "HALT";
         }
-        return text.replace("+d", hexDisp(bt2));
+        if ((bt1 >= 0x40) && (bt1 < 0x80)) {
+            if ((bt1 & 7) == 6) {
+                // LD r,(IX+d): записывается обычный регистр, включая H и L
+                // (IXH/IXL сюда не попадают — так же работает и эмулятор)
+                return "LD   " + REGS[(bt1 >> 3) & 7] + "," + cell(isIX, bt2);
+            }
+            // LD r,r': подменяется только сторона, кодирующая H или L
+            return "LD   " + halfName(isIX, bt1 >> 3) + "," + halfName(isIX, bt1);
+        }
+        if ((bt1 >= 0x80) && (bt1 < 0xC0)) {
+            return ALU[(bt1 >> 3) & 7] + halfName(isIX, bt1);
+        }
+        if ((bt1 == 0x26) || (bt1 == 0x2E)) {
+            // LD IXH,n / LD IXL,n — байт данных стоит на месте смещения
+            return "LD   " + regs[(bt1 >> 3) & 7] + "," + hex8(bt2);
+        }
+        // Остальные команды не используют индексный регистр: префикс для них — NOP,
+        // но операнды (байт данных или 16-битный адрес) остаются у команды
+        return disAsmMain(bt1, bt2, bt3).getText();
+    }
+
+    /**
+     * Возвращает имя 8-битного регистра для команды с индексным префиксом:
+     * поле 4 (H) и 5 (L) кодируют IXH/IXL (IYH/IYL), остальные имена без изменений.
+     *
+     * @param isIX true = префикс DD (IX), false = префикс FD (IY)
+     * @param r    поле регистра (0..7)
+     * @return имя регистра
+     */
+    private static String halfName(final boolean isIX, final int r) {
+        final int reg = r & 7;
+        if ((reg == 4) || (reg == 5)) {
+            return (isIX ? "IX" : "IY") + ((reg == 4) ? "H" : "L");
+        }
+        return REGS[reg];
+    }
+
+    /**
+     * Возвращает имя ячейки памяти (IX+d)/(IY+d).
+     *
+     * @param isIX true = префикс DD (IX), false = префикс FD (IY)
+     * @param disp байт смещения
+     * @return текст ячейки памяти
+     */
+    private static String cell(final boolean isIX, final int disp) {
+        return "(" + (isIX ? "IX" : "IY") + hexDisp(disp) + ")";
     }
 
     /**
@@ -438,24 +511,60 @@ public final class DisAsmZ80 implements DisAsm {
         final String addr = hex16(bt3, bt2);
         // Код операции ED кодирует пару в битах 5-4
         switch (bt1) {
-            case 0x40: case 0x48: case 0x50: case 0x58: case 0x60: case 0x68: case 0x70: case 0x78:
-                text  = "IN   " + ED_REGS[(bt1 >> 3) & 7] + ",(C)";
+            case 0x40: case 0x48: case 0x50: case 0x58: // IN r,(C), r = 6 — недокументированное IN F,(C)
+            case 0x60: case 0x68: case 0x70: case 0x78: {
+                final String reg = ED_REGS[(bt1 >> 3) & 7];
+                text  = "IN   " + ((reg == null) ? "F" : reg) + ",(C)";
                 isJmp = false;
                 break;
+            }
 
-            case 0x41: case 0x49: case 0x51: case 0x59: case 0x61: case 0x69: case 0x71: case 0x79:
-                text  = "OUT  (C)," + ED_REGS[(bt1 >> 3) & 7];
+            case 0x41: case 0x49: case 0x51: case 0x59: // OUT (C),r, r = 6 — недокументированное OUT (C),0
+            case 0x61: case 0x69: case 0x71: case 0x79: {
+                final String reg = ED_REGS[(bt1 >> 3) & 7];
+                text  = "OUT  (C)," + ((reg == null) ? "0" : reg);
                 isJmp = false;
                 break;
+            }
 
-            case 0x44: case 0x4C: case 0x54: case 0x5C: case 0x64: case 0x6C: case 0x74: case 0x7C:
+            case 0x44: case 0x4C: case 0x54: case 0x5C:
+            case 0x64: case 0x6C: case 0x74: case 0x7C:
                 text  = "NEG";
                 isJmp = false;
                 break;
 
-            case 0x45: case 0x4D: case 0x55: case 0x5D: case 0x65: case 0x6D: case 0x75: case 0x7D:
+            // RETN (ED 45/4D/55/5D) и RETI (ED 65/6D/75/7D — те же коды с установленным битом 3)
+            case 0x45: case 0x4D: case 0x55: case 0x5D:
                 text  = "RETN";
-                isJmp =   true;
+                isJmp = true;
+                break;
+
+            case 0x65: case 0x6D: case 0x75: case 0x7D:
+                text  = "RETI";
+                isJmp = true;
+                break;
+
+            // IM 0 / IM 0/1 / IM 1 / IM 2. Бит 3 (RETN/RETI) и бит 4 (пара) на режим
+            // не влияют, поэтому IM 0 повторяется как ED 46 и ED 66, IM 0/1 — как 4E и 6E,
+            // IM 1 — как 56 и 76, IM 2 — как 5E и 7E
+            case 0x46: case 0x66:
+                text  = ED_IM[0];
+                isJmp = false;
+                break;
+
+            case 0x4E: case 0x6E:
+                text  = ED_IM[1];
+                isJmp = false;
+                break;
+
+            case 0x56: case 0x76:
+                text  = ED_IM[2];
+                isJmp = false;
+                break;
+
+            case 0x5E: case 0x7E:
+                text  = ED_IM[3];
+                isJmp = false;
                 break;
 
             case 0x47:
@@ -515,8 +624,9 @@ public final class DisAsmZ80 implements DisAsm {
             case 0x6B: return "LD   HL,(" + addr + ")";
             case 0x73: return "LD   (" + addr + "),SP";
             case 0x7B: return "LD   SP,(" + addr + ")";
-            case 0x42: return "SBC  HL," + pair;
-            case 0x4A: return "ADC  HL," + pair;
+            // ADC HL,ss / SBC HL,ss — пара кодируется битами 5-4
+            case 0x4A: case 0x5A: case 0x6A: case 0x7A: return "ADC  HL," + pair;
+            case 0x42: case 0x52: case 0x62: case 0x72: return "SBC  HL," + pair;
             default:
                 break;
         }
@@ -524,7 +634,12 @@ public final class DisAsmZ80 implements DisAsm {
             final String block = ED_BLOCK[bt1 & 7];
             return ((bt1 & 8) == 0) ? block : block.concat("R");
         }
-        return "ED";
+        // ED 77 и ED 7F — недокументированные дубликаты NEG
+        if ((bt1 == 0x77) || (bt1 == 0x7F)) {
+            return "NEG";
+        }
+        // Остальные коды ED реальный Z80 выполняет как NOP длиной два байта
+        return "NOP";
     }
 
     /**

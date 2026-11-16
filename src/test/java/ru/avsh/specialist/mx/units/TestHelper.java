@@ -28,6 +28,27 @@ public final class TestHelper {
     public static String loadAndExecuteCpmProg(final boolean isZ80,
                                                final @NotNull String cpmProgName,
                                                final @NotNull Duration timeout) {
+        return loadAndExecuteCpmProg(isZ80, cpmProgName, timeout, "");
+    }
+
+    /**
+     * Загружает и выполняет тестовую CP/M-программу, передавая ей командную строку.
+     * <p>
+     * CP/M размещает хвост команды в DMA-буфере по адресу 0x0080: в первом байте длина,
+     * далее текст, завершённый символом CR. Многие тесты (например, z80type) показывают
+     * подробности только при наличии ключа, поэтому без такого хвоста их вывод неполон.
+     *
+     * @param isZ80       true, если процессор Z80, иначе i8080
+     * @param cpmProgName тестовая CP/M-программа
+     * @param timeout     тайм-аут, который не должна превысить исполняемая программа
+     * @param commandTail хвост командной строки без имени программы (например, {@code "/D"});
+     *                    пустая строка — программа запускается без параметров
+     * @return содержимое текстового буфера, сформированного CP/M-программой
+     */
+    public static String loadAndExecuteCpmProg(final boolean isZ80,
+                                               final @NotNull String cpmProgName,
+                                               final @NotNull Duration timeout,
+                                               final @NotNull String commandTail) {
 
         final int start = 0x0100;
         final MemoryManager memory = new MemoryManager();
@@ -57,6 +78,17 @@ public final class TestHelper {
         memory.writeByte(5, 0xC9); // RET
         memory.writeByte(6, 0xFF); // SP
         memory.writeByte(7, 0xFF);
+
+        // Хвост командной строки для CP/M: [0x80] — длина, далее текст, затем CR.
+        // CP/M добавляет перед текстом пробел, поэтому он идёт в счёт длины.
+        final String tail = commandTail.isEmpty()
+                          ? ""
+                          : (commandTail.charAt(0) == ' ' ? commandTail : " " + commandTail);
+        memory.writeByte(0x0080, tail.length());
+        for (int i = 0; i < tail.length(); i++) {
+            memory.writeByte(0x0081 + i, tail.charAt(i));
+        }
+        memory.writeByte(0x0081 + tail.length(), 0x0D);
 
         final StringBuffer stringBuffer = new StringBuffer();
         assertTimeoutPreemptively(timeout, () -> {
@@ -101,7 +133,7 @@ public final class TestHelper {
             }
 
             case 2: {
-                char value = (char) (de & 0xFF);
+                final char value = (char) (de & 0xFF);
                 stringBuffer.append(value);
                 System.out.print(value);
                 break;
