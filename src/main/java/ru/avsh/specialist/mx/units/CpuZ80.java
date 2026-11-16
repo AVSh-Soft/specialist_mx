@@ -149,15 +149,15 @@ public final class CpuZ80 implements CpuDebugCore {
               fSpMX = spMX;
         fMemManager = memManager;
          fIoManager =  ioManager;
-                                // 0, 1, 2, 3, 4, 5, 6, 7,  8,  9
-        fRegs    = new int[10]; // B, C, D, E, H, L, F, A, SP, PC
-        fRegs[F] = 0b0000_0000; // Флаги по умолчанию SZ5H3PNC
-        fRegsAlt = new int[ 8]; // B', C', D', E', H', L', F', A'
+                                  // 0, 1, 2, 3, 4, 5, 6, 7,  8,  9
+             fRegs = new int[10]; // B, C, D, E, H, L, F, A, SP, PC
+          fRegs[F] = 0b0000_0000; // Флаги по умолчанию SZ5H3PNC
+          fRegsAlt = new int[ 8]; // B', C', D', E', H', L', F', A'
         fIndexMode = INDEX_NONE;
-        fMemPtr    = 0;
-             fQ    = 0;
-              fI   = 0;
-              fR   = 0;
+           fMemPtr = 0;
+                fQ = 0;
+                fI = 0;
+                fR = 0;
 
              fCycles = new AtomicInteger();
          fIsDebugRun = new AtomicBoolean();
@@ -218,9 +218,9 @@ public final class CpuZ80 implements CpuDebugCore {
             case P_DE : return getRegPair(P_DE );
             case P_HL : return getRegPair(P_HL );
             case P_PSW: return getRegPair(P_PSW);
-            case SP:    return getSP();
-            case PC:    return getPC();
-            default:    return 0;
+            case SP   : return getSP();
+            case PC   : return getPC();
+            default   : return 0;
         }
     }
 
@@ -234,13 +234,13 @@ public final class CpuZ80 implements CpuDebugCore {
     @Override
     public void setCommonRegPair(final int commonPair, final int value) {
         switch (commonPair) {
-            case P_BC:  setRegPair(P_BC,  value); break;
-            case P_DE:  setRegPair(P_DE,  value); break;
-            case P_HL:  setRegPair(P_HL,  value); break;
+            case P_BC : setRegPair(P_BC,  value); break;
+            case P_DE : setRegPair(P_DE,  value); break;
+            case P_HL : setRegPair(P_HL,  value); break;
             case P_PSW: setRegPair(P_PSW, value); break;
-            case SP:    setSP(value);             break;
-            case PC:    setPC(value);             break;
-            default:                              break;
+            case SP   : setSP(value);             break;
+            case PC   : setPC(value);             break;
+            default   :                           break;
         }
     }
 
@@ -272,14 +272,14 @@ public final class CpuZ80 implements CpuDebugCore {
     @Override
     public synchronized int debugGetValRegPair(final DebugRegPair regPair) {
         switch (regPair) {
-            case AF   : return (fRegs[A] << 8) | fRegs[F];
-            case BC   : return getRegPair(P_BC);
-            case DE   : return getRegPair(P_DE);
-            case HL   : return getRegPair(P_HL);
-            case IX   : return fIX;
-            case IY   : return fIY;
-            case SP   : return getSP();
-            case PC   :  return getPC();
+            case AF    : return (fRegs[A] << 8) | fRegs[F];
+            case BC    : return getRegPair(P_BC);
+            case DE    : return getRegPair(P_DE);
+            case HL    : return getRegPair(P_HL);
+            case IX    : return fIX;
+            case IY    : return fIY;
+            case SP    : return getSP();
+            case PC    :  return getPC();
             case AF_ALT: return (fRegsAlt[A] << 8) | fRegsAlt[F];
             case BC_ALT: return (fRegsAlt[B] << 8) | fRegsAlt[C];
             case DE_ALT: return (fRegsAlt[D] << 8) | fRegsAlt[E];
@@ -538,8 +538,8 @@ public final class CpuZ80 implements CpuDebugCore {
      * @param reg2 индекс второго регистра пары
      */
     private void swapRegs(final int reg1, final int reg2) {
-        int value = fRegs   [reg1]; fRegs   [reg1] = fRegsAlt[reg1]; fRegsAlt[reg1] = value;
-            value = fRegs   [reg2]; fRegs   [reg2] = fRegsAlt[reg2]; fRegsAlt[reg2] = value;
+        int value = fRegs[reg1]; fRegs[reg1] = fRegsAlt[reg1]; fRegsAlt[reg1] = value;
+            value = fRegs[reg2]; fRegs[reg2] = fRegsAlt[reg2]; fRegsAlt[reg2] = value;
     }
 
     private int getSP() {
@@ -615,7 +615,7 @@ public final class CpuZ80 implements CpuDebugCore {
      */
     private void setF(final int flags) {
         fRegs[F] = flags & 0xFF;
-            fQ   = fRegs[F];
+              fQ = fRegs[F];
     }
 
     /**
@@ -660,7 +660,7 @@ public final class CpuZ80 implements CpuDebugCore {
         setF((v & (FLAG_S | FLAG_F5 | FLAG_F3))
            | (v == 0 ? FLAG_Z : 0)
            | (((a & 0x0F) + (b & 0x0F) + carry) > 0x0F ? FLAG_H : 0)
-           | (((a ^ res) & (b ^ res) & 0x80) != 0 ? FLAG_PV : 0)
+           | (((a ^ res) & (b ^ res) & 0x80) == 0 ? 0 : FLAG_PV)
            | ((res > 0xFF) ? FLAG_C : 0));
     }
 
@@ -677,7 +677,7 @@ public final class CpuZ80 implements CpuDebugCore {
         setF((v & (FLAG_S | FLAG_F5 | FLAG_F3))
            | (v == 0 ? FLAG_Z : 0)
            | (((a & 0x0F) - (b & 0x0F) - carry) < 0 ? FLAG_H : 0)
-           | (((a ^ b) & (a ^ res) & 0x80) != 0 ? FLAG_PV : 0)
+           | (((a ^ b) & (a ^ res) & 0x80) == 0 ? 0 : FLAG_PV)
            | FLAG_N
            | ((res < 0) ? FLAG_C : 0));
     }
@@ -696,7 +696,7 @@ public final class CpuZ80 implements CpuDebugCore {
            | (v == 0 ? FLAG_Z : 0)
            | (b & (FLAG_F5 | FLAG_F3))
            | (((a & 0x0F) - (b & 0x0F)) < 0 ? FLAG_H : 0)
-           | (((a ^ b) & (a ^ res) & 0x80) != 0 ? FLAG_PV : 0)
+           | (((a ^ b) & (a ^ res) & 0x80) == 0 ? 0 : FLAG_PV)
            | FLAG_N
            | ((res < 0) ? FLAG_C : 0));
     }
@@ -802,21 +802,21 @@ public final class CpuZ80 implements CpuDebugCore {
            | (newA & FLAG_S)
            | (newA == 0 ? FLAG_Z : 0)
            | (newA & (FLAG_F5 | FLAG_F3))
-           | (((a ^ newA) & 0x10) != 0 ? FLAG_H : 0)
+           | (((a ^ newA) & 0x10) == 0 ? 0 : FLAG_H)
            | (PARITY[newA] ? FLAG_PV : 0)
            | ((c || (a > 0x99)) ? FLAG_C : 0));
     }
 
     private boolean testFlags(final int codeCondition) {
         switch (codeCondition & 0b111) {
-            case 0: return !getFlag(FLAG_Z);  // NZ
-            case 1: return  getFlag(FLAG_Z);  // Z
-            case 2: return !getFlag(FLAG_C);  // NC
-            case 3: return  getFlag(FLAG_C);  // C
+            case 0: return !getFlag(FLAG_Z ); // NZ
+            case 1: return  getFlag(FLAG_Z ); // Z
+            case 2: return !getFlag(FLAG_C ); // NC
+            case 3: return  getFlag(FLAG_C ); // C
             case 4: return !getFlag(FLAG_PV); // PO
             case 5: return  getFlag(FLAG_PV); // PE
-            case 6: return !getFlag(FLAG_S);  // P
-            default: return getFlag(FLAG_S);  // M
+            case 6: return !getFlag(FLAG_S ); // P
+            default: return getFlag(FLAG_S ); // M
         }
     }
 
@@ -867,14 +867,14 @@ public final class CpuZ80 implements CpuDebugCore {
         if (clear) {
             Arrays.fill(fRegs   , 0);
             Arrays.fill(fRegsAlt, 0);
-            fIX        = 0;
-            fIY        = 0;
-            fIndexMode = INDEX_NONE;
-            fMemPtr    = 0;
-            fQ         = 0;
-            fI         = 0;
-            fR         = 0;
-            fHalted    = false;
+                          fIX = 0;
+                          fIY = 0;
+                   fIndexMode = INDEX_NONE;
+                      fMemPtr = 0;
+                           fQ = 0;
+                           fI = 0;
+                           fR = 0;
+                      fHalted = false;
             fInterruptEnabled = false;
         } else {
             setPC(0);
@@ -1054,9 +1054,9 @@ public final class CpuZ80 implements CpuDebugCore {
     private int carryOut(final int kind, final int operand) {
         switch (kind) {
             case 0: case 2: case 4: case 6: // RLC/RL/SLA/SLL — выдвигается старший бит
-                return (operand & 0x80) != 0 ? FLAG_C : 0;
+                return (operand & 0x80) == 0 ? 0 : FLAG_C;
             default:                         // RRC/RR/SRA/SRL — младший бит
-                return (operand & 0x01) != 0 ? FLAG_C : 0;
+                return (operand & 0x01) == 0 ? 0 : FLAG_C;
         }
     }
 
@@ -1172,7 +1172,7 @@ public final class CpuZ80 implements CpuDebugCore {
                 // A = 0 - A; F5/F3 — из исходного A
                 final int a = fRegs[A];
                 subFlags8(0, a, 0);
-                fRegs[A] = (0 - a) & 0xFF;
+                fRegs[A] = (-a) & 0xFF;
                 return 8;
             }
             case 0x45: case 0x4D: case 0x55: case 0x5D: // RETN
@@ -1317,7 +1317,7 @@ public final class CpuZ80 implements CpuDebugCore {
            | (r == 0 ? FLAG_Z : 0)
            | ((r >> 8) & (FLAG_F5 | FLAG_F3))
            | (((hl & 0x0FFF) + (value & 0x0FFF) + carry) > 0x0FFF ? FLAG_H : 0)
-           | ((((hl ^ res) & (value ^ res)) & 0x8000) != 0 ? FLAG_PV : 0)
+           | ((((hl ^ res) & (value ^ res)) & 0x8000) == 0 ? 0 : FLAG_PV)
            | ((res > 0xFFFF) ? FLAG_C : 0));
         fMemPtr = (hl + 1) & 0xFFFF;
         return 15;
@@ -1333,7 +1333,7 @@ public final class CpuZ80 implements CpuDebugCore {
            | (r == 0 ? FLAG_Z : 0)
            | ((r >> 8) & (FLAG_F5 | FLAG_F3))
            | (((hl & 0x0FFF) - (value & 0x0FFF) - carry) < 0 ? FLAG_H : 0)
-           | ((((hl ^ value) & (hl ^ res)) & 0x8000) != 0 ? FLAG_PV : 0)
+           | ((((hl ^ value) & (hl ^ res)) & 0x8000) == 0 ? 0 : FLAG_PV)
            | FLAG_N
            | ((res < 0) ? FLAG_C : 0));
         fMemPtr = (hl + 1) & 0xFFFF;
@@ -1357,7 +1357,7 @@ public final class CpuZ80 implements CpuDebugCore {
         setF((fQ & (FLAG_S | FLAG_Z | FLAG_C))
            | ((sum << 4) & FLAG_F5)
            | (sum & FLAG_F3)
-           | (bc != 0 ? FLAG_PV : 0));
+           | (bc == 0 ? 0 : FLAG_PV));
 
         if (repeat && (bc != 0)) {
             setPC((getPC() - 2) & 0xFFFF);
@@ -1380,7 +1380,7 @@ public final class CpuZ80 implements CpuDebugCore {
         final int bc = (getRegPair(P_BC) - 1) & 0xFFFF;
         setRegPair(P_BC, bc);
         // Внутренняя операция CPI/CPD: A - (HL) - H (вычитание переноса H)
-        final int sum = (res - (h != 0 ? 1 : 0)) & 0xFF;
+        final int sum = (res - (h == 0 ? 0 : 1)) & 0xFF;
 
         // F5 — бит 1, F3 — бит 3 внутренней операции (общий источник)
         setF((fQ & FLAG_C)
@@ -1389,7 +1389,7 @@ public final class CpuZ80 implements CpuDebugCore {
            | ((sum << 4) & FLAG_F5)
            | (sum & FLAG_F3)
            | h
-           | (bc != 0 ? FLAG_PV : 0)
+           | (bc == 0 ? 0 : FLAG_PV)
            | FLAG_N);
 
         // Внутренняя операция CPI/CPD: MEMPTR = HL ± 1 (по уже изменённому HL)

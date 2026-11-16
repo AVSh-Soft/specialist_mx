@@ -213,7 +213,7 @@ public final class CpuI8080 implements CpuDebugCore {
      * @param r результат вычислений в формате Byte
      */
     private void setFlagsSZP(int r) {
-        fRegs[F] = (r & 0x80) != 0 ? fRegs[F] | 0b1000_0000 : fRegs[F] & 0b0111_1111; // S
+        fRegs[F] = (r & 0x80) == 0 ? fRegs[F] & 0b0111_1111 : fRegs[F] | 0b1000_0000; // S
         fRegs[F] =  r         == 0 ? fRegs[F] | 0b0100_0000 : fRegs[F] & 0b1011_1111; // Z
         fRegs[F] = (((       r & 1) ^
                      ((r >> 1) & 1) ^
@@ -1384,9 +1384,9 @@ public final class CpuI8080 implements CpuDebugCore {
             case P_DE : return getRegPair(P_DE );
             case P_HL : return getRegPair(P_HL );
             case P_PSW: return getRegPair(P_PSW);
-            case SP:    return getSP();
-            case PC:    return getPC();
-            default:    return 0;
+            case SP   : return getSP();
+            case PC   : return getPC();
+            default   : return 0;
         }
     }
 
@@ -1400,13 +1400,13 @@ public final class CpuI8080 implements CpuDebugCore {
     @Override
     public void setCommonRegPair(final int commonPair, final int value) {
         switch (commonPair) {
-            case P_BC:  setRegPair(P_BC,  value); break;
-            case P_DE:  setRegPair(P_DE,  value); break;
-            case P_HL:  setRegPair(P_HL,  value); break;
+            case P_BC : setRegPair(P_BC,  value); break;
+            case P_DE : setRegPair(P_DE,  value); break;
+            case P_HL : setRegPair(P_HL,  value); break;
             case P_PSW: setRegPair(P_PSW, value); break;
-            case SP:    setSP(value);             break;
-            case PC:    setPC(value);             break;
-            default:                              break;
+            case SP   : setSP(value);             break;
+            case PC   : setPC(value);             break;
+            default   :                           break;
         }
     }
 
