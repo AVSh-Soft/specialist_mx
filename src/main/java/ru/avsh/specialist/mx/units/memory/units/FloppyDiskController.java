@@ -1,8 +1,8 @@
 package ru.avsh.specialist.mx.units.memory.units;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
+import ru.avsh.specialist.mx.units.types.CpuCore;
 import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import java.io.File;
@@ -58,7 +58,7 @@ public final class FloppyDiskController implements MemoryUnit {
 
     // Переменные
     private final Object fMutex;
-    private final CPUi8080 fCPU;
+    private final CpuCore fCPU;
     private final FloppyDiskDrive fDriveA ;
     private final FloppyDiskDrive fDriveB ;
     private final ClockSpeedGenerator fGen;
@@ -550,9 +550,9 @@ public final class FloppyDiskController implements MemoryUnit {
      * Конструктор.
      *
      * @param gen ссылка на объект класса ClockSpeedGenerator - "Тактовый генератор"
-     * @param cpu ссылка на объект класса CPUi8080 - "Процессор Intel C8080A (К580ВМ80А)"
+     * @param cpu ссылка на процессор (i8080 или Z80)
      */
-    public FloppyDiskController(@NotNull ClockSpeedGenerator gen, CPUi8080 cpu) {
+    public FloppyDiskController(@NotNull ClockSpeedGenerator gen, CpuCore cpu) {
         // Устанавливаем ссылку на тактовый генератор
         fGen = gen;
         // Устанавливаем ссылку на CPU

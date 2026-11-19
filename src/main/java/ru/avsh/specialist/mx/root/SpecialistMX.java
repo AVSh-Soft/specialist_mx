@@ -6,15 +6,18 @@ import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 import org.ini4j.Wini;
 import org.jetbrains.annotations.Nullable;
-import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPU;
 import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.FileFinder;
-import ru.avsh.specialist.mx.units.CPUi8080;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
+import ru.avsh.specialist.mx.units.CpuI8080;
+import ru.avsh.specialist.mx.units.CpuZ80;
 import ru.avsh.specialist.mx.units.Speaker;
 import ru.avsh.specialist.mx.units.memory.MemoryManager;
 import ru.avsh.specialist.mx.units.memory.units.*;
+import ru.avsh.specialist.mx.units.types.CpuCore;
+import ru.avsh.specialist.mx.units.types.CpuDebugCore;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
@@ -40,19 +43,25 @@ import static ru.avsh.specialist.mx.helpers.Constants.*;
  * @author -=AVSh=-
  */
 public final class SpecialistMX {
-    private final Wini                 fIni;
+    /** Индексы регистровых пар, общих для i8080 и Z80: BC, DE, HL, AF, SP, PC. */
+    private static final int[] COMMON_REG_PAIRS = {0, 2, 4, 6, 8, 9};
+
+    private final Wini   fIni;
+    private final String fProductName;
+
     private final Speaker              fSpc;
     private final Screen               fScr;
-    private final CPUi8080             fCPU;
+    private final CpuI8080 fCpuI8080;
+    private final CpuZ80 fCpuZ80  ;
     private final MainMemory           fRAM;
     private final KeyboardPort         fKey;
     private final ClockSpeedGenerator  fGen;
     private final FloppyDiskController fFDC;
-    private final String               fProductName;
-    private final MemoryManager fMemoryManager;
+    private final MemoryManager        fMemoryManager;
 
-    private final AtomicBoolean          fIsDebugRun;
-    private final AtomicReference<Stage> fPrimaryStageRef;
+    private final AtomicBoolean            fIsDebugRun     ;
+    private final AtomicReference<Stage>   fPrimaryStageRef;
+    private final AtomicReference<CpuCore> fCPU            ;
 
     private File   fCurRomFile;
     private String fCurMonName;
@@ -70,8 +79,16 @@ public final class SpecialistMX {
         fGen = new ClockSpeedGenerator();
         // Создаем диспетчер запоминающих устройств
         fMemoryManager = new MemoryManager();
-        // Создаем CPU
-        fCPU = new CPUi8080(this, fMemoryManager, null);
+        // Создаем процессоры. На "Специалисте MX" порты ввода-вывода - это память
+        // (обращение к порту N равно обращению к ячейке NN), поэтому оба процессора
+        // получают один и тот же диспетчер и для памяти, и для портов
+        fCpuI8080 = new CpuI8080(this, fMemoryManager, fMemoryManager);
+        fCpuZ80   = new CpuZ80(this, fMemoryManager, fMemoryManager);
+        // Выбираем активный процессор (по умолчанию i8080)
+        final CpuCore cpu = isZ80Selected() ? fCpuZ80 : fCpuI8080;
+        fCPU = new AtomicReference<>(cpu);
+        fCpuI8080.setActive(fCpuI8080.equals(cpu));
+        fCpuZ80  .setActive(  fCpuZ80.equals(cpu));
         // Создаем Speaker
         Speaker speaker;
         try {
@@ -84,7 +101,7 @@ public final class SpecialistMX {
         fScr = new Screen();
         fRAM = new MainMemory(NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
         fKey = new KeyboardPort(fSpc);
-        fFDC = new FloppyDiskController(fGen, fCPU);
+        fFDC = new FloppyDiskController(fGen, cpu);
 
         final ProgrammableTimer        timer   = new ProgrammableTimer       (fSpc );
         final SimpleMemory             excRAM  = new SimpleMemory            (0x20);
@@ -93,9 +110,12 @@ public final class SpecialistMX {
         final ScreenColorPort          colPort = new ScreenColorPort         (fScr );
         final FloppyDiskControllerPort fdcPort = new FloppyDiskControllerPort(fFDC );
 
-        // Добавляем тактируемые устройства в тактововый генератор
-        fGen.addClockedUnit(fCPU );
-        fGen.addClockedUnit(timer);
+        // Добавляем тактируемые устройства в тактовый генератор
+        fGen.addClockedUnit(fCpuI8080);
+        fGen.addClockedUnit(fCpuZ80  );
+        fGen.addClockedUnit(timer    );
+        // Сообщаем генератору, какой процессор активен (нужно для режима "Пауза")
+        fGen.setActiveCpu(cpu);
 
         // Добавляем устройства памяти в диспетчер устройств памяти
         fMemoryManager.addMemoryUnit(0x0000, fRAM   );
@@ -127,7 +147,7 @@ public final class SpecialistMX {
         ini.setFile(new File(INI_FILE));
         try {
             if (ini.getFile().exists()) {
-                ini.load (); // читаем настроки
+                ini.load (); // читаем настройки
             } else {
                 ini.store(); // создаем ini-файл
             }
@@ -189,12 +209,90 @@ public final class SpecialistMX {
     }
 
     /**
-     * Возвращает ссылку на CPU.
+     * Возвращает ссылку на активный CPU.
      *
-     * @return ссылка на CPU
+     * @return ссылка на активный CPU
      */
-    public CPUi8080 getCPU() {
-        return fCPU;
+    public CpuCore getCPU() {
+        return fCPU.get();
+    }
+
+    /**
+     * Возвращает активный процессор с отладочной поддержкой.
+     * (Метод для вызова из отладчика)
+     *
+     * @return активный процессор
+     */
+    public CpuDebugCore getCpuDebugCore() {
+        return (CpuDebugCore) fCPU.get();
+    }
+
+    /**
+     * Показывает, выбран ли в ini-файле процессор Z80.
+     * Неизвестное или отсутствующее значение трактуется как выбор i8080.
+     *
+     * @return true = выбран Z80
+     */
+    private boolean isZ80Selected() {
+        final String cpu = getIni(INI_SECTION_CONFIG, INI_OPTION_CPU, String.class);
+        return CPU_Z80.equalsIgnoreCase(cpu);
+    }
+
+    /**
+     * Показывает, активен ли процессор Z80.
+     *
+     * @return true = активен Z80, false = активен i8080
+     */
+    public boolean isZ80() {
+        return fCpuZ80.equals(fCPU.get());
+    }
+
+    /**
+     * Переключает активный процессор.
+     * Оба процессора остаются в тактовом генераторе, но команды исполняет только активный.
+     * Общие для i8080 и Z80 регистры (AF, BC, DE, HL, SP, PC) переносятся на новый процессор,
+     * поэтому переключение на программе, совместимой с обоими процессорами, продолжается с того же места.
+     * Регистры, которых нет у i8080 (IX, IY), остаются без изменений.
+     * Пока открыт отладчик, переключение не выполняется.
+     *
+     * @param isZ80 true = сделать активным Z80, false = сделать активным i8080
+     * @return true = переключение выполнено (или процессор уже активен)
+     */
+    public boolean switchCpu(final boolean isZ80) {
+        if (fIsDebugRun.get()) {
+            return false;
+        }
+        if (isZ80() == isZ80) {
+            return true;
+        }
+        // Останавливаем эмулятор на время переключения
+        pause(true, false);
+        try {
+            fCpuI8080.setActive(!isZ80);
+              fCpuZ80.setActive( isZ80);
+            final CpuCore  cpu = isZ80 ? fCpuZ80 : fCpuI8080;
+            fCPU.getAndSet(cpu);
+            transferCommonRegs(fCpuZ80.equals(cpu) ? fCpuI8080 : fCpuZ80, cpu);
+            fGen.setActiveCpu (cpu);
+            putIni  (INI_SECTION_CONFIG, INI_OPTION_CPU, isZ80 ? CPU_Z80 : CPU_I8080);
+            storeIni();
+        } finally {
+            pause(false, false);
+        }
+        return true;
+    }
+
+    /**
+     * Переносит состояние регистров, общих для i8080 и Z80, с одного процессора на другой.
+     * Индексы пар общие для обоих процессоров: 0 - BC, 2 - DE, 4 - HL, 6 - AF, 8 - SP, 9 - PC.
+     *
+     * @param source исходный процессор
+     * @param target процессор, которому передается состояние
+     */
+    private static void transferCommonRegs(final CpuCore source, final CpuCore target) {
+        for (final int pair : COMMON_REG_PAIRS) {
+            target.setCommonRegPair(pair, source.getCommonRegPair(pair));
+        }
     }
 
     /**
@@ -428,9 +526,10 @@ public final class SpecialistMX {
      */
     private void run(final int address) {
         pause(true, true);
-        fCPU.run(address);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
-        if (fCPU.debugIsTrap(getPage(), address)) {
+        final CpuCore cpu = fCPU.get();
+        cpu.run(address);
+        // Проверяем ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
+        if (cpu.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {
             pause(false, true);
@@ -445,9 +544,10 @@ public final class SpecialistMX {
      */
     private void reset(final int address, final boolean resetMemoryUnits) {
         pause(true, true);
-        fCPU.reset(address, resetMemoryUnits);
-        // Проверям ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
-        if (fCPU.debugIsTrap(getPage(), address)) {
+        final CpuCore cpu = fCPU.get();
+        cpu.reset(address, resetMemoryUnits);
+        // Проверяем ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
+        if (cpu.debugIsTrap(getPage(), address)) {
             startDebugger();
         } else {
             pause(false, true);
@@ -642,7 +742,7 @@ public final class SpecialistMX {
             fMemoryManager.reset(clear);
             // Очищаем все ловушки, если выбрана полная очистка
             if (clear) {
-                fCPU.debugClearTraps();
+                fCPU.get().debugClearTraps();
             }
             // Включаем ROM-диск
             setPage(MainMemory.ROM_DISK);
@@ -1058,11 +1158,11 @@ public final class SpecialistMX {
                 // Блокируем главное окно
                 Platform.runLater(() -> setPrimaryStagePeerEnabled(false));
                 try (final StubMainFrame mainFrame = StubMainFrame.create(
-                        DebuggerCPUi8080.TITLE, Constants.getURL(SPMX_ICON_FILE).orElse(null))) {
+                        DebuggerCPU.getTitle(this), Constants.getURL(SPMX_ICON_FILE).orElse(null))) {
                     // Отменяем режим "Пауза" только для CPU
-                    fCPU.hold(false);
+                    fCPU.get().hold(false);
                     // Выводим окно отладчика
-                    final DebuggerCPUi8080 debug = new DebuggerCPUi8080(mainFrame, this);
+                    final DebuggerCPU debug = new DebuggerCPU(mainFrame, this);
                     // После окончания работы - убиваем отладчик
                     debug.getContentPane().removeAll();
                     debug.dispose();

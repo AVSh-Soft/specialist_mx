@@ -1,6 +1,7 @@
 package ru.avsh.specialist.mx.units;
 
 import ru.avsh.specialist.mx.units.types.ClockedUnit;
+import ru.avsh.specialist.mx.units.types.CpuCore;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -9,7 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ClockSpeedGenerator implements Runnable {
     // Основные константы тактового генератора
-            static final String THREAD_NAME   = "ClockSpeedGenerator"; // Имя потока
+    public  static final String THREAD_NAME   = "ClockSpeedGenerator"; // Имя потока
     public  static final int    CLOCK_SPEED   =            2_000_000 ; // Тактовая частота
     public  static final long   TIME_OF_PULSE =           33_000_000L; // Время импульса в наносекундах
     private static final int    MAX_UNITS     =                   50 ; // Максимальное количество тактируемых устройств
@@ -20,7 +21,7 @@ public final class ClockSpeedGenerator implements Runnable {
 
     private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
 
-    private volatile CPUi8080 fCPU;
+    private volatile CpuCore  fCPU;
     private volatile int      fIndexCPU  ;
     private volatile boolean  fWaitFlag  ;
     private volatile boolean  fPauseFlag ;
@@ -124,9 +125,9 @@ public final class ClockSpeedGenerator implements Runnable {
                 }
             }
             if ((fSize == index) && (fSize < MAX_UNITS)) {
-                // Запоминаем ссылку на CPU и индекс CPU в массиве устройств
-                if (clockedUnit instanceof CPUi8080) {
-                         fCPU = (CPUi8080) clockedUnit;
+                if ((clockedUnit instanceof CpuCore) && (fCPU == null)) {
+                    // Первый зарегистрированный процессор считается активным до вызова setActiveCpu()
+                    fCPU      = (CpuCore) clockedUnit;
                     fIndexCPU = fSize;
                 }
                 fClockedUnits[fSize++] = clockedUnit; // fClockedUnits и fSize изменяются только тут
@@ -141,6 +142,24 @@ public final class ClockSpeedGenerator implements Runnable {
      */
     public long getCyclesCounter() {
         return fCyclesCounter.get();
+    }
+
+    /**
+     * Задает процессор, который считается активным для режима "Пауза".
+     * (Вспомогательный метод для смены процессора в эмуляторе)
+     *
+     * @param cpu процессор или null
+     */
+    public synchronized void setActiveCpu(final CpuCore cpu) {
+        if (cpu != null) {
+            fCPU = cpu;
+            for (int index = 0;   index < fSize; index++) {
+                if (fClockedUnits[index] == cpu) {
+                    fIndexCPU =   index;
+                    break;
+                }
+            }
+        }
     }
 
     /**
@@ -220,18 +239,22 @@ public final class ClockSpeedGenerator implements Runnable {
 
     /**
      * Выполняет одну команду CPU в режиме "Пауза" тактового генератора.
+     * Пошагово исполняется активный процессор; неактивные процессоры тактируются,
+     * но команд не исполняют.
      * (Метод для вызова из отладчика)
      *
      * @return true = команда выполнена успешно
      */
     public synchronized boolean execOneCmdCPU() {
-        if (fPauseFlag && (fIndexCPU >= 0) && !fCPU.isHoldAcknowledge()) {
+        final CpuCore cpu = fCPU;
+        if (fPauseFlag && (fIndexCPU >= 0) && !cpu.isHoldAcknowledge()) {
             boolean flag = true;
             do {
-                // Выполняем один такт у тактируемых устройств
+                // Адресуемся к массиву через локальную копию индекса: его может сменить setActiveCpu()
+                final int activeIndex = fIndexCPU;
                 for (int index = 0; index < fSize; index++) {
-                    if ( index == fIndexCPU) {
-                          flag = fClockedUnits[index].cycle();
+                    if ( index == activeIndex) {
+                        flag   = fClockedUnits[index].cycle();
                     } else {
                         fClockedUnits[index].cycle();
                     }

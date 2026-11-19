@@ -4,7 +4,7 @@
   <groupId>ru.avsh.specialist.mx</groupId>
   <artifactId>specialist_mx</artifactId>
   <name>Specialist MX</name>
-  <version>1.8.1</version>
+  <version>2.0.0</version>
   <description>The emulator of the computer "${project.name}"</description>
   <scm>
     <connection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git</connection>
@@ -168,10 +168,32 @@
       </plugin>
     </plugins>
   </build>
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.14.0</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>junit-jupiter-api</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>junit-jupiter-params</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>junit-jupiter-engine</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+  </dependencies>
   <properties>
     <resources.dir>resources</resources.dir>
     <company.name>"AVSh Software" (Alexander Shevtsov)</company.name>
-    <copyright>Copyright © 2019 ${company.name}</copyright>
+    <copyright>Copyright © 2026 ${company.name}</copyright>
     <lib.dir>lib</lib.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jdkVersion>1.8</jdkVersion>

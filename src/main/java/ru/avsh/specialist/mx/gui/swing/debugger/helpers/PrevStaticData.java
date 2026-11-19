@@ -1,6 +1,6 @@
 package ru.avsh.specialist.mx.gui.swing.debugger.helpers;
 
-import ru.avsh.specialist.mx.units.CPUi8080;
+import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
 
 import java.awt.*;
 
@@ -12,11 +12,11 @@ public final class PrevStaticData {
 
     // Статические структуры для сохранения положения окна отладчика и значений регистровых пар
     private static final Point PREV_LOCATION  = new Point();
-    private static final int[] PREV_REG_PAIRS = new int[CPUi8080.DebugRegPair.values().length];
+    private static final int[] PREV_REG_PAIRS = new int[DebugRegPair.values().length];
     // Статические переменные для сохранения страницы и адреса памяти таблицы данных памяти
     private static int fPrevDataPage;
     private static int fPrevDataAddress;
-    // Статическая переменная для сохранения строки поиска (строка из байт)
+    // Статическая переменная для сохранения строки поиска (строка байт)
     private static String fPrevStringBytes = "";
 
     /**
@@ -45,7 +45,7 @@ public final class PrevStaticData {
      * @param regPair регистровая пара
      * @return значение
      */
-    public static synchronized int getPrevRegPairs(final CPUi8080.DebugRegPair regPair) {
+    public static synchronized int getPrevRegPairs(final DebugRegPair regPair) {
         return (regPair == null) ? 0 : PREV_REG_PAIRS[regPair.ordinal()];
     }
 
@@ -55,7 +55,7 @@ public final class PrevStaticData {
      * @param regPair регистровая пара
      * @param value   значение
      */
-    public static synchronized void setPrevRegPairs(final CPUi8080.DebugRegPair regPair, final int value) {
+    public static synchronized void setPrevRegPairs(final DebugRegPair regPair, final int value) {
         if (regPair != null) {
             PREV_REG_PAIRS[regPair.ordinal()] = value;
         }

@@ -1,13 +1,13 @@
 package ru.avsh.specialist.mx.gui.swing.debugger.helpers;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPUi8080;
+import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.EventType;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.MemoryPageType;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
-import ru.avsh.specialist.mx.units.CPUi8080;
+import ru.avsh.specialist.mx.units.types.CpuDebugCore;
 
 import java.util.Observable;
 
@@ -28,13 +28,22 @@ public class EmulatorLayer extends Observable {
         // Запоминаем ссылку на главный класс эмулятора
         fSpMX = spMX;
         // Заполняем пустой массив предыдущих значений регистровых пар
-        if ((getPrevValRegPair(CPUi8080.DebugRegPair.AF) & 0xFF) == 0) {
+        if ((getPrevValRegPair(DebugRegPair.AF) & 0xFF) == 0) {
             saveAllRegPairs();
         }
         // Установим страницу памяти для просмотра кода = странице, в которой работает CPU
         fCodePage = fSpMX.getPage();
         // Восстановим номер страницы для просмотра данных
         fDataPage = PrevStaticData.getPrevDataPage();
+    }
+
+    /**
+     * Возвращает активный процессор с отладочной поддержкой.
+     *
+     * @return активный процессор
+     */
+    public CpuDebugCore getCpu() {
+        return fSpMX.getCpuDebugCore();
     }
 
     /**
@@ -97,7 +106,7 @@ public class EmulatorLayer extends Observable {
      * @return true = команда выполнена успешно
      */
     public boolean execOneCmdCPU() {
-        final CPUi8080 cpu = fSpMX.getCPU();
+        final CpuDebugCore cpu = getCpu();
         // Если CPU находится в режиме "HOLD" (в результате обращения в порт FFF0), то отменяем этот режим
         cpu.hold(false);
         // Отключаем режим "Пауза" для запоминающие устройств
@@ -115,8 +124,8 @@ public class EmulatorLayer extends Observable {
      * @param regPair регистровая пара
      * @return значение
      */
-    public int getValRegPair(final CPUi8080.DebugRegPair regPair) {
-        return fSpMX.getCPU().debugGetValRegPair(regPair);
+    public int getValRegPair(final DebugRegPair regPair) {
+        return getCpu().debugGetValRegPair(regPair);
     }
 
     /**
@@ -125,8 +134,8 @@ public class EmulatorLayer extends Observable {
      * @param regPair регистровая пара
      * @param value   значение
      */
-    public void setValRegPair(final CPUi8080.DebugRegPair regPair, final int value) {
-        final CPUi8080 cpu = fSpMX.getCPU();
+    public void setValRegPair(final DebugRegPair regPair, final int value) {
+        final CpuDebugCore cpu = getCpu();
         // Сохраняем предыдущее значение регистровой пары
         PrevStaticData.setPrevRegPairs(regPair, cpu.debugGetValRegPair(regPair));
         // Устанавливаем новое значение
@@ -141,7 +150,7 @@ public class EmulatorLayer extends Observable {
      * @param regPair регистровая пара
      * @return значение
      */
-    public int getPrevValRegPair(final CPUi8080.DebugRegPair regPair) {
+    public int getPrevValRegPair(final DebugRegPair regPair) {
         return PrevStaticData.getPrevRegPairs(regPair);
     }
 
@@ -149,7 +158,7 @@ public class EmulatorLayer extends Observable {
      * Сохраняет значения всех регистровых пар в массиве.
      */
     public void saveAllRegPairs() {
-        for (CPUi8080.DebugRegPair regPair : CPUi8080.DebugRegPair.values()) {
+        for (final DebugRegPair regPair : DebugRegPair.values()) {
             PrevStaticData.setPrevRegPairs(regPair, getValRegPair(regPair));
         }
     }
@@ -157,15 +166,16 @@ public class EmulatorLayer extends Observable {
     /**
      * Получает визуальное представление регистра флагов.
      *
+     * @param flagsLine строка имён флагов (например, SZ0A0P1C для i8080 или SZ5H3PNC для Z80)
      * @return значение регистра флагов.
      */
-    public String getVisViewsFlagsReg() {
-        final char[] r = new char[DebuggerCPUi8080.FLAGS.length()];
+    public String getVisViewsFlagsReg(final String flagsLine) {
+        final char[] r = new char[flagsLine.length()];
 
         char c;
-        int  f = getValRegPair(CPUi8080.DebugRegPair.AF);
-        for (int i = DebuggerCPUi8080.FLAGS.length() - 1; i >= 0; i--, f >>= 1) {
-            c = DebuggerCPUi8080.FLAGS.charAt(i);
+        int  f = getValRegPair(DebugRegPair.AF);
+        for (int i = flagsLine.length() - 1; i >= 0; i--, f >>= 1) {
+            c = flagsLine.charAt(i);
             if ((f & 1) == 0) {
                 r[i] = (c == '?') ? '0' : '.';
             } else {
@@ -182,12 +192,12 @@ public class EmulatorLayer extends Observable {
      * @return -1 = изменений нет, 0 = изменился младший байт, 1 = изменился старший байт, 2 = изменились оба байта
      * (Для SP и PC всегда 2 = оба байта, если были изменения)
      */
-    public int getChangesRegPair(final CPUi8080.DebugRegPair regPair) {
+    public int getChangesRegPair(final DebugRegPair regPair) {
         final int xor = getPrevValRegPair(regPair) ^ getValRegPair(regPair);
         if (xor > 0) {
-            if        (( xor < 0x100)       && (regPair != CPUi8080.DebugRegPair.SP) && (regPair != CPUi8080.DebugRegPair.PC)) {
+            if        (( xor < 0x100)       && (regPair != DebugRegPair.SP) && (regPair != DebugRegPair.PC)) {
                 return 0;
-            } else if (((xor % 0x100) == 0) && (regPair != CPUi8080.DebugRegPair.SP) && (regPair != CPUi8080.DebugRegPair.PC)) {
+            } else if (((xor % 0x100) == 0) && (regPair != DebugRegPair.SP) && (regPair != DebugRegPair.PC)) {
                 return 1;
             } else {
                 return 2;
@@ -204,7 +214,7 @@ public class EmulatorLayer extends Observable {
      * @param stepOver true = StepOver ловушка
      */
     public void addTrap(final int page, final int address, final boolean stepOver) {
-        fSpMX.getCPU().debugAddTrap(page, address, stepOver);
+        getCpu().debugAddTrap(page, address, stepOver);
         // Отправляем событие наблюдателям
         if (!stepOver) {
             sendEvent(EventType.TRAPS, new Trap(page, address));
@@ -218,7 +228,7 @@ public class EmulatorLayer extends Observable {
      * @param address адрес ловушки
      */
     public void remTrap(final int page, final int address) {
-        fSpMX.getCPU().debugRemTrap(page, address);
+        getCpu().debugRemTrap(page, address);
         // Отправляем событие наблюдателям
         sendEvent(EventType.TRAPS, new Trap(page, address));
     }
@@ -227,7 +237,7 @@ public class EmulatorLayer extends Observable {
      * Удаляет все ловушки.
      */
     public void clearTraps() {
-        fSpMX.getCPU().debugClearTraps();
+        getCpu().debugClearTraps();
         // Отправляем событие наблюдателям
         sendEvent(EventType.TRAPS, null);
     }
@@ -240,7 +250,7 @@ public class EmulatorLayer extends Observable {
      * @return true = ловушка установлена
      */
     public boolean isTrap(final int page, final int address) {
-        return fSpMX.getCPU().debugIsTrap(page, address);
+        return getCpu().debugIsTrap(page, address);
     }
 
     /**
@@ -249,7 +259,7 @@ public class EmulatorLayer extends Observable {
      * @return количество установленных ловушек
      */
     public int getTrapCount() {
-        return fSpMX.getCPU().debugGetTrapCount();
+        return getCpu().debugGetTrapCount();
     }
 
     /**
@@ -259,7 +269,7 @@ public class EmulatorLayer extends Observable {
      * @return ловушка
      */
     public Trap getTrap(final int index) {
-        return fSpMX.getCPU().debugGetTrap(index);
+        return getCpu().debugGetTrap(index);
     }
 
     /**
@@ -269,7 +279,7 @@ public class EmulatorLayer extends Observable {
      * @return индекс
      */
     public int getTrapIndex(final Trap trap) {
-        return fSpMX.getCPU().debugGetTrapIndex(trap);
+        return getCpu().debugGetTrapIndex(trap);
     }
 
     /**
