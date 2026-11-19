@@ -156,6 +156,17 @@ public final class DisAsmSelfTest {
         checkZ80(2, "BIT  7,(HL)",          0xCB, 0x7E);
         checkZ80(4, "SET  0,(IY+00)",       0xFD, 0xCB, 0x00, 0xC6);
 
+        // DD CB / FD CB: у сдвигов и RES/SET результат пишется и в память,
+        // и в регистр r (r != 6). У BIT результата нет — поле r не используется,
+        // поэтому регистр в мнемонике не выводится ни при каком r
+        checkZ80(4, "RLC  (IX+02),B",       0xDD, 0xCB, 0x02, 0x00);
+        checkZ80(4, "RLC  (IX+02)",         0xDD, 0xCB, 0x02, 0x06);
+        checkZ80(4, "BIT  0,(IX+02)",       0xDD, 0xCB, 0x02, 0x46);
+        checkZ80(4, "BIT  0,(IX+02)",       0xDD, 0xCB, 0x02, 0x40);
+        checkZ80(4, "SET  0,(IY+01),B",     0xFD, 0xCB, 0x01, 0xC0);
+        checkZ80(4, "SET  0,(IY+01)",       0xFD, 0xCB, 0x01, 0xC6);
+        checkZ80(4, "RES  7,(IY+01),A",     0xFD, 0xCB, 0x01, 0xBF);
+
         // ED: недокументированные IN F,(C) и OUT (C),0
         checkZ80(2, "IN   F,(C)",           0xED, 0x70);
         checkZ80(2, "OUT  (C),0",           0xED, 0x71);
@@ -216,6 +227,17 @@ public final class DisAsmSelfTest {
         checkZ80(3, "LD   L,(IX+02)",       0xDD, 0x6E, 0x02);
         checkZ80(2, "LD   IXH,A",           0xDD, 0x67);
         checkZ80(2, "LD   IXH,IXL",         0xDD, 0x65);
+
+        // PUSH/POP: четвёртая пара — AF, а не SP (код F1 — это POP AF, F9 — LD SP,HL)
+        checkZ80(1, "PUSH BC",              0xC5);
+        checkZ80(1, "PUSH DE",              0xD5);
+        checkZ80(1, "PUSH HL",              0xE5);
+        checkZ80(1, "PUSH AF",              0xF5);
+        checkZ80(1, "POP  BC",              0xC1);
+        checkZ80(1, "POP  DE",              0xD1);
+        checkZ80(1, "POP  HL",              0xE1);
+        checkZ80(1, "POP  AF",              0xF1);
+        checkZ80(1, "LD   SP,HL",           0xF9);
 
         // Полный перебор: дизассемблер не должен возвращать «сырой» код операции
         // ни для одного кода после префиксов ED, DD, FD

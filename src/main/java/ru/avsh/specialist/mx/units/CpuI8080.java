@@ -948,11 +948,8 @@ public final class CpuI8080 implements CpuDebugCore {
 
             case 0xD3: // OUT port8
                 v = nextBytePC();
-                if ( fIoManager == null) {
-                    fMemManager.writeByte(v | (v << 8), getReg(A)); // На "Специалисте_MX" как запись по адресу (port, port)
-                } else {
-                     fIoManager.writeByte(v, getReg(A));
-                }
+                // i8080 выставляет порт и на младший, и на старший байт шины адреса
+                ((fIoManager == null) ? fMemManager : fIoManager).writeByte(v | (v << 8), getReg(A));
                 break;
 
             case 0xD6: // SUI data8
@@ -961,11 +958,8 @@ public final class CpuI8080 implements CpuDebugCore {
 
             case 0xDB: // IN port8
                 v = nextBytePC();
-                if (fIoManager == null) {
-                    setReg(A, fMemManager.readByte(v | (v << 8))); // На "Специалисте_MX" как запись по адресу (port, port)
-                } else {
-                    setReg(A,  fIoManager.readByte(v));
-                }
+                // i8080 выставляет порт и на младший, и на старший байт шины адреса
+                setReg(A, ((fIoManager == null) ? fMemManager : fIoManager).readByte(v | (v << 8)));
                 break;
 
             case 0xDE: // SBI data8

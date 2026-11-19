@@ -31,6 +31,8 @@ public final class DisAsmZ80 implements DisAsm {
     private static final String[] REGS_IY = { "B", "C", "D", "E", "IYH", "IYL", "(IY+d)", "A" };
     // Имена 16-битных регистровых пар в кодировке команды
     private static final String[] PAIRS_HL = { "BC", "DE", "HL", "SP" };
+    // Регистровые пары команд PUSH/POP: четвёртая пара — AF, а не SP
+    private static final String[] PAIRS_STACK = { "BC", "DE", "HL", "AF" };
     // Коды условий
     private static final String[] CONDS = { "NZ", "Z", "NC", "C", "PO", "PE", "P", "M" };
     // Мнемоники АЛУ в кодировке команды
@@ -243,9 +245,9 @@ public final class DisAsmZ80 implements DisAsm {
             case 0xE7: case 0xEF: case 0xF7: case 0xFF:
                 return "RST  " + RST[(code >> 3) & 7];
             case 0xC1: case 0xD1: case 0xE1: case 0xF1:
-                return "POP  " + PAIRS_HL[(code >> 4) & 3];
+                return "POP  " + PAIRS_STACK[(code >> 4) & 3];
             case 0xC5: case 0xD5: case 0xE5: case 0xF5:
-                return "PUSH " + PAIRS_HL[(code >> 4) & 3];
+                return "PUSH " + PAIRS_STACK[(code >> 4) & 3];
             case 0xC2: case 0xCA: case 0xD2: case 0xDA:
             case 0xE2: case 0xEA: case 0xF2: case 0xFA:
                 return "JP   " + cond + "," + addr;
@@ -476,17 +478,19 @@ public final class DisAsmZ80 implements DisAsm {
         }
         final int block =  bt3 >> 6;
         final int bit   = (bt3 >> 3) & 7;
+        final int reg   = bt3 & 7;
         final String cell = "(" + pair + hexDisp(bt2) + ")";
-        // Для DD CB / FD CB память в коде операции (поле r=6) - это всегда (IX+d)/(IY+d)
-        final String[] regs = { "B", "C", "D", "E", "H", "L", cell, "A" };
+        // Для DD CB / FD CB поле r=6 кодирует (IX+d)/(IY+d): регистр в мнемонике не выводится
+        final String[] regs = { "B", "C", "D", "E", "H", "L", null, "A" };
+        final String suffix = (reg == 6) ? "" : "," + regs[reg];
         final String text;
         if (block == 1) {
             // BIT b,(IX+d) - результат проверки бита не сохраняется в регистре
             text = "BIT  " + bit + "," + cell;
         } else if (block == 0) {
-            text =     CB_OPS[bit      ] + cell + "," + regs[bt3 & 7];
+            text =     CB_OPS[bit      ] + cell + suffix;
         } else {
-            text = CB_BIT_OPS[block - 1] + bit  + "," + regs[bt3 & 7];
+            text = CB_BIT_OPS[block - 1] + bit  + "," + cell + suffix;
         }
         return new DisAsmResult(len, text, false, false);
     }

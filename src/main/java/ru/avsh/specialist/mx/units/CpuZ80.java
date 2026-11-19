@@ -42,6 +42,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * процессор в эмуляторе прерывания не принимает. Внутренние регистры {@code I} и {@code R}
  * объявлены и обслуживаются ({@code LD A,I}, {@code LD A,R}, {@code LD I,A}, {@code LD R,A},
  * инкремент {@code R} на выборке байта команды), но прерывания по ним не формируются.
+ * Причина не в процессоре, а в машине: {@code IM 0/1/2} задают способ реакции на уже пришедший
+ * сигнал {@code /INT}, а на "Специалисте MX" линия {@code /INT} не разведена — единственный
+ * потенциальный источник, выход {@code OUT} таймера КР580ВИ53, подключён к динамику
+ * (см. {@code ProgrammableTimer}), а не к процессору; вход {@code /NMI} так же не используется.
+ * {@code RST n} прерыванием не является — это вызов подпрограммы, и он реализован.
  * <p>
  * Тактирование: процессор использует общий с i8080 тактовый генератор,
  * собственной тактовой частоты нет.
@@ -123,15 +128,16 @@ public final class CpuZ80 implements CpuDebugCore {
 
     private final SortedSet<Trap> fTraps      ;
 
-    private int     fOpCode   ;
-    private int     fIX       ; // Регистр IX
-    private int     fIY       ; // Регистр IY
-    private int     fIndexMode; // INDEX_NONE / INDEX_IX / INDEX_IY
-    private int     fMemPtr   ; // Недокументированный регистр MEMPTR (WZ)
-    private int     fQ        ; // Значение, записанное в F последней операцией, зависящей от флагов
-    private int     fI        ; // Регистр I
-    private int     fR        ; // Регистр R (старший бит сохраняется как записан)
-    private boolean fHalted   ;
+    private int     fOpCode          ;
+    private int     fIX              ; // Регистр IX
+    private int     fIY              ; // Регистр IY
+    private int     fIndexMode       ; // INDEX_NONE / INDEX_IX / INDEX_IY
+    private int     fMemPtr          ; // Недокументированный регистр MEMPTR (WZ)
+    private int     fQ               ; // Значение, записанное в F последней операцией, зависящей от флагов
+    private boolean fFlagsWritten    ; // Текущая команда записала F через АЛУ (для защёлки Q)
+    private int     fI               ; // Регистр I
+    private int     fR               ; // Регистр R (старший бит сохраняется как записан)
+    private boolean fHalted          ;
     private boolean fInterruptEnabled;
 
     private volatile boolean fPause       ;
@@ -510,8 +516,9 @@ public final class CpuZ80 implements CpuDebugCore {
         if (codePair == P_PSW) {
             fRegs[F] =  value       & 0xFF;
             fRegs[A] = (value >> 8) & 0xFF;
-            // POP AF записывает F командой, зависящей от флагов: Q получает её значение
-            fQ = fRegs[F];
+            // POP AF записывает F в обход АЛУ, поэтому защёлки Q не срабатывают:
+            // Q обнуляется (на этом построен тест z80type: POP AF -> SCF)
+            fQ = 0;
         } else {
             fRegs[codePair    ] = (value >> 8) & 0xFF;
             fRegs[codePair + 1] =  value       & 0xFF;
@@ -608,14 +615,14 @@ public final class CpuZ80 implements CpuDebugCore {
 
     /**
      * Записывает регистр F значением, вычисленным текущей командой.
-     * Одновременно запоминает это значение в регистре Q: от него зависят
-     * недокументированные F5/F3 команд SCF и CCF.
+     * Регистр Q здесь не трогается: он защёлкивается по завершении команды
+     * (см. {@link #cmdStart()}), чтобы SCF и CCF читали значение F до команды.
      *
      * @param flags новое значение регистра F
      */
     private void setF(final int flags) {
-        fRegs[F] = flags & 0xFF;
-              fQ = fRegs[F];
+        fRegs[F]      = flags & 0xFF;
+        fFlagsWritten = true;
     }
 
     /**
@@ -768,12 +775,12 @@ public final class CpuZ80 implements CpuDebugCore {
     }
 
     private int incByte(final int v) {
-        setF(incDecFlags(v, +1) | (fQ & FLAG_C));
+        setF(incDecFlags(v, +1) | (fRegs[F] & FLAG_C));
         return (v + 1) & 0xFF;
     }
 
     private int decByte(final int v) {
-        setF(incDecFlags(v, -1) | (fQ & FLAG_C));
+        setF(incDecFlags(v, -1) | (fRegs[F] & FLAG_C));
         return (v - 1) & 0xFF;
     }
 
@@ -857,9 +864,15 @@ public final class CpuZ80 implements CpuDebugCore {
         if (fHalted) {
             return 4;
         }
-        fIndexMode = INDEX_NONE;
-        fOpCode    = fetchPC(); // Байт кода операции (R увеличивается в fetchPC())
-        return cmdExec();
+        fIndexMode        = INDEX_NONE;
+        fFlagsWritten     = false     ;
+        fOpCode           = fetchPC() ; // Байт кода операции (R увеличивается в fetchPC())
+        final int cycles = cmdExec () ;
+        // Защёлка Q по завершении команды: команда, меняющая флаги через АЛУ,
+        // оставляет в Q новое значение F; команда, которая флаги не трогает
+        // (LD, NOP, JP, CALL, RET, EX AF,AF', POP AF...), обнуляет Q
+        fQ = fFlagsWritten ? fRegs[F] : 0;
+        return cycles;
     }
 
     @Override
@@ -995,9 +1008,9 @@ public final class CpuZ80 implements CpuDebugCore {
 
     /**
      * Выполняет команду CB с индексным операндом (IX+d)/(IY+d).
-     * Коды, у которых в младших трёх битах записан код регистра r, дополнительно
-     * записывают результат (или прочитанный байт для BIT) в этот регистр —
-     * так же, как это делает реальный Z80.
+     * Для сдвигов и RES/SET коды, у которых в младших трёх битах записан код регистра r,
+     * дополнительно записывают результат в этот регистр — так же, как реальный Z80.
+     * У BIT результата нет: ни память, ни регистр не меняются, только флаги.
      *
      * @param d  смещение от индексного регистра
      * @param op код операции CB
@@ -1013,12 +1026,9 @@ public final class CpuZ80 implements CpuDebugCore {
         fIndexMode = INDEX_NONE;
 
         if (group == 1) {
-            // BIT b,(IX+d): результат в память не пишется, но недокументированная
-            // форма с r != 6 копирует прочитанный байт в регистр r
+            // BIT b,(IX+d): микрокод BIT не выдаёт результата для записи, поэтому
+            // поле r не используется — при любом r меняются только флаги
             checkBit(operand, yyy, (fMemPtr >> 8) & 0xFF);
-            if (r != M) {
-                fRegs[r] = operand;
-            }
             return 20;
         }
 
@@ -1071,7 +1081,7 @@ public final class CpuZ80 implements CpuDebugCore {
      */
     private void checkBit(final int operand, final int bit, final int f5f3Src) {
         final boolean set = (operand & (1 << bit)) != 0;
-        setF((fQ & FLAG_C)
+        setF((fRegs[F] & FLAG_C)
            | (set ? 0 : (FLAG_Z | FLAG_PV))
            | (set && (bit == 7) ? FLAG_S : 0)
            | FLAG_H
@@ -1228,7 +1238,7 @@ public final class CpuZ80 implements CpuDebugCore {
                 setF((fRegs[A] & (FLAG_S | FLAG_F5 | FLAG_F3))
                    | (fRegs[A] == 0 ? FLAG_Z : 0)
                    | (ie ? FLAG_PV : 0)
-                   | (fQ & FLAG_C));
+                   | (fRegs[F] & FLAG_C));
                 return 9;
             }
             case 0x5F: { // LD A,R
@@ -1237,7 +1247,7 @@ public final class CpuZ80 implements CpuDebugCore {
                 setF((fRegs[A] & (FLAG_S | FLAG_F5 | FLAG_F3))
                    | (fRegs[A] == 0 ? FLAG_Z : 0)
                    | (ie ? FLAG_PV : 0)
-                   | (fQ & FLAG_C));
+                   | (fRegs[F] & FLAG_C));
                 return 9;
             }
             case 0x47: // LD I,A
@@ -1270,11 +1280,11 @@ public final class CpuZ80 implements CpuDebugCore {
         }
 
         if ((op & 0b1100_0111) == 0b0100_0000) { // IN r,(C): r = 6 — недокументированное IN F,(C)
-            final int value = inPort(fRegs[C]);
+            final int value = inPort(fRegs[C], fRegs[B]);
             setF((value & (FLAG_S | FLAG_F5 | FLAG_F3))
                | (value == 0 ? FLAG_Z : 0)
                | (PARITY[value] ? FLAG_PV : 0)
-               | (fQ & FLAG_C));
+               | (fRegs[F] & FLAG_C));
             final int dst = (op >> 3) & 0b111;
             if (dst != M) {
                 fRegs[dst] = value;
@@ -1284,7 +1294,7 @@ public final class CpuZ80 implements CpuDebugCore {
         }
         if ((op & 0b1100_0111) == 0b0100_0001) { // OUT (C),r: r = 6 — недокументированное OUT (C),0
             final int src = (op >> 3) & 0b111;
-            outPort(fRegs[C], (src == M) ? 0 : fRegs[src]);
+            outPort(fRegs[C], fRegs[B], (src == M) ? 0 : fRegs[src]);
             fMemPtr = (getRegPair(P_BC) + 1) & 0xFFFF;
             return 12;
         }
@@ -1354,7 +1364,7 @@ public final class CpuZ80 implements CpuDebugCore {
         final int sum = fRegs[A] + val;
 
         // S, Z, C сохраняются; H, N сбрасываются; F5 и F3 — оба из суммы A + байт
-        setF((fQ & (FLAG_S | FLAG_Z | FLAG_C))
+        setF((fRegs[F] & (FLAG_S | FLAG_Z | FLAG_C))
            | ((sum << 4) & FLAG_F5)
            | (sum & FLAG_F3)
            | (bc == 0 ? 0 : FLAG_PV));
@@ -1383,7 +1393,7 @@ public final class CpuZ80 implements CpuDebugCore {
         final int sum = (res - (h == 0 ? 0 : 1)) & 0xFF;
 
         // F5 — бит 1, F3 — бит 3 внутренней операции (общий источник)
-        setF((fQ & FLAG_C)
+        setF((fRegs[F] & FLAG_C)
            | (res & FLAG_S)
            | (res == 0 ? FLAG_Z : 0)
            | ((sum << 4) & FLAG_F5)
@@ -1404,7 +1414,8 @@ public final class CpuZ80 implements CpuDebugCore {
     }
 
     private int blockInPort(final boolean decrement, final boolean repeat) {
-        final int value = inPort(fRegs[C]);
+        // На шину адреса выставляется BC: B на момент обращения к порту (до декремента)
+        final int value = inPort(fRegs[C], fRegs[B]);
         fMemManager.writeByte(getHL(), value);
         setHL((getHL() + (decrement ? -1 : 1)) & 0xFFFF);
         // Внутренняя операция INI/IND: MEMPTR = BC ± 1 по значению B до уменьшения
@@ -1434,7 +1445,8 @@ public final class CpuZ80 implements CpuDebugCore {
     private int blockOutPort(final boolean decrement, final boolean repeat) {
         final int value = fMemManager.readByte(getHL());
         final int b     = (fRegs[B] - 1) & 0xFF;
-        outPort(fRegs[C], value);
+        // На шину адреса выставляется BC: B на момент обращения к порту (до декремента)
+        outPort(fRegs[C], fRegs[B], value);
         setHL((getHL() + (decrement ? -1 : 1)) & 0xFFFF);
         fRegs[B] = b;
         // Внутренняя операция OUTI/OUTD: MEMPTR = BC ± 1 по значению B после уменьшения
@@ -1462,34 +1474,32 @@ public final class CpuZ80 implements CpuDebugCore {
 
     /**
      * Читает порт ввода. Адрес порта — 16-битный: младший байт всегда равен номеру
-     * порта команды, старший байт у {@code IN r,(C)} и блочных команд берётся из B,
-     * а у {@code IN A,(n)} — из A (так же, как у реального Z80).
+     * порта команды, старший байт зависит от группы команд Z80:
+     * у {@code IN r,(C)} и {@code INI}/{@code IND} — из B ({@code (C)} = BC целиком),
+     * у {@code IN A,(n)} — из A на момент выполнения команды.
      * <p>
-     * При отсутствии менеджера устройств ввода/вывода используется та же схема,
-     * что и в CPUi8080: порт "просвечивает" через память по адресу (port | port &lt;&lt; 8).
+     * При отсутствии менеджера устройств ввода/вывода обращение уходит в менеджер
+     * памяти по тому же 16-битному адресу.
      *
      * @param port номер порта (младший байт адреса)
+     * @param high старший байт адреса: B для {@code (C)}, A для {@code IN A,(n)}
      * @return прочитанный байт
      */
-    private int inPort(final int port) {
-        return inPort(port, fRegs[B]);
-    }
-
     private int inPort(final int port, final int high) {
         final int p = port & 0xFF;
-        if (fIoManager == null) {
-            return fMemManager.readByte(p | (p << 8));
-        }
-        return fIoManager.readByte(((high << 8) | p) & 0xFFFF) & 0xFF;
+        return ((fIoManager == null) ? fMemManager : fIoManager).readByte(((high << 8) | p) & 0xFFFF) & 0xFF;
     }
 
-    private void outPort(final int port, final int value) {
+    /**
+     * Записывает в порт. Старший байт адреса — по той же схеме, что у {@link #inPort}.
+     *
+     * @param port  номер порта (младший байт адреса)
+     * @param high  старший байт адреса: B для {@code (C)}, A для {@code OUT (n),A}
+     * @param value выводимый байт
+     */
+    private void outPort(final int port, final int high, final int value) {
         final int p = port & 0xFF;
-        if (fIoManager == null) {
-            fMemManager.writeByte(p | (p << 8), value & 0xFF);
-        } else {
-            fIoManager.writeByte(((fRegs[B] << 8) | p) & 0xFFFF, value & 0xFF);
-        }
+        ((fIoManager == null) ? fMemManager : fIoManager).writeByte(((high << 8) | p) & 0xFFFF, value & 0xFF);
     }
 
     //=-= Основной набор команд =-=
@@ -1503,20 +1513,17 @@ public final class CpuZ80 implements CpuDebugCore {
 
             case 0x08: // EX AF,AF'
                 swapRegs(A, F);
-                fQ = 0;
                 return 4;
             case 0xD9: // EXX
                 swapRegs(B, C);
                 swapRegs(D, E);
                 swapRegs(H, L);
-                fQ = 0;
                 return 4;
             case 0x76: // HALT
                 fHalted = true;
                 // Оставляем PC на байте HALT: отладчик показывает остановленную команду,
                 // а продолжение исполнения сдвигает PC с неё (см. debugResumeFromHalt)
                 setPC((getPC() - 1) & 0xFFFF);
-                fQ = 0;
                 startDebugger();
                 return 4;
 
@@ -1665,7 +1672,7 @@ public final class CpuZ80 implements CpuDebugCore {
                 final int a = fRegs[A];
                 final boolean c = (a & 0x80) != 0;
                 fRegs[A] = ((a << 1) | (c ? 1 : 0)) & 0xFF;
-                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                setF((fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
                    | (fRegs[A] & (FLAG_F5 | FLAG_F3))
                    | (c ? FLAG_C : 0));
                 return 4;
@@ -1674,7 +1681,7 @@ public final class CpuZ80 implements CpuDebugCore {
                 final int a = fRegs[A];
                 final boolean c = (a & 0x01) != 0;
                 fRegs[A] = ((a >> 1) | (c ? 0x80 : 0)) & 0xFF;
-                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                setF((fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
                    | (fRegs[A] & (FLAG_F5 | FLAG_F3))
                    | (c ? FLAG_C : 0));
                 return 4;
@@ -1683,7 +1690,7 @@ public final class CpuZ80 implements CpuDebugCore {
                 final int a = fRegs[A];
                 final boolean c = (a & 0x80) != 0;
                 fRegs[A] = ((a << 1) | (getFlagC() ? 1 : 0)) & 0xFF;
-                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                setF((fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
                    | (fRegs[A] & (FLAG_F5 | FLAG_F3))
                    | (c ? FLAG_C : 0));
                 return 4;
@@ -1692,7 +1699,7 @@ public final class CpuZ80 implements CpuDebugCore {
                 final int a = fRegs[A];
                 final boolean c = (a & 0x01) != 0;
                 fRegs[A] = ((a >> 1) | (getFlagC() ? 0x80 : 0)) & 0xFF;
-                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                setF((fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
                    | (fRegs[A] & (FLAG_F5 | FLAG_F3))
                    | (c ? FLAG_C : 0));
                 return 4;
@@ -1702,17 +1709,17 @@ public final class CpuZ80 implements CpuDebugCore {
                 return 4;
             case 0x2F: // CPL
                 fRegs[A] = (~fRegs[A]) & 0xFF;
-                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV | FLAG_C))
+                setF((fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV | FLAG_C))
                    | (fRegs[A] & (FLAG_F5 | FLAG_F3))
                    | FLAG_H | FLAG_N);
                 return 4;
             case 0x37: // SCF
-                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                setF((fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
                    | undocumentedYX()
                    | FLAG_C);
                 return 4;
             case 0x3F: // CCF
-                setF((fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+                setF((fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
                    | undocumentedYX()
                    | (getFlagC() ? FLAG_H : FLAG_C));
                 return 4;
@@ -1914,9 +1921,9 @@ public final class CpuZ80 implements CpuDebugCore {
                 subByte(fRegs[A], nextBytePC(), false, false);
                 return 7;
 
-            case 0xD3: { // OUT (n),A
+            case 0xD3: { // OUT (n),A: на шину адреса выставляется A:n
                 final int port = nextBytePC();
-                outPort(port, fRegs[A]);
+                outPort(port, fRegs[A], fRegs[A]);
                 fMemPtr = ((fRegs[A] << 8) | ((port + 1) & 0xFF)) & 0xFFFF;
                 return 11;
             }
@@ -2148,7 +2155,7 @@ public final class CpuZ80 implements CpuDebugCore {
     private int addWordFlags(final int a, final int b, final int res) {
         final int r = res & 0xFFFF;
         final int h = ((a & 0x0FFF) + (b & 0x0FFF)) > 0x0FFF ? FLAG_H : 0;
-        return (fQ & (FLAG_S | FLAG_Z | FLAG_PV))
+        return (fRegs[F] & (FLAG_S | FLAG_Z | FLAG_PV))
              | ((r >> 8) & (FLAG_F5 | FLAG_F3))
              | h | ((res > 0xFFFF) ? FLAG_C : 0);
     }

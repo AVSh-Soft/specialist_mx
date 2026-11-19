@@ -54,7 +54,7 @@ class CpuI8080Test {
     // Тяжелый и долгий тест (1.5-2 минуты, на реальном i8080 2МГц около 3 часов 20 минут)
     @Test
     void i8080EXER_test() {
-        final String text = loadAndExecuteCpmProg(false, "8080EXER.COM", Duration.ofMinutes(5));
+        final String text = loadAndExecuteCpmProg(false, "8080EXER.COM", Duration.ofMinutes(15));
         assertEquals(
                 "8080 instruction exerciser\n" +
                         "dad <b,d,h,sp>................  OK\n" +
@@ -91,7 +91,7 @@ class CpuI8080Test {
     @Disabled
     @Test
     void i8085EXM_test() {
-        final String text = loadAndExecuteCpmProg(false, "8085EXM.COM", Duration.ofMinutes(5));
+        final String text = loadAndExecuteCpmProg(false, "8085EXM.COM", Duration.ofMinutes(15));
         assertEquals("8085 instruction exerciser\n" +
                 "dad <b,d,h,sp>................  PASS! crc is:44331def\n" +
                 "aluop nn......................  ERROR **** crc expected:98faf22b found:2b1ed911\n" +

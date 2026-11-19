@@ -79,9 +79,11 @@ public final class SpecialistMX {
         fGen = new ClockSpeedGenerator();
         // Создаем диспетчер запоминающих устройств
         fMemoryManager = new MemoryManager();
-        // Создаем процессоры
-        fCpuI8080 = new CpuI8080(this, fMemoryManager, null);
-        fCpuZ80   = new CpuZ80(this, fMemoryManager, null);
+        // Создаем процессоры. На "Специалисте MX" порты ввода-вывода - это память
+        // (обращение к порту N равно обращению к ячейке NN), поэтому оба процессора
+        // получают один и тот же диспетчер и для памяти, и для портов
+        fCpuI8080 = new CpuI8080(this, fMemoryManager, fMemoryManager);
+        fCpuZ80   = new CpuZ80(this, fMemoryManager, fMemoryManager);
         // Выбираем активный процессор (по умолчанию i8080)
         final CpuCore cpu = isZ80Selected() ? fCpuZ80 : fCpuI8080;
         fCPU = new AtomicReference<>(cpu);

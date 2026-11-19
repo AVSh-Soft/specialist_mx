@@ -104,9 +104,10 @@ class CpuZ80Test {
         final String text = loadAndExecuteCpmProg(true, "z80type.com", Duration.ofMinutes(1), "/D");
         assertEquals(
                 "Z80 Processor Type Detection (C) 2024 Sergey Kiselev\n" +
-                        "Raw results:       Z180: 00 CMOS: 02 U880: 00 XF/YF: F0\n" +
-                        "XF/YF flags test:  80008000\n" +
-                        "Detected CPU type: Unknown CMOS Z80 clone\n",
+                        "Raw results:       Z180: 00 CMOS: FE U880: 00 XF/YF: FF\n" +
+                        "XF/YF flags test:  C000C000\n" +
+                        "Detected CPU type: Zilog Z80, Zilog Z08400 or similar NMOS CPU\n" +
+                        "                   Mostek MK3880N, SGS/ST Z8400, Sharp LH0080A, KR1858VM1\n",
                 text);
     }
 

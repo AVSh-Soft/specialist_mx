@@ -18,12 +18,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author -=AVSh=-
  */
 public class Screen extends WritableImage implements MemoryUnit {
-    // Таблица цветов A_R_G_B
+    // Таблица цветов A_R_G_B: 8 цветов RGB, коды 8...F - те же цвета с добавленной яркостью
     private static final int[] COLORS = {
-            0xFF_00_00_00, 0xFF_00_00_80, 0xFF_00_80_00, 0xFF_00_80_80,
-            0xFF_80_00_00, 0xFF_80_00_80, 0xFF_80_80_00, 0xFF_C0_C0_C0,
-            0xFF_80_80_80, 0xFF_00_00_FF, 0xFF_00_FF_00, 0xFF_00_FF_FF,
-            0xFF_FF_00_00, 0xFF_FF_00_FF, 0xFF_FF_FF_00, 0xFF_FF_FF_FF
+            0xFF_00_00_00, 0xFF_00_00_FF, 0xFF_00_FF_00, 0xFF_00_FF_FF,
+            0xFF_FF_00_00, 0xFF_99_00_FF, 0xFF_97_47_06, 0xFF_FF_FF_FF,
+            0xFF_20_20_20, 0xFF_20_20_FF, 0xFF_20_FF_20, 0xFF_20_FF_FF,
+            0xFF_FF_20_20, 0xFF_CC_66_FF, 0xFF_FF_FF_00, 0xFF_FF_FF_FF
     };
 
     public static final int SCREEN_WIDTH  =  384;
