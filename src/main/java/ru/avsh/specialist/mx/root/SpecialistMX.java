@@ -51,8 +51,8 @@ public final class SpecialistMX {
 
     private final Speaker              fSpc;
     private final Screen               fScr;
-    private final CpuI8080 fCpuI8080;
-    private final CpuZ80 fCpuZ80  ;
+    private final CpuI8080             fCpuI8080;
+    private final CpuZ80               fCpuZ80  ;
     private final MainMemory           fRAM;
     private final KeyboardPort         fKey;
     private final ClockSpeedGenerator  fGen;
