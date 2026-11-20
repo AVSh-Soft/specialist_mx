@@ -449,7 +449,7 @@ public class SpMxApplication extends Application {
      * @param stage главная сцена
      * @param title заголовок
      */
-    private void setTitle(@NotNull final Stage stage, @NotNull final String title) {
+    private void setTitle(final @NotNull Stage stage, final @NotNull String title) {
         stage.setTitle(String.format(
                 "[%s][%s] - %s %s", fSpMX.getCurMonName(), fSpMX.getCPU().getName(), fSpMX.getProductName(), title));
     }
@@ -462,7 +462,11 @@ public class SpMxApplication extends Application {
      * @param targetMenuItem целевой пункт меню, отображающий состояние диска
      * @param stage          главная сцена
      */
-    private void diskInsertEject(boolean fdd, File file, @NotNull final CheckMenuItem targetMenuItem, @NotNull Stage stage) {
+    private void diskInsertEject(final boolean fdd,
+                                 File file,
+                                 final @NotNull CheckMenuItem targetMenuItem,
+                                 final @NotNull Stage stage) {
+
         boolean insert = true; // По умолчанию вставка диска
 
         if (file == null) {
@@ -525,7 +529,7 @@ public class SpMxApplication extends Application {
     /**
      * Устанавливает параметры пункта меню для отображения/управления ROM-файл(а/ом) эмулятора.
      */
-    private void setRomItem(@NotNull final CheckMenuItem romItem) {
+    private void setRomItem(final @NotNull CheckMenuItem romItem) {
         final File romFile = fSpMX.getCurRomFile();
         if (romFile == null) {
             romItem.setSelected(false);
