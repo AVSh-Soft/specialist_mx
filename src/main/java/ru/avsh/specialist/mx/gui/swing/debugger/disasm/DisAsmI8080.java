@@ -93,9 +93,13 @@ public final class DisAsmI8080 implements DisAsm {
     @NotNull
     private static String text(final int code, final int bt1, final int bt2) {
         switch (code) {
-            case 0x00: case 0x08: case 0x10: case 0x18:
-            case 0x20: case 0x28: case 0x30: case 0x38:
+            case 0x00:
                 return "NOP";
+            // Недокументированные NOP: 8080 выполняет их как обычный NOP,
+            // поэтому в дизассемблере они показываются строчными
+            case 0x08: case 0x10: case 0x18:
+            case 0x20: case 0x28: case 0x30: case 0x38:
+                return "nop";
             case 0x01: case 0x11: case 0x21: case 0x31:
                 return "LXI  " + PAIRS[(code >> 4) & 3] + "," + hex16(bt2, bt1);
             case 0x02: return "STAX B";

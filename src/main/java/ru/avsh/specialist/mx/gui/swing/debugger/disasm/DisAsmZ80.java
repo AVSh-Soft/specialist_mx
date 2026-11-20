@@ -65,6 +65,85 @@ public final class DisAsmZ80 implements DisAsm {
     }
 
     /**
+     * Возвращает адрес из команды Z80 - 16-битный адрес, записанный в ней байтами,
+     * которые дизассемблер показывает как адрес ({@code JP nn}, {@code CALL nn},
+     * {@code LD HL,(nn)}, {@code LD (nn),HL}, {@code LD A,(nn)}, команды ED с {@code (nn)},
+     * {@code LD IX,nn}). Для {@code JR}/{@code DJNZ} адрес перехода вычисляется
+     * из смещения относительно адреса команды.
+     * Команды без байтов адреса ({@code RET}, {@code RST}, {@code JP (HL)},
+     * команды с индексным смещением или с 8-битными данными) адреса не дают.
+     *
+     * @param address адрес команды
+     * @param bytes   байты команды, начиная с кода операции
+     * @return адрес из команды или отрицательное значение, если в команде нет адреса
+     */
+    public static int getCmdAddress(final int address, final int[] bytes) {
+        final int code = byteAt(bytes, 0);
+        final int bt1  = byteAt(bytes, 1);
+        if ((code < 0) || (bt1 < 0)) {
+            return -1;
+        }
+        switch (code) {
+            case 0x10: case 0x18: case 0x20: case 0x28: case 0x30: case 0x38:
+                // JR/DJNZ: байт после кода операции - знаковое смещение
+                return (address + 2 + (byte) bt1) & 0xFFFF;
+            case PREFIX_CB:
+                return -1;
+            case PREFIX_ED:
+                // ED xx nn nn: адрес есть только у команд LD rr,(nn) / LD (nn),rr,
+                // остальные коды ED занимают два байта и адреса не содержат
+                return hasWord(bytes, 2, 3) ? wordAt(bytes, 2, 3) : -1;
+            case PREFIX_DD:
+            case PREFIX_FD:
+                // LD IX,nn / LD (nn),IX / LD IX,(nn); из DD CB / FD CB адрес взят не может,
+                // так как байт 1 - код операции CB, а не код с 16-битным операндом
+                return ((bt1 == 0x21) || (bt1 == 0x22) || (bt1 == 0x2A)) && hasWord(bytes, 2, 3)
+                        ? wordAt(bytes, 2, 3)
+                        : -1;
+            default:
+                break;
+        }
+        // Основной набор: все команды, где в байтах 1 и 2 записан 16-битный операнд
+        switch (code) {
+            case 0x01: case 0x11: case 0x21: case 0x31: // LD rr,nn
+            case 0x22: case 0x2A: case 0x32: case 0x3A: // LD (nn),HL / LD HL,(nn) / LD (nn),A / LD A,(nn)
+            case 0xC2: case 0xCA: case 0xD2: case 0xDA: // JP cc,nn
+            case 0xE2: case 0xEA: case 0xF2: case 0xFA:
+            case 0xC4: case 0xCC: case 0xD4: case 0xDC: // CALL cc,nn
+            case 0xE4: case 0xEC: case 0xF4: case 0xFC:
+            case 0xC3: case 0xCD:                       // JP nn / CALL nn
+                return hasWord(bytes, 1, 2) ? wordAt(bytes, 1, 2) : -1;
+            default:
+                return -1;
+        }
+    }
+
+    /**
+     * Проверяет, что байты с заданными индексами прочитаны (в буфере отладчика
+     * непрочитанный байт помечен отрицательным значением {@code EMPTY}/{@code WRONG}).
+     *
+     * @param bytes  байты команды
+     * @param lowIdx индекс младшего байта
+     * @param highIdx индекс старшего байта
+     * @return true = оба байта прочитаны
+     */
+    private static boolean hasWord(final int[] bytes, final int lowIdx, final int highIdx) {
+        return (byteAt(bytes, lowIdx) >= 0) && (byteAt(bytes, highIdx) >= 0);
+    }
+
+    /**
+     * Возвращает 16-битное значение, собранное из двух байтов команды.
+     *
+     * @param bytes   байты команды
+     * @param lowIdx  индекс младшего байта
+     * @param highIdx индекс старшего байта
+     * @return 16-битное значение (байты берутся без знака)
+     */
+    private static int wordAt(final int[] bytes, final int lowIdx, final int highIdx) {
+        return (byteAt(bytes, lowIdx) & 0xFF) | ((byteAt(bytes, highIdx) & 0xFF) << 8);
+    }
+
+    /**
      * Возвращает длину команды по коду операции и следующему байту (единственное
      * место расчёта длины: используется и таблицей отладчика, и дизассемблированием).
      *
@@ -77,6 +156,8 @@ public final class DisAsmZ80 implements DisAsm {
             case PREFIX_CB:
                 return 2;
             case PREFIX_ED:
+                // ED xx nn nn: только команды LD rr,(nn) / LD (nn),rr имеют адрес,
+                // остальные коды ED занимают два байта и адреса не содержат
                 return isEdMemOp(next) ? 4 : 2;
             case PREFIX_DD:
             case PREFIX_FD:

@@ -90,6 +90,20 @@ public final class DisAsmSelfTest {
     }
 
     /**
+     * Проверяет, какой адрес дизассемблер Z80 извлекает из команды: от этого зависит
+     * подкраска связанного адреса и переход по двойному клику в отладчике.
+     */
+    private static void checkZ80Addr(final int expected, final int address, final int... bytes) {
+        final int got = DisAsmZ80.getCmdAddress(address, bytes);
+        if (got != expected) {
+            fail("Z80 адрес %s: получено %04X, ожидалось %04X",
+                    new DisAsmZ80().disAsm(address, bytes).getText(), got, expected);
+        } else {
+            fPassed++;
+        }
+    }
+
+    /**
      * Заполняет буфер таблицы дизассемблера так же, как это делает отладчик,
      * и проверяет, что ни одна запись не выходит за границы массива.
      */
@@ -295,6 +309,49 @@ public final class DisAsmSelfTest {
         checkI8080(3, "jmp  1234",         0xCB, 0x34, 0x12);
         checkI8080(1, "RET",               0xC9);
         checkI8080(1, "ret",               0xD9);
+
+        // Недокументированные NOP i8080 тоже показываются в нижнем регистре,
+        // документированный NOP (0x00) - в верхнем
+        checkI8080(1, "NOP",               0x00);
+        for (final int code : new int[] { 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38 }) {
+            checkI8080(1, "nop",           code);
+        }
+
+        // Адрес из команды Z80: он берётся из байтов, которые дизассемблер показывает как адрес,
+        // а не всегда из байтов 1-2 (у i8080 так можно было, у Z80 - нет)
+        checkZ80Addr(0x1234, 0x1000, 0xC3, 0x34, 0x12);        // JP   nn
+        checkZ80Addr(0x1234, 0x1000, 0xCD, 0x34, 0x12);        // CALL nn
+        checkZ80Addr(0x1234, 0x1000, 0xC4, 0x34, 0x12);        // CALL NZ,nn
+        checkZ80Addr(0x1234, 0x1000, 0xDA, 0x34, 0x12);        // JP   C,nn
+        checkZ80Addr(0x1234, 0x1000, 0xED, 0x4B, 0x34, 0x12);  // LD   BC,(nn)
+        checkZ80Addr(0x1234, 0x1000, 0xED, 0x73, 0x34, 0x12);  // LD   (nn),SP
+        checkZ80Addr(0x1234, 0x1000, 0xDD, 0x21, 0x34, 0x12);  // LD   IX,nn
+        checkZ80Addr(0x1234, 0x1000, 0xFD, 0x2A, 0x34, 0x12);  // LD   IY,(nn)
+        checkZ80Addr(0x1234, 0x1000, 0x2A, 0x34, 0x12);        // LD   HL,(nn)
+        checkZ80Addr(0x1234, 0x1000, 0x32, 0x34, 0x12);        // LD   (nn),A
+        checkZ80Addr(0x1234, 0x1000, 0x3A, 0x34, 0x12);        // LD   A,(nn)
+        checkZ80Addr(0x1234, 0x1000, 0x01, 0x34, 0x12);        // LD   BC,nn - не адрес, но 16-битные данные
+        checkZ80Addr(0x1010, 0x1000, 0x18, 0x0E);              // JR   +0E
+        checkZ80Addr(0x0FF2, 0x1000, 0x18, 0xF0);              // JR   -10
+        checkZ80Addr(0x0FFE, 0x1000, 0x20, 0xFC);              // JR   NZ,-04
+        checkZ80Addr(0x1000, 0x1000, 0x10, 0xFE);              // DJNZ сам на себя
+        // Команды без байтов адреса адреса не дают
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xC9);               // RET
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xCF);               // RST  08H
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xE9);               // JP   (HL)
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xED, 0x45);         // RETN
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xED, 0x78);         // IN   A,(C)
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xCB, 0x7E);         // BIT  7,(HL)
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xDD, 0x7E, 0x05);   // LD   A,(IX+05)
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xDD, 0x36, 0x02, 0x77); // LD (IX+02),77
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xDD, 0xCB, 0x00, 0xC6); // SET 0,(IY+00)
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xC6, 0x12);         // ADD  A,12
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xD3, 0x12);         // OUT  (12),A
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xDD, 0x26, 0x12);   // LD   IXH,12
+        // Непрочитанный байт (EMPTY/WRONG из таблицы отладчика) адресом не считается
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xC3, 0x34, EMPTY_VALUE);
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0xED, 0x4B, 0x34, WRONG_VALUE);
+        checkZ80Addr(EMPTY_VALUE, 0x1000, 0x18, EMPTY_VALUE);
 
         // Заполнение буфера отладчика на реальном коде дизассемблеров
         final int[] mem = new int[0x10000];

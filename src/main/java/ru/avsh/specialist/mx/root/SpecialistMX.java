@@ -75,20 +75,20 @@ public final class SpecialistMX {
         // Читаем номер версии эмулятора из внутренних настроек
         fProductName = readProductName();
 
-        // Создаем тактовый генератор
-        fGen = new ClockSpeedGenerator();
+        // Создаем тактовый генератор с тактовой частотой по умолчанию
+        fGen = new ClockSpeedGenerator(ClockSpeedGenerator.CLOCK_SPEED);
         // Создаем диспетчер запоминающих устройств
         fMemoryManager = new MemoryManager();
         // Создаем процессоры. На "Специалисте MX" порты ввода-вывода - это память
         // (обращение к порту N равно обращению к ячейке NN), поэтому оба процессора
         // получают один и тот же диспетчер и для памяти, и для портов
         fCpuI8080 = new CpuI8080(this, fMemoryManager, fMemoryManager);
-        fCpuZ80   = new CpuZ80(this, fMemoryManager, fMemoryManager);
+        fCpuZ80   = new CpuZ80  (this, fMemoryManager, fMemoryManager);
         // Выбираем активный процессор (по умолчанию i8080)
         final CpuCore cpu = isZ80Selected() ? fCpuZ80 : fCpuI8080;
         fCPU = new AtomicReference<>(cpu);
         fCpuI8080.setActive(fCpuI8080.equals(cpu));
-        fCpuZ80  .setActive(  fCpuZ80.equals(cpu));
+        fCpuZ80  .setActive(fCpuZ80  .equals(cpu));
         // Создаем Speaker
         Speaker speaker;
         try {
@@ -111,11 +111,13 @@ public final class SpecialistMX {
         final FloppyDiskControllerPort fdcPort = new FloppyDiskControllerPort(fFDC );
 
         // Добавляем тактируемые устройства в тактовый генератор
-        fGen.addClockedUnit(fCpuI8080);
-        fGen.addClockedUnit(fCpuZ80  );
-        fGen.addClockedUnit(timer    );
+        fGen.addClockedUnit (fCpuI8080);
+        fGen.addClockedUnit (fCpuZ80  );
+        fGen.addClockedUnit (timer    );
         // Сообщаем генератору, какой процессор активен (нужно для режима "Пауза")
-        fGen.setActiveCpu(cpu);
+        fGen.setActiveCpu   (cpu      );
+        // Сообщаем генератору, какое устройство его наблюдает
+        fGen.addObserverUnit(speaker  );
 
         // Добавляем устройства памяти в диспетчер устройств памяти
         fMemoryManager.addMemoryUnit(0x0000, fRAM   );
