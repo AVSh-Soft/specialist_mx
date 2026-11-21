@@ -203,7 +203,7 @@ public final class Speaker implements ObserverUnit {
                             positive = negative = 0F;
                             // Читаем текущее значение счетчика сэмплов SDL
                             samplesCounter = fSDL.getLongFramePosition();
-                            // Перед обработкой звуковых данных, заполняем очередь до значения BUF_CYCLES_TIME
+                            // Перед обработкой звуковых данных, заполняем очередь до значения fBufCyclesTime
                             for (long endTime = fGen.getCyclesCounter() + parameters.fBufCyclesTime - fSoundQueue.getTime(), timeLeft;
                                  (timeLeft = Math.min(endTime - fGen.getCyclesCounter(), parameters.fBufCyclesTime - fSoundQueue.getTime())) > 0;) {
                                 if (timeLeft >= ClockSpeedGenerator.CYCLES) {

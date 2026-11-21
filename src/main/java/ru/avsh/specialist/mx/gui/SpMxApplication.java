@@ -362,7 +362,7 @@ public class SpMxApplication extends Application {
         // -= Установка тактовой частоты CPU =-
         cpuFrequencyItem.setOnAction(e -> {
             final CpuFrequencyDialog dialog = new CpuFrequencyDialog(
-                    500_000, 10_000_000, fSpMX.getGen().getClockSpeed());
+                    500_000,  fSpMX.getGen().getPeakClockSpeed(), fSpMX.getGen().getClockSpeed());
             dialog.initOwner(primaryStage);
             dialog.showAndWait().ifPresent(fSpMX.getGen()::setClockSpeed);
         });

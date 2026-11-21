@@ -66,11 +66,10 @@ public interface CpuDebugCore extends CpuCore {
             // Блокируем возможность одновременного запуска нескольких копий отладчика
             isDebugRun.getAndSet(true);
             // Останавливаем CPU и запоминающие устройства
-            hold(true);
+                        hold(true);
             pauseMemoryUnits(true);
             // Далее работаем в потоке Swing
             EventQueue.invokeLater(() -> {
-
                 // Останавливаем тактовый генератор (обязательно из другого потока!)
                 spMX.pause(true, false);
                 // Блокируем главное окно

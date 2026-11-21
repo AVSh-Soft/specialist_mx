@@ -6,6 +6,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
+import ru.avsh.specialist.mx.gui.utils.AlertUtil;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
 
 import java.util.Locale;
@@ -34,7 +35,7 @@ public class CpuFrequencyDialog extends Dialog<Integer> {
 
              setTitle("Установка тактовой частота CPU");
         setHeaderText("Настройка тактовой частоты процессора (шаг 100 кГц)");
-        getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        getDialogPane().getButtonTypes().addAll(AlertUtil.Option.OK_CANCEL_OPTION.getButtonTypes());
 
         // 1. Слайдер в целых шагах по 100 кГц
         int minSteps = minHz / STEP_HZ;
