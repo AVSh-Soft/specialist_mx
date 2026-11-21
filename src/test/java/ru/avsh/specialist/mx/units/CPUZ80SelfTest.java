@@ -555,19 +555,19 @@ public final class CPUZ80SelfTest {
         for (final int pair : pairs) {
             dstI80.setCommonRegPair(pair, srcZ80.getCommonRegPair(pair));
         }
-        check("Z80->i8080 BC", 0x1234, dstI80.getCommonRegPair(0));
-        check("Z80->i8080 DE", 0x5678, dstI80.getCommonRegPair(2));
-        check("Z80->i8080 HL", 0x9ABC, dstI80.getCommonRegPair(4));
-        check("Z80->i8080 AF", 0xD6C7, dstI80.getCommonRegPair(6));
-        check("Z80->i8080 SP", 0xF001, dstI80.getCommonRegPair(8));
-        check("Z80->i8080 PC", 0xC123, dstI80.getCommonRegPair(9));
+        check("Z80->I8080 BC", 0x1234, dstI80.getCommonRegPair(0));
+        check("Z80->I8080 DE", 0x5678, dstI80.getCommonRegPair(2));
+        check("Z80->I8080 HL", 0x9ABC, dstI80.getCommonRegPair(4));
+        check("Z80->I8080 AF", 0xD6C7, dstI80.getCommonRegPair(6));
+        check("Z80->I8080 SP", 0xF001, dstI80.getCommonRegPair(8));
+        check("Z80->I8080 PC", 0xC123, dstI80.getCommonRegPair(9));
 
-        // Обратный перенос: i8080 маскирует F (биты 5/3/1 у него не флаги),
+        // Обратный перенос: I8080 маскирует F (биты 5/3/1 у него не флаги),
         // поэтому Z80 получает F без этих бит — SZ0A0P1C
         dstI80.setCommonRegPair(6, 0x00FF);
         srcZ80.setCommonRegPair(6, dstI80.getCommonRegPair(6));
-        check("i8080->Z80 AF", 0x00D7, srcZ80.getCommonRegPair(6));
-        check("i8080->Z80 F маскируется i8080", 0xD7, reg(cpu, 6));
+        check("I8080->Z80 AF", 0x00D7, srcZ80.getCommonRegPair(6));
+        check("I8080->Z80 F маскируется I8080", 0xD7, reg(cpu, 6));
 
         System.out.printf("%nИТОГ: passed=%d failed=%d%n", fPassed, fFailed);
         if (fFailed > 0) {

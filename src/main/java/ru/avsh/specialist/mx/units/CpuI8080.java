@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Класс "Процессор Intel C8080A (К580ВМ80А)".
+ * Класс "Процессор Intel 8080A (КР580ВМ80А)".
  *
  * @author -=AVSh=-
  */
@@ -948,7 +948,7 @@ public final class CpuI8080 implements CpuDebugCore {
 
             case 0xD3: // OUT port8
                 v = nextBytePC();
-                // i8080 выставляет порт и на младший, и на старший байт шины адреса
+                // I8080 выставляет порт и на младший, и на старший байт шины адреса
                 ((fIoManager == null) ? fMemManager : fIoManager).writeByte(v | (v << 8), getReg(A));
                 break;
 
@@ -958,7 +958,7 @@ public final class CpuI8080 implements CpuDebugCore {
 
             case 0xDB: // IN port8
                 v = nextBytePC();
-                // i8080 выставляет порт и на младший, и на старший байт шины адреса
+                // I8080 выставляет порт и на младший, и на старший байт шины адреса
                 setReg(A, ((fIoManager == null) ? fMemManager : fIoManager).readByte(v | (v << 8)));
                 break;
 
@@ -1034,7 +1034,7 @@ public final class CpuI8080 implements CpuDebugCore {
      */
     @Override
     public String getName() {
-        return "i8080";
+        return "Intel 8080A";
     }
 
     /**

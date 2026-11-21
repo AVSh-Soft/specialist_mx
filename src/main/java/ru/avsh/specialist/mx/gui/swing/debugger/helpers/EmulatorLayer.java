@@ -166,7 +166,7 @@ public class EmulatorLayer extends Observable {
     /**
      * Получает визуальное представление регистра флагов.
      *
-     * @param flagsLine строка имён флагов (например, SZ0A0P1C для i8080 или SZ5H3PNC для Z80)
+     * @param flagsLine строка имён флагов (например, SZ0A0P1C для I8080 или SZ5H3PNC для Z80)
      * @return значение регистра флагов.
      */
     public String getVisViewsFlagsReg(final String flagsLine) {

@@ -38,7 +38,7 @@ import static javax.swing.JOptionPane.*;
 import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharAt;
 
 /**
- * Класс "Отладчик для активного процессора эмулятора (i8080 или Z80)".
+ * Класс "Отладчик для активного процессора эмулятора (I8080 или Z80)".
  *
  * @author -=AVSh=-
  */
@@ -50,8 +50,8 @@ public final class DebuggerCPU extends JDialog {
     // Значение неверного элемента буфера (обязательно отрицательное значение)
     public static final int WRONG_VALUE = -2;
 
-    private static final String TITLE_I8080 = "Отладчик для процессора i8080 (К580ВМ80А)";
-    private static final String TITLE_Z80   = "Отладчик для процессора Z80";
+    private static final String TITLE_I8080 = "Отладчик для процессора Intel 8080A (КР580ВМ80А)";
+    private static final String TITLE_Z80   = "Отладчик для процессора Zilog Z80";
 
     private static final String INI_OPTION_FRAME_WIDTH  = "DebugFrameWidth" ;
     private static final String INI_OPTION_FRAME_HEIGHT = "DebugFrameHeight";
@@ -71,7 +71,7 @@ public final class DebuggerCPU extends JDialog {
 
     // Имена флагов процессоров от старшего бита регистра F к младшему биту,
     // должно быть ровно 8 символов, т.к. каждый отвечает за отдельный флаг
-    private static final String FLAGS_I8080 = "SZ?A?P?C"; // SZ0A0P1C - тут '?' неизменяемые биты в регистре F у i8080
+    private static final String FLAGS_I8080 = "SZ?A?P?C"; // SZ0A0P1C - тут '?' неизменяемые биты в регистре F у I8080
     private static final String FLAGS_Z80   = "SZ5H3PNC"; // SZ5H3PNC
 
     // Дизассемблеры процессоров
@@ -274,7 +274,7 @@ public final class DebuggerCPU extends JDialog {
         final CpuMemPageLabel cpuMemPageLabel = new CpuMemPageLabel();
 
         // Кнопки установки/сброса флагов CPU (по кнопке на каждый значащий бит регистра F):
-        // у i8080 - S Z A P C, у Z80 - S Z 5 H 3 P N C. Обработчик находит бит по названию кнопки
+        // у I8080 - S Z A P C, у Z80 - S Z 5 H 3 P N C. Обработчик находит бит по названию кнопки
         // в строке fFlags, поэтому набор кнопок задаётся только этой строкой
         final JButton[] flagButtons = new JButton[fFlags.length()];
         {
@@ -286,7 +286,7 @@ public final class DebuggerCPU extends JDialog {
                 button.setMinimumSize  (dim);
                 button.setPreferredSize(dim);
                 button.setMargin       (ins);
-                // Для i8080 блокируем управление для битов с именами '?'
+                // Для I8080 блокируем управление для битов с именами '?'
                 if (flagName == '?') {
                     button.setEnabled(false);
                 } else {
@@ -416,7 +416,7 @@ public final class DebuggerCPU extends JDialog {
 
                 // -=- flagsRegLabel -=-
                 // Метка регистра флагов стоит в одной полосе с кнопками флагов: с полосы шириной
-                // в 8 столбцов по 16 px (у i8080 используются 5 из них)
+                // в 8 столбцов по 16 px (у I8080 используются 5 из них)
                 contentPanel.add(flagsRegLabel,
                                  new GridBagConstraints(1, 0, 8, 1, 0.0, 0.0,
                                                         GridBagConstraints.BASELINE, GridBagConstraints.HORIZONTAL,
@@ -1025,7 +1025,7 @@ public final class DebuggerCPU extends JDialog {
          * Возвращает адрес из команды CPU или отрицательное значение,
          * если в команде нет 16-битного адреса.
          * <p>
-         * У i8080 байты команды идут в порядке младший-старший, а команды длиной три байта
+         * У I8080 байты команды идут в порядке младший-старший, а команды длиной три байта
          * содержат 16-битное значение в байтах 1 и 2, поэтому его можно взять напрямую.
          * У Z80 адрес может стоять в третьем и четвёртом байтах ({@code ED xx nn nn},
          * {@code LD IX,nn}), а у {@code JR}/{@code DJNZ} вместо адреса записано смещение,

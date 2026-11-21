@@ -43,7 +43,7 @@ import static ru.avsh.specialist.mx.helpers.Constants.*;
  * @author -=AVSh=-
  */
 public final class SpecialistMX {
-    /** Индексы регистровых пар, общих для i8080 и Z80: BC, DE, HL, AF, SP, PC. */
+    /** Индексы регистровых пар, общих для I8080 и Z80: BC, DE, HL, AF, SP, PC. */
     private static final int[] COMMON_REG_PAIRS = {0, 2, 4, 6, 8, 9};
 
     private final Wini   fIni;
@@ -84,7 +84,7 @@ public final class SpecialistMX {
         // получают один и тот же диспетчер и для памяти, и для портов
         fCpuI8080 = new CpuI8080(this, fMemoryManager, fMemoryManager);
         fCpuZ80   = new CpuZ80  (this, fMemoryManager, fMemoryManager);
-        // Выбираем активный процессор (по умолчанию i8080)
+        // Выбираем активный процессор (по умолчанию I8080)
         final CpuCore cpu = isZ80Selected() ? fCpuZ80 : fCpuI8080;
         fCPU = new AtomicReference<>(cpu);
         fCpuI8080.setActive(fCpuI8080.equals(cpu));
@@ -231,7 +231,7 @@ public final class SpecialistMX {
 
     /**
      * Показывает, выбран ли в ini-файле процессор Z80.
-     * Неизвестное или отсутствующее значение трактуется как выбор i8080.
+     * Неизвестное или отсутствующее значение трактуется как выбор I8080.
      *
      * @return true = выбран Z80
      */
@@ -243,7 +243,7 @@ public final class SpecialistMX {
     /**
      * Показывает, активен ли процессор Z80.
      *
-     * @return true = активен Z80, false = активен i8080
+     * @return true = активен Z80, false = активен I8080
      */
     public boolean isZ80() {
         return fCpuZ80.equals(fCPU.get());
@@ -252,12 +252,12 @@ public final class SpecialistMX {
     /**
      * Переключает активный процессор.
      * Оба процессора остаются в тактовом генераторе, но команды исполняет только активный.
-     * Общие для i8080 и Z80 регистры (AF, BC, DE, HL, SP, PC) переносятся на новый процессор,
+     * Общие для I8080 и Z80 регистры (AF, BC, DE, HL, SP, PC) переносятся на новый процессор,
      * поэтому переключение на программе, совместимой с обоими процессорами, продолжается с того же места.
-     * Регистры, которых нет у i8080 (IX, IY), остаются без изменений.
+     * Регистры, которых нет у I8080 (IX, IY), остаются без изменений.
      * Пока открыт отладчик, переключение не выполняется.
      *
-     * @param isZ80 true = сделать активным Z80, false = сделать активным i8080
+     * @param isZ80 true = сделать активным Z80, false = сделать активным I8080
      * @return true = переключение выполнено (или процессор уже активен)
      */
     public boolean switchCpu(final boolean isZ80) {
@@ -285,7 +285,7 @@ public final class SpecialistMX {
     }
 
     /**
-     * Переносит состояние регистров, общих для i8080 и Z80, с одного процессора на другой.
+     * Переносит состояние регистров, общих для I8080 и Z80, с одного процессора на другой.
      * Индексы пар общие для обоих процессоров: 0 - BC, 2 - DE, 4 - HL, 6 - AF, 8 - SP, 9 - PC.
      *
      * @param source исходный процессор

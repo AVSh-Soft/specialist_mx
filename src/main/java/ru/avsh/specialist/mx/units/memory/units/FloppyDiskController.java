@@ -549,7 +549,7 @@ public final class FloppyDiskController implements MemoryUnit {
      * Конструктор.
      *
      * @param gen ссылка на объект класса ClockSpeedGenerator - "Тактовый генератор"
-     * @param cpu ссылка на процессор (i8080 или Z80)
+     * @param cpu ссылка на процессор (I8080 или Z80)
      */
     public FloppyDiskController(@NotNull ClockSpeedGenerator gen, CpuCore cpu) {
         // Устанавливаем ссылку на тактовый генератор

@@ -7,7 +7,7 @@ import java.util.Arrays;
 import static ru.avsh.specialist.mx.gui.swing.debugger.disasm.DisAsmResult.*;
 
 /**
- * Класс "Дизассемблер процессора Z80".
+ * Класс "Дизассемблер процессора Zilog Z80".
  * Поддерживает основной набор команд, префиксы CB, ED, DD, FD
  * и составные команды DD CB d op / FD CB d op.
  */

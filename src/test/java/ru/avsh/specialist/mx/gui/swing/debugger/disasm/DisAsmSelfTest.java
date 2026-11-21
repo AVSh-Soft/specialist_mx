@@ -62,14 +62,14 @@ public final class DisAsmSelfTest {
     }
 
     /**
-     * Проверяет, что команда i8080 определённой длины имеет ожидаемый текст.
+     * Проверяет, что команда I8080 определённой длины имеет ожидаемый текст.
      */
     private static void checkI8080(final int expectedLen, final String expectedText, final int... bytes) {
         final DisAsmResult result = new DisAsmI8080().disAsm(0x1000, bytes);
         if (result.getLength() != expectedLen) {
-            fail("i8080 %s: длина %d, ожидалось %d", expectedText, result.getLength(), expectedLen);
+            fail("I8080 %s: длина %d, ожидалось %d", expectedText, result.getLength(), expectedLen);
         } else if (!expectedText.equals(result.getText())) {
-            fail("i8080: текст \"%s\", ожидалось \"%s\"", result.getText(), expectedText);
+            fail("I8080: текст \"%s\", ожидалось \"%s\"", result.getText(), expectedText);
         } else {
             fPassed++;
         }
@@ -151,7 +151,7 @@ public final class DisAsmSelfTest {
         final DisAsmI8080 disAsmI8080 = new DisAsmI8080();
         final DisAsmZ80   disAsmZ80   = new DisAsmZ80  ();
         for (int code = 0x00; code <= 0xFF; code++) {
-            checkLength("i8080", disAsmI8080, code, 0x34, 0x12, 0x01);
+            checkLength("I8080", disAsmI8080, code, 0x34, 0x12, 0x01);
         }
         for (int b0 = 0x00; b0 <= 0xFF; b0++) {
             for (int b1 = 0x00; b1 <= 0xFF; b1++) {
@@ -299,7 +299,7 @@ public final class DisAsmSelfTest {
             checkZ80(1, "RET  " + CONDS[cond], 0xC0 | (cond << 3));
         }
 
-        // Недокументированные команды i8080 показываются в нижнем регистре,
+        // Недокументированные команды I8080 показываются в нижнем регистре,
         // в отличие от документированных с тем же действием
         checkI8080(3, "CALL 1234",         0xCD, 0x34, 0x12);
         checkI8080(3, "call 1234",         0xDD, 0x34, 0x12);
@@ -310,7 +310,7 @@ public final class DisAsmSelfTest {
         checkI8080(1, "RET",               0xC9);
         checkI8080(1, "ret",               0xD9);
 
-        // Недокументированные NOP i8080 тоже показываются в нижнем регистре,
+        // Недокументированные NOP I8080 тоже показываются в нижнем регистре,
         // документированный NOP (0x00) - в верхнем
         checkI8080(1, "NOP",               0x00);
         for (final int code : new int[] { 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38 }) {
@@ -318,7 +318,7 @@ public final class DisAsmSelfTest {
         }
 
         // Адрес из команды Z80: он берётся из байтов, которые дизассемблер показывает как адрес,
-        // а не всегда из байтов 1-2 (у i8080 так можно было, у Z80 - нет)
+        // а не всегда из байтов 1-2 (у I8080 так можно было, у Z80 - нет)
         checkZ80Addr(0x1234, 0x1000, 0xC3, 0x34, 0x12);        // JP   nn
         checkZ80Addr(0x1234, 0x1000, 0xCD, 0x34, 0x12);        // CALL nn
         checkZ80Addr(0x1234, 0x1000, 0xC4, 0x34, 0x12);        // CALL NZ,nn
@@ -358,7 +358,7 @@ public final class DisAsmSelfTest {
         for (int k = 0; k < mem.length; k++) {
             mem[k] = ((k * 0x5B) + 0x5B) & 0xFF;
         }
-        checkFillBuffer("i8080", disAsmI8080, mem);
+        checkFillBuffer("I8080", disAsmI8080, mem);
         checkFillBuffer("Z80"  , disAsmZ80,   mem);
 
         System.out.printf("%nИТОГ: passed=%d failed=%d%n", fPassed, fFailed);

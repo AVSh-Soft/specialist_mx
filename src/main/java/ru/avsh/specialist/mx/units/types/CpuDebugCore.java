@@ -30,7 +30,7 @@ public interface CpuDebugCore extends CpuCore {
      * Показывает, какой процессор реализует отладочный контракт.
      * (Нужен для заголовка окна отладчика и строки флагов)
      *
-     * @return true = Z80, false = i8080
+     * @return true = Z80, false = I8080
      */
     boolean debugIsZ80();
 

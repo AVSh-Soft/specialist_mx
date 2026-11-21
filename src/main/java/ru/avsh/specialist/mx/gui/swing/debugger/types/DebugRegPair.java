@@ -12,7 +12,7 @@ package ru.avsh.specialist.mx.gui.swing.debugger.types;
  * Порядок строк в таблице задаёт {@link #getByRowIndex(int, boolean, boolean)}:
  * пары альтернативного файла идут сразу под своими основными парами.
  * <p>
- * Пары, которых нет у процессора (IX, IY и альтернативный файл у i8080), остаются
+ * Пары, которых нет у процессора (IX, IY и альтернативный файл у I8080), остаются
  * в перечислении, но не показываются в таблице - см. {@link #isSupported(boolean, boolean)}.
  */
 public enum DebugRegPair {
