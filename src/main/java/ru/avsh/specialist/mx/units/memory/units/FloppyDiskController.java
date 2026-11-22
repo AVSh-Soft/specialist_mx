@@ -1,8 +1,8 @@
 package ru.avsh.specialist.mx.units.memory.units;
 
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
-import ru.avsh.specialist.mx.units.types.CpuCore;
 import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import java.io.File;
@@ -55,10 +55,11 @@ public final class FloppyDiskController implements MemoryUnit {
 
     // Переменные
     private final Object fMutex;
-    private final CpuCore fCPU;
-    private final FloppyDiskDrive fDriveA ;
-    private final FloppyDiskDrive fDriveB ;
-    private final ClockSpeedGenerator fGen;
+    private final FloppyDiskDrive fDriveA;
+    private final FloppyDiskDrive fDriveB;
+
+    private final SpecialistMX        fSpMX;
+    private final ClockSpeedGenerator fGen ;
 
     private volatile boolean         fCurSide ;
     private volatile FloppyDiskDrive fCurDrive;
@@ -178,7 +179,7 @@ public final class FloppyDiskController implements MemoryUnit {
          */
         private void continueCPU() {
             if (fWasDataRequest.getAndSet(false)) {
-                fCPU.hold(false);
+                fSpMX.getCPU().hold(false);
             }
         }
 
@@ -548,14 +549,14 @@ public final class FloppyDiskController implements MemoryUnit {
     /**
      * Конструктор.
      *
-     * @param gen ссылка на объект класса ClockSpeedGenerator - "Тактовый генератор"
-     * @param cpu ссылка на процессор (I8080 или Z80)
+     * @param spMX ссылка на главный класс эмулятора
+     * @param gen  ссылка на объект класса ClockSpeedGenerator - "Тактовый генератор"
      */
-    public FloppyDiskController(@NotNull ClockSpeedGenerator gen, CpuCore cpu) {
+    public FloppyDiskController(@NotNull SpecialistMX spMX, @NotNull ClockSpeedGenerator gen) {
+        // Запоминаем ссылку на главный класс эмулятора
+        fSpMX = spMX;
         // Устанавливаем ссылку на тактовый генератор
-        fGen = gen;
-        // Устанавливаем ссылку на CPU
-        fCPU = cpu;
+        fGen  =  gen;
 
         // Инициализируем объекты
         fRegStatus  = new AtomicInteger();
@@ -731,13 +732,13 @@ public final class FloppyDiskController implements MemoryUnit {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         FloppyDiskController that = (FloppyDiskController) o;
-        return Objects.equals(fCPU, that.fCPU) &&
-               Objects.equals(fGen, that.fGen);
+        return Objects.equals(fSpMX, that.fSpMX) &&
+               Objects.equals(fGen , that.fGen );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fCPU, fGen);
+        return Objects.hash(fSpMX, fGen);
     }
 
     /**
@@ -867,7 +868,7 @@ public final class FloppyDiskController implements MemoryUnit {
     void waitDataRequest() {
         // CPU переводим в состояние "Пауза" только для команд контроллера НГМД "Чтение сектора" / "Запись сектора"
         if (((fRegCommand.get() & 0b1100_0000) == 0b1000_0000) && getStatusFlag(F_BUSY) && !getStatusFlag(F_INDEX_OR_DATA_REQUEST)) {
-            fCPU.hold(true);
+            fSpMX.getCPU().hold(true);
             fWasDataRequest.getAndSet(true);
         }
     }

@@ -101,7 +101,7 @@ public final class SpecialistMX {
         fScr = new Screen();
         fRAM = new MainMemory(NUMBER_PAGES_RAMDISK + 1, fScr); // RAM + RAM-диск (8 страниц) + ROM-диск
         fKey = new KeyboardPort(fSpc);
-        fFDC = new FloppyDiskController(fGen, cpu);
+        fFDC = new FloppyDiskController(this, fGen);
 
         final ProgrammableTimer        timer   = new ProgrammableTimer       (fSpc );
         final SimpleMemory             excRAM  = new SimpleMemory            (0x20);
@@ -268,7 +268,7 @@ public final class SpecialistMX {
             return true;
         }
         // Останавливаем эмулятор на время переключения
-        pause(true, false);
+        pause(true, true);
         try {
             fCpuI8080.setActive(!isZ80);
               fCpuZ80.setActive( isZ80);
@@ -279,7 +279,7 @@ public final class SpecialistMX {
             putIni  (INI_SECTION_CONFIG, INI_OPTION_CPU, isZ80 ? CPU_Z80 : CPU_I8080);
             storeIni();
         } finally {
-            pause(false, false);
+            pause(false, true);
         }
         return true;
     }
