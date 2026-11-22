@@ -1,5 +1,6 @@
 package ru.avsh.specialist.mx.units;
 
+import ru.avsh.specialist.mx.helpers.RobustIntervalTracker;
 import ru.avsh.specialist.mx.units.types.ClockedUnit;
 import ru.avsh.specialist.mx.units.types.CpuCore;
 import ru.avsh.specialist.mx.units.types.ObserverUnit;
@@ -17,9 +18,10 @@ public final class ClockSpeedGenerator implements Runnable {
     public  static final int    CYCLES           =                 66_000 ; // Количество тактов, которое необходимо выполнить
     public  static final long   CYCLES_FOR_NANOS = CYCLES * 1_000_000_000L;
 
-    private final Object             fMutex;
-    private final List<ClockedUnit > fClockedUnits ;
-    private final List<ObserverUnit> fObserverUnits;
+    private final Object                fMutex;
+    private final List<ClockedUnit >    fClockedUnits   ;
+    private final List<ObserverUnit>    fObserverUnits  ;
+    private final RobustIntervalTracker fIntervalTracker;
 
     private volatile CpuCore  fCPU       ;
     private volatile int      fIndexCPU  ;
@@ -27,7 +29,6 @@ public final class ClockSpeedGenerator implements Runnable {
     private volatile boolean  fPauseFlag ;
     private volatile int      fClockSpeed;
     private volatile long     fCyclesTime;
-    private volatile long     fTimeSpent ;
     private volatile long     fCyclesCounter  ;
     private volatile boolean  fPrevCpuHoldMode;
 
@@ -35,11 +36,12 @@ public final class ClockSpeedGenerator implements Runnable {
      * Конструктор.
      */
     public ClockSpeedGenerator(int clockSpeed) {
-        fMutex          = new Object    ();
-        fClockedUnits   = new CopyOnWriteArrayList<>();
-        fObserverUnits  = new CopyOnWriteArrayList<>();
-        fIndexCPU       =   -1;
-        fPauseFlag      = true;
+        fMutex           = new Object    ();
+        fClockedUnits    = new CopyOnWriteArrayList<>();
+        fObserverUnits   = new CopyOnWriteArrayList<>();
+        fIntervalTracker = new RobustIntervalTracker(1000);
+        fIndexCPU        =   -1;
+        fPauseFlag       = true;
         setClockSpeed(clockSpeed);
     }
 
@@ -97,7 +99,7 @@ public final class ClockSpeedGenerator implements Runnable {
                     // Усыпляем поток на оставшееся время выполнения заданного количества тактов
                     final long currentTime = System.nanoTime();
                     if ((remainingTime = endTime - currentTime) >= 1_000_000L) {
-                        fTimeSpent = currentTime -   startTime;
+                        fIntervalTracker.recordInterval(currentTime - startTime);
                         Thread.sleep(remainingTime / 1_000_000L);
                     }
                     // Делаем точную подгонку под оставшееся время выполнения заданного количества тактов
@@ -192,7 +194,8 @@ public final class ClockSpeedGenerator implements Runnable {
      * @return тактовая частота в Гц
      */
     public int getPeakClockSpeed() {
-        return (fTimeSpent == 0) ? CLOCK_SPEED : (int) (CYCLES_FOR_NANOS / fTimeSpent);
+        final long medianInterval = fIntervalTracker.getMedianInterval();
+        return (medianInterval == 0) ? CLOCK_SPEED : (int) (CYCLES_FOR_NANOS / medianInterval);
     }
 
     /**

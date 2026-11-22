@@ -17,7 +17,7 @@ import static ru.avsh.specialist.mx.units.TestHelper.loadAndExecuteCpmProg;
  */
 class CpuZ80Test {
     /**
-     * Тайм-аут прогона zexdoc/zexall. По реальному Z80 время измеряется часами,
+     * Тайм-аут прогона zexdoc/zexall. На реальном Z80 время измеряется часами,
      * поэтому запас взят с большим избытком относительно текущих ~12 минут.
      */
     private static final Duration Z80_EXERCISER_TIMEOUT = Duration.ofMinutes(40);
@@ -100,7 +100,7 @@ class CpuZ80Test {
                     "Tests complete";
 
     @Test
-    void z80type_test() {
+    void test_z80type() {
         final String text = loadAndExecuteCpmProg(true, "z80type.com", Duration.ofMinutes(1), "/D");
         assertEquals(
                 "Z80 Processor Type Detection (C) 2024 Sergey Kiselev\n" +
@@ -113,14 +113,14 @@ class CpuZ80Test {
 
     // Тяжелый и долгий тест: около 12 минут на текущей реализации CpuZ80
     @Test
-    void zexdoc_test() {
+    void test_zexdoc() {
         final String text = loadAndExecuteCpmProg(true, "zexdoc.com", Z80_EXERCISER_TIMEOUT);
         assertEquals(Z80_EXERCISER_RESULT, text);
     }
 
     // Тяжелый и долгий тест: около 12 минут на текущей реализации CpuZ80
     @Test
-    void zexall_test() {
+    void test_zexall() {
         final String text = loadAndExecuteCpmProg(true, "zexall.com", Z80_EXERCISER_TIMEOUT);
         assertEquals(Z80_EXERCISER_RESULT, text);
     }
