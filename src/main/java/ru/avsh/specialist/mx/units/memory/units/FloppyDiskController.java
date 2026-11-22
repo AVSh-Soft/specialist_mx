@@ -21,9 +21,6 @@ public final class FloppyDiskController implements MemoryUnit {
     private static final String THREAD_NAME  = "FloppyDiskController"; // Имя потока
     private static final int    STORAGE_SIZE = 4;
 
-    // Константа для корректного взаимодействия с CPU
-    private static final long CPU_WAIT_TIME = Math.round(ClockSpeedGenerator.TIME_OF_PULSE / 1_000_000.0);
-
     // Константы для формирования индексного импульса
     private static final long REVOLUTION_TIME    = 400_000L; // Время одного оборота диска = 200мс (400_000 тактов) или 300об/мин
     private static final long TIME_WITHOUT_INDEX = 399_000L; // Время одного оборота диска без времени индексного импульса
@@ -318,7 +315,7 @@ public final class FloppyDiskController implements MemoryUnit {
          * @return позиция.
          */
         private long getPos() {
-            return (long) ODI_SECTOR_LENGTH * (ODI_SECTORS * ((ODI_SIDES * fRegTrack.get()) + (fCurSide ? 1 : 0)) + (fRegSector.get() - 1));
+            return ODI_SECTOR_LENGTH * (ODI_SECTORS * (((long) ODI_SIDES * fRegTrack.get()) + (fCurSide ? 1 : 0)) + (fRegSector.get() - 1));
         }
 
         /**
@@ -350,15 +347,16 @@ public final class FloppyDiskController implements MemoryUnit {
                     return;
                 }
                 // Вычисляем длину данных
-                length = ODI_SECTOR_LENGTH * ((fRegCommand.get() & 0b1_0000) != 0 ? ODI_SECTORS - fRegSector.get() + 1 : 1);
+                length = ODI_SECTOR_LENGTH * (((fRegCommand.get() & 0b1_0000) == 0) ? 1 : ((ODI_SECTORS - fRegSector.get()) + 1));
                 // Заранее вычисляем позицию данных
-                long pos = getPos();
+                final long pos         = getPos();
+                final long cpuWaitTime = Math.round(fGen.getCyclesTime() / 1_000_000.0);
                 // Читаем данные из регистра данных в буфер
                 for (int i = 0; i < length; i++) {
                     // Устанавливаем флаг "Запрос данных"
                     setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
                     // Ожидаем, когда CPU заполнит регистр данных (время ожидания с учетом особенностей реализации CPU в классе CPUi8080)
-                    waitData(CPU_WAIT_TIME);
+                    waitData(cpuWaitTime);
                     // Если было принудительное прерывание
                     if (fInterrupt.get()) {
                         // Записываем последний байт из регистра данных в буфер
@@ -408,7 +406,7 @@ public final class FloppyDiskController implements MemoryUnit {
                 // Устанавливаем флаг "Тип адресной метки"
                 setStatusFlag(F_HEAD_LOAD_OR_RECORD_TYPE_OR_WRITE_FAULT, (fRegCommand.get() & 0b1) != 0);
                 // Вычисляем длину данных
-                length = ODI_SECTOR_LENGTH * ((fRegCommand.get() & 0b1_0000) != 0 ? ODI_SECTORS - fRegSector.get() + 1 : 1);
+                length = ODI_SECTOR_LENGTH * ((fRegCommand.get() & 0b1_0000) == 0 ? 1 : ODI_SECTORS - fRegSector.get() + 1);
                 // Читаем данные с диска в буфер
                 try {
                     fCurDrive.getDisk().seek(getPos());
@@ -418,13 +416,14 @@ public final class FloppyDiskController implements MemoryUnit {
                     setStatusFlag(F_CRC_ERROR, true);
                     return;
                 }
+                final long cpuWaitTime = Math.round(fGen.getCyclesTime() / 1_000_000.0);
                 // Выдаем данные из буфера в регистр данных
                 for (int i = 0; !fInterrupt.get() && (i < length); i++) {
                     fRegData.getAndSet(fBuf[i] & 0xFF);
                     // Устанавливаем флаг "Запрос данных"
                     setStatusFlag(F_INDEX_OR_DATA_REQUEST, true);
                     // Ожидаем, когда CPU прочитает данные из регистра данных (время ожидания с учетом особенностей реализации CPU в классе CPUi8080)
-                    waitData(CPU_WAIT_TIME);
+                    waitData(cpuWaitTime);
                     // Если CPU не прочитал вовремя данные из регистра данных
                     if (getStatusFlag(F_INDEX_OR_DATA_REQUEST)) {
                         // Устанавливаем флаг "Потеря данных" и выходим
@@ -550,7 +549,7 @@ public final class FloppyDiskController implements MemoryUnit {
      * Конструктор.
      *
      * @param gen ссылка на объект класса ClockSpeedGenerator - "Тактовый генератор"
-     * @param cpu ссылка на процессор (i8080 или Z80)
+     * @param cpu ссылка на процессор (I8080 или Z80)
      */
     public FloppyDiskController(@NotNull ClockSpeedGenerator gen, CpuCore cpu) {
         // Устанавливаем ссылку на тактовый генератор

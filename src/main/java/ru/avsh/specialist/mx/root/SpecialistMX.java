@@ -43,7 +43,7 @@ import static ru.avsh.specialist.mx.helpers.Constants.*;
  * @author -=AVSh=-
  */
 public final class SpecialistMX {
-    /** Индексы регистровых пар, общих для i8080 и Z80: BC, DE, HL, AF, SP, PC. */
+    /** Индексы регистровых пар, общих для I8080 и Z80: BC, DE, HL, AF, SP, PC. */
     private static final int[] COMMON_REG_PAIRS = {0, 2, 4, 6, 8, 9};
 
     private final Wini   fIni;
@@ -51,8 +51,8 @@ public final class SpecialistMX {
 
     private final Speaker              fSpc;
     private final Screen               fScr;
-    private final CpuI8080 fCpuI8080;
-    private final CpuZ80 fCpuZ80  ;
+    private final CpuI8080             fCpuI8080;
+    private final CpuZ80               fCpuZ80  ;
     private final MainMemory           fRAM;
     private final KeyboardPort         fKey;
     private final ClockSpeedGenerator  fGen;
@@ -75,20 +75,20 @@ public final class SpecialistMX {
         // Читаем номер версии эмулятора из внутренних настроек
         fProductName = readProductName();
 
-        // Создаем тактовый генератор
-        fGen = new ClockSpeedGenerator();
+        // Создаем тактовый генератор с тактовой частотой по умолчанию
+        fGen = new ClockSpeedGenerator(ClockSpeedGenerator.CLOCK_SPEED);
         // Создаем диспетчер запоминающих устройств
         fMemoryManager = new MemoryManager();
         // Создаем процессоры. На "Специалисте MX" порты ввода-вывода - это память
         // (обращение к порту N равно обращению к ячейке NN), поэтому оба процессора
         // получают один и тот же диспетчер и для памяти, и для портов
         fCpuI8080 = new CpuI8080(this, fMemoryManager, fMemoryManager);
-        fCpuZ80   = new CpuZ80(this, fMemoryManager, fMemoryManager);
-        // Выбираем активный процессор (по умолчанию i8080)
+        fCpuZ80   = new CpuZ80  (this, fMemoryManager, fMemoryManager);
+        // Выбираем активный процессор (по умолчанию I8080)
         final CpuCore cpu = isZ80Selected() ? fCpuZ80 : fCpuI8080;
         fCPU = new AtomicReference<>(cpu);
         fCpuI8080.setActive(fCpuI8080.equals(cpu));
-        fCpuZ80  .setActive(  fCpuZ80.equals(cpu));
+        fCpuZ80  .setActive(fCpuZ80  .equals(cpu));
         // Создаем Speaker
         Speaker speaker;
         try {
@@ -111,11 +111,13 @@ public final class SpecialistMX {
         final FloppyDiskControllerPort fdcPort = new FloppyDiskControllerPort(fFDC );
 
         // Добавляем тактируемые устройства в тактовый генератор
-        fGen.addClockedUnit(fCpuI8080);
-        fGen.addClockedUnit(fCpuZ80  );
-        fGen.addClockedUnit(timer    );
+        fGen.addClockedUnit (fCpuI8080);
+        fGen.addClockedUnit (fCpuZ80  );
+        fGen.addClockedUnit (timer    );
         // Сообщаем генератору, какой процессор активен (нужно для режима "Пауза")
-        fGen.setActiveCpu(cpu);
+        fGen.setActiveCpu   (cpu      );
+        // Сообщаем генератору, какое устройство его наблюдает
+        fGen.addObserverUnit(speaker  );
 
         // Добавляем устройства памяти в диспетчер устройств памяти
         fMemoryManager.addMemoryUnit(0x0000, fRAM   );
@@ -229,7 +231,7 @@ public final class SpecialistMX {
 
     /**
      * Показывает, выбран ли в ini-файле процессор Z80.
-     * Неизвестное или отсутствующее значение трактуется как выбор i8080.
+     * Неизвестное или отсутствующее значение трактуется как выбор I8080.
      *
      * @return true = выбран Z80
      */
@@ -241,7 +243,7 @@ public final class SpecialistMX {
     /**
      * Показывает, активен ли процессор Z80.
      *
-     * @return true = активен Z80, false = активен i8080
+     * @return true = активен Z80, false = активен I8080
      */
     public boolean isZ80() {
         return fCpuZ80.equals(fCPU.get());
@@ -250,12 +252,12 @@ public final class SpecialistMX {
     /**
      * Переключает активный процессор.
      * Оба процессора остаются в тактовом генераторе, но команды исполняет только активный.
-     * Общие для i8080 и Z80 регистры (AF, BC, DE, HL, SP, PC) переносятся на новый процессор,
+     * Общие для I8080 и Z80 регистры (AF, BC, DE, HL, SP, PC) переносятся на новый процессор,
      * поэтому переключение на программе, совместимой с обоими процессорами, продолжается с того же места.
-     * Регистры, которых нет у i8080 (IX, IY), остаются без изменений.
+     * Регистры, которых нет у I8080 (IX, IY), остаются без изменений.
      * Пока открыт отладчик, переключение не выполняется.
      *
-     * @param isZ80 true = сделать активным Z80, false = сделать активным i8080
+     * @param isZ80 true = сделать активным Z80, false = сделать активным I8080
      * @return true = переключение выполнено (или процессор уже активен)
      */
     public boolean switchCpu(final boolean isZ80) {
@@ -283,7 +285,7 @@ public final class SpecialistMX {
     }
 
     /**
-     * Переносит состояние регистров, общих для i8080 и Z80, с одного процессора на другой.
+     * Переносит состояние регистров, общих для I8080 и Z80, с одного процессора на другой.
      * Индексы пар общие для обоих процессоров: 0 - BC, 2 - DE, 4 - HL, 6 - AF, 8 - SP, 9 - PC.
      *
      * @param source исходный процессор
@@ -526,7 +528,7 @@ public final class SpecialistMX {
      */
     private void run(final int address) {
         pause(true, true);
-        final CpuCore cpu = fCPU.get();
+        final CpuDebugCore cpu = getCpuDebugCore();
         cpu.run(address);
         // Проверяем ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
         if (cpu.debugIsTrap(getPage(), address)) {
@@ -544,7 +546,7 @@ public final class SpecialistMX {
      */
     private void reset(final int address, final boolean resetMemoryUnits) {
         pause(true, true);
-        final CpuCore cpu = fCPU.get();
+        final CpuDebugCore cpu = getCpuDebugCore();
         cpu.reset(address, resetMemoryUnits);
         // Проверяем ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
         if (cpu.debugIsTrap(getPage(), address)) {
@@ -742,7 +744,7 @@ public final class SpecialistMX {
             fMemoryManager.reset(clear);
             // Очищаем все ловушки, если выбрана полная очистка
             if (clear) {
-                fCPU.get().debugClearTraps();
+                getCpuDebugCore().debugClearTraps();
             }
             // Включаем ROM-диск
             setPage(MainMemory.ROM_DISK);

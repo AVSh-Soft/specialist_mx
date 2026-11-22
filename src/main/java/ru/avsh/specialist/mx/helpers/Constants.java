@@ -34,7 +34,7 @@ public final class Constants {
     public static final String INI_OPTION_CPU      = "Cpu";
 
     // Значения опции выбора процессора
-    public static final String CPU_I8080 = "i8080";
+    public static final String CPU_I8080 = "I8080";
     public static final String CPU_Z80   = "Z80"  ;
 
     // Путь к каталогу с MON-файлами эмулятора "Специалист MX"

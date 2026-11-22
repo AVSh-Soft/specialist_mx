@@ -89,22 +89,23 @@ public class SpMxApplication extends Application {
                 new SeparatorMenuItem(), resetItem,
                 new SeparatorMenuItem(),  exitItem);
 
-        final      MenuItem   infoItem   = new      MenuItem("Состояние CPU/RAM");
-        final      MenuItem  debugItem   = new      MenuItem("Запуск отладчика");
-        final CheckMenuItem size11Item   = new CheckMenuItem("Размер 1:1");
-        final CheckMenuItem size21Item   = new CheckMenuItem("Размер 2:1");
-        final RadioMenuItem modeMXItem   = new RadioMenuItem("Клавиатура \"".concat(SPMX_NAME).concat("\""));
-        final RadioMenuItem modeSTItem   = new RadioMenuItem("Клавиатура \"Специалист\"");
-        final RadioMenuItem cpuI8080Item = new RadioMenuItem("i8080");
-        final RadioMenuItem cpuZ80Item   = new RadioMenuItem("Z80"  );
-        final      Menu     cpuMenu = new Menu("Процессор", null, cpuI8080Item, cpuZ80Item);
-        final      Menu    viewMenu = new Menu("Просмотр" , null,
+        final      MenuItem          infoItem = new      MenuItem("Состояние CPU/RAM");
+        final      MenuItem         debugItem = new      MenuItem("Запуск отладчика" );
+        final CheckMenuItem        size11Item = new CheckMenuItem("Размер 1:1");
+        final CheckMenuItem        size21Item = new CheckMenuItem("Размер 2:1");
+        final RadioMenuItem        modeMXItem = new RadioMenuItem("Клавиатура \"".concat(SPMX_NAME).concat("\""));
+        final RadioMenuItem        modeSTItem = new RadioMenuItem("Клавиатура \"Специалист\"");
+        final RadioMenuItem      cpuI8080Item = new RadioMenuItem("Intel 8080A (КР580ВМ80А)");
+        final RadioMenuItem        cpuZ80Item = new RadioMenuItem("Zilog Z80"  );
+        final          Menu           cpuMenu = new          Menu("Процессор (CPU)", null, cpuI8080Item, cpuZ80Item);
+        final      MenuItem  cpuFrequencyItem = new      MenuItem("Установка тактовой частота CPU");
+        final          Menu          viewMenu = new          Menu("Просмотр" , null,
                 infoItem,  debugItem,
                 new SeparatorMenuItem(), size11Item, size21Item,
                 new SeparatorMenuItem(), modeMXItem, modeSTItem,
-                new SeparatorMenuItem(), cpuMenu);
+                new SeparatorMenuItem(), cpuMenu, cpuFrequencyItem);
 
-        final   ToggleGroup       group = new ToggleGroup();
+        final ToggleGroup group = new ToggleGroup();
         modeMXItem.setToggleGroup(group);
         modeSTItem.setToggleGroup(group);
         modeMXItem.setSelected(!fSpMX.isKeyboardMode());
@@ -115,9 +116,6 @@ public class SpMxApplication extends Application {
         cpuZ80Item  .setToggleGroup(cpuGroup);
         cpuI8080Item.setSelected(!fSpMX.isZ80());
         cpuZ80Item  .setSelected( fSpMX.isZ80());
-
-        cpuI8080Item.setOnAction(e -> switchCpu(false, cpuI8080Item, cpuZ80Item));
-        cpuZ80Item  .setOnAction(e -> switchCpu(true,  cpuI8080Item, cpuZ80Item));
 
         final MenuItem aboutItem = new MenuItem("О программе...");
         final Menu     aboutMenu = new Menu    ("О программе", null, aboutItem);
@@ -357,6 +355,18 @@ public class SpMxApplication extends Application {
         modeMXItem.setOnAction(event -> fSpMX.setKeyboardMode(false));
         modeSTItem.setOnAction(event -> fSpMX.setKeyboardMode(true ));
 
+        // -= Выбор процессора (CPU) =-
+        cpuI8080Item.setOnAction(e -> switchCpu(false, cpuI8080Item, cpuZ80Item));
+        cpuZ80Item  .setOnAction(e -> switchCpu(true,  cpuI8080Item, cpuZ80Item));
+
+        // -= Установка тактовой частоты CPU =-
+        cpuFrequencyItem.setOnAction(e -> {
+            final CpuFrequencyDialog dialog = new CpuFrequencyDialog(
+                    500_000,  fSpMX.getGen().getPeakClockSpeed(), fSpMX.getGen().getClockSpeed());
+            dialog.initOwner(primaryStage);
+            dialog.showAndWait().ifPresent(fSpMX.getGen()::setClockSpeed);
+        });
+
         // -= О программе =-
         aboutItem.setOnAction(event -> {
             String name      = "Эмулятор \"".concat(SPMX_NAME).concat("\"");
@@ -449,7 +459,7 @@ public class SpMxApplication extends Application {
      * @param stage главная сцена
      * @param title заголовок
      */
-    private void setTitle(@NotNull final Stage stage, @NotNull final String title) {
+    private void setTitle(final @NotNull Stage stage, final @NotNull String title) {
         stage.setTitle(String.format(
                 "[%s][%s] - %s %s", fSpMX.getCurMonName(), fSpMX.getCPU().getName(), fSpMX.getProductName(), title));
     }
@@ -462,7 +472,11 @@ public class SpMxApplication extends Application {
      * @param targetMenuItem целевой пункт меню, отображающий состояние диска
      * @param stage          главная сцена
      */
-    private void diskInsertEject(boolean fdd, File file, @NotNull final CheckMenuItem targetMenuItem, @NotNull Stage stage) {
+    private void diskInsertEject(final boolean fdd,
+                                 File file,
+                                 final @NotNull CheckMenuItem targetMenuItem,
+                                 final @NotNull Stage stage) {
+
         boolean insert = true; // По умолчанию вставка диска
 
         if (file == null) {
@@ -502,8 +516,8 @@ public class SpMxApplication extends Application {
     /**
      * Переключает активный процессор и восстанавливает состояние пунктов меню, если переключение запрещено.
      *
-     * @param isZ80     true = сделать активным Z80, false = сделать активным i8080
-     * @param i8080Item пункт меню процессора i8080
+     * @param isZ80     true = сделать активным Z80, false = сделать активным I8080
+     * @param i8080Item пункт меню процессора I8080
      * @param z80Item   пункт меню процессора Z80
      */
     private void switchCpu(final boolean isZ80,
@@ -525,7 +539,7 @@ public class SpMxApplication extends Application {
     /**
      * Устанавливает параметры пункта меню для отображения/управления ROM-файл(а/ом) эмулятора.
      */
-    private void setRomItem(@NotNull final CheckMenuItem romItem) {
+    private void setRomItem(final @NotNull CheckMenuItem romItem) {
         final File romFile = fSpMX.getCurRomFile();
         if (romFile == null) {
             romItem.setSelected(false);

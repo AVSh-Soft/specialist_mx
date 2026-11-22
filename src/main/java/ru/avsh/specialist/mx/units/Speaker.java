@@ -1,7 +1,7 @@
 package ru.avsh.specialist.mx.units;
 
 import org.jetbrains.annotations.NotNull;
-import ru.avsh.specialist.mx.units.types.Unit;
+import ru.avsh.specialist.mx.units.types.ObserverUnit;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
@@ -11,29 +11,22 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Класс "Speaker (динамик)".
  *
  * @author -=AVSh=-
  */
-public final class Speaker implements Unit {
+public final class Speaker implements ObserverUnit {
     // Константы для разбивки на сэмплы
-    private static final float SAMPLE_RATE            = 44100F;
-    private static final float CYCLES_PER_SAMPLE      = ClockSpeedGenerator.CLOCK_SPEED / SAMPLE_RATE;
-    private static final float HALF_CYCLES_PER_SAMPLE =               CYCLES_PER_SAMPLE /  2;
-    // Константы для отбора полупериодов
-    private static final int   BEG_HALF_CYCLE         = ClockSpeedGenerator.CLOCK_SPEED / 40; // Стартовая максимальная длина полупериода (частота от 20Гц)
-    private static final int   MAX_HALF_CYCLE         = ClockSpeedGenerator.CLOCK_SPEED /  4; // Максимальная длина полупериода для воспроизведения пауз без искажений (от 2Гц)
+    private static final float SAMPLE_RATE      = 44100F;
     // Константы для задания времени наполнения буфера
-    private static final int   BUF_TIME               = 100; // В миллисекундах
-    private static final int   BUF_SAMPLES_TIME       =          Math.round(SAMPLE_RATE * BUF_TIME / 1000); // В семплах
-    private static final long  BUF_CYCLES_TIME        = ClockSpeedGenerator.CLOCK_SPEED * BUF_TIME / 1000 ; // В тактах
+    private static final int   BUF_TIME         =    100; // В миллисекундах
+    private static final int   BUF_SAMPLES_TIME = Math.round((SAMPLE_RATE * BUF_TIME) / 1000); // В семплах
     // Прочие константы
-    private static final float SAMPLES_PER_MS         = SAMPLE_RATE  / 1000;
-    private static final int   SAMPLES_PER_2MS        = Math.round(2 * SAMPLES_PER_MS);
-    private static final float AUDIO_LEVEL_FACTOR     = 128 / HALF_CYCLES_PER_SAMPLE  * 0.25F; // Уровень громкости 25%
-    private static final int   CPU_PULSE_TIME         = Math.round(ClockSpeedGenerator.TIME_OF_PULSE / 1_000_000F) * ClockSpeedGenerator.CLOCK_SPEED / 1000;
+    private static final float SAMPLES_PER_MS   = SAMPLE_RATE  / 1000;
+    private static final int   SAMPLES_PER_2MS  = Math.round(2 * SAMPLES_PER_MS);
 
     private final Object fMutex;
     private final SourceDataLine fSDL;
@@ -45,6 +38,7 @@ public final class Speaker implements Unit {
     private final AtomicBoolean fCurBit  ;
     private final AtomicBoolean fCurBit8255;
     private final AtomicBoolean fCurBit8253;
+    private final AtomicReference<SpeakerParameters> fParameters;
 
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     /**
@@ -160,6 +154,9 @@ public final class Speaker implements Unit {
 
             try {
                 for (; ; ) {
+                    // Обращение к параметрам только в начале цикла
+                    final SpeakerParameters parameters = fParameters.get();
+
                     // Если очередь пуста -
                     if (fSoundQueue.isEmpty()) {
                         // и если остались сэмплы в буфере -
@@ -206,10 +203,10 @@ public final class Speaker implements Unit {
                             positive = negative = 0F;
                             // Читаем текущее значение счетчика сэмплов SDL
                             samplesCounter = fSDL.getLongFramePosition();
-                            // Перед обработкой звуковых данных, заполняем очередь до значения BUF_CYCLES_TIME
-                            for (long endTime = fGen.getCyclesCounter() + BUF_CYCLES_TIME - fSoundQueue.getTime(), timeLeft;
-                                 (timeLeft = Math.min(endTime - fGen.getCyclesCounter(), BUF_CYCLES_TIME - fSoundQueue.getTime())) > 0; ) {
-                                if (timeLeft >= CPU_PULSE_TIME) {
+                            // Перед обработкой звуковых данных, заполняем очередь до значения fBufCyclesTime
+                            for (long endTime = fGen.getCyclesCounter() + parameters.fBufCyclesTime - fSoundQueue.getTime(), timeLeft;
+                                 (timeLeft = Math.min(endTime - fGen.getCyclesCounter(), parameters.fBufCyclesTime - fSoundQueue.getTime())) > 0;) {
+                                if (timeLeft >= ClockSpeedGenerator.CYCLES) {
                                     Thread.sleep(1L);
                                 }
                             }
@@ -230,7 +227,7 @@ public final class Speaker implements Unit {
                         } else {
                             negative += halfCycle;
                         }
-                        for (; positive + negative >= CYCLES_PER_SAMPLE; index++) {
+                        for (; positive + negative >= parameters.fCyclesPerSample; index++) {
                             // Выполняем воспроизведение, если буфер заполнен сэмплами до значения BUF_SAMPLES_TIME (или до fBufSize, если BUF_SAMPLES_TIME > fBufSize)
                             if (index == Math.min(BUF_SAMPLES_TIME, fBufSize)) {
                                 playSound(fBuf, index);
@@ -240,12 +237,12 @@ public final class Speaker implements Unit {
                             }
                             // Амплитуду каждого сэмпла считаем как среднее арифметическое значений на участке CYCLES_PER_SAMPLE
                             if (bit) {
-                                fBuf[index] = (byte) Math.round((HALF_CYCLES_PER_SAMPLE - negative) * AUDIO_LEVEL_FACTOR);
-                                positive -= CYCLES_PER_SAMPLE - negative;
+                                fBuf[index] = (byte) Math.round((parameters.fHalfCyclesPerSample - negative) * parameters.fAudioLevelFactor);
+                                positive -= parameters.fCyclesPerSample - negative;
                                 negative = 0F;
                             } else {
-                                fBuf[index] = (byte) Math.round((positive - HALF_CYCLES_PER_SAMPLE) * AUDIO_LEVEL_FACTOR);
-                                negative -= CYCLES_PER_SAMPLE - positive;
+                                fBuf[index] = (byte) Math.round((positive - parameters.fHalfCyclesPerSample) * parameters.fAudioLevelFactor);
+                                negative -= parameters.fCyclesPerSample - positive;
                                 positive = 0F;
                             }
                         }
@@ -285,6 +282,8 @@ public final class Speaker implements Unit {
         fCurBit     = new AtomicBoolean(true );
         fCurBit8255 = new AtomicBoolean(false);
         fCurBit8253 = new AtomicBoolean(false);
+        // Инициализируем параметры Speaker-а из тактового генератора
+        fParameters = new AtomicReference<>(new SpeakerParameters(gen));
 
         // Запускаем звуковой процессор
         new Thread(fSoundProcessor).start();
@@ -300,15 +299,16 @@ public final class Speaker implements Unit {
             fCurBit.getAndSet(curBit);
 
             // Замеряем время звукового полупериода в тактах тактового генератора
-            final long cyclesCounter = fGen.getCyclesCounter();
-            final long halfCycle     = cyclesCounter - fPrevTime.getAndSet(cyclesCounter);
+            final SpeakerParameters parameters    = fParameters.get();
+            final long              cyclesCounter = fGen.getCyclesCounter();
+            final long              halfCycle     = cyclesCounter - fPrevTime.getAndSet(cyclesCounter);
 
             if (fSoundProcessor.isRunning()) {
-                if (halfCycle <= MAX_HALF_CYCLE) {
+                if (halfCycle <= parameters.fMaxHalfCycle) {
                     fSoundQueue.offerInt((int) halfCycle);
                 }
             } else {
-                if (halfCycle <= BEG_HALF_CYCLE) {
+                if (halfCycle <= parameters.fBegHalfCycle) {
                     // Ждем готовности звукового процессора
                     if (fSoundProcessor.isBusy()) {
                         for (int t = BUF_TIME; fSoundProcessor.isBusy() && (t > 0); t--) {
@@ -390,5 +390,36 @@ public final class Speaker implements Unit {
         }
         // Закрываем SDL
         fSDL.close();
+    }
+
+    @Override
+    public void update() {
+        fParameters.getAndSet(new SpeakerParameters(fGen));
+    }
+
+    private static class SpeakerParameters {
+        // Параметры для разбивки на сэмплы
+        private final float fCyclesPerSample    ;
+        private final float fHalfCyclesPerSample;
+        // Параметры для отбора полупериодов
+        private final int   fBegHalfCycle       ;
+        private final int   fMaxHalfCycle       ;
+        // Параметры для задания времени наполнения буфера
+        private final long  fBufCyclesTime      ;
+        // Прочие Параметры
+        private final float fAudioLevelFactor   ;
+
+        public SpeakerParameters(@NotNull ClockSpeedGenerator gen) {
+            this.fCyclesPerSample     =  gen.getClockSpeed()  / SAMPLE_RATE;
+            this.fHalfCyclesPerSample = this.fCyclesPerSample /  2;
+            // Стартовая максимальная длина полупериода (частота от 20Гц)
+            this.fBegHalfCycle        =  gen.getClockSpeed()  / 40;
+            // Максимальная длина полупериода для воспроизведения пауз без искажений (от 2Гц)
+            this.fMaxHalfCycle        =  gen.getClockSpeed()  /  4;
+            // Время наполнения буфера в тактах
+            this.fBufCyclesTime       = (gen.getClockSpeed()  * (long) BUF_TIME) / 1000;
+            // Уровень громкости 25%
+            this.fAudioLevelFactor    = (128 / this.fHalfCyclesPerSample) * 0.25F;
+        }
     }
 }

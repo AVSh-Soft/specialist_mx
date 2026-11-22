@@ -1,44 +1,48 @@
 package ru.avsh.specialist.mx.units;
 
+import ru.avsh.specialist.mx.helpers.RobustIntervalTracker;
 import ru.avsh.specialist.mx.units.types.ClockedUnit;
 import ru.avsh.specialist.mx.units.types.CpuCore;
+import ru.avsh.specialist.mx.units.types.ObserverUnit;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Класс "Тактовый генератор".
  */
 public final class ClockSpeedGenerator implements Runnable {
     // Основные константы тактового генератора
-    public  static final String THREAD_NAME   = "ClockSpeedGenerator"; // Имя потока
-    public  static final int    CLOCK_SPEED   =            2_000_000 ; // Тактовая частота
-    public  static final long   TIME_OF_PULSE =           33_000_000L; // Время импульса в наносекундах
-    private static final int    MAX_UNITS     =                   50 ; // Максимальное количество тактируемых устройств
+    public  static final String THREAD_NAME      =   "ClockSpeedGenerator"; // Имя потока
+    public  static final int    CLOCK_SPEED      =              2_000_000 ; // Тактовая частота в Гц
+    public  static final int    CYCLES           =                 66_000 ; // Количество тактов, которое необходимо выполнить
+    public  static final long   CYCLES_FOR_NANOS = CYCLES * 1_000_000_000L;
 
-    private final Object        fMutex;
-    private final AtomicLong    fCyclesCounter;
-    private final ClockedUnit[] fClockedUnits ;
+    private final Object                fMutex;
+    private final List<ClockedUnit >    fClockedUnits   ;
+    private final List<ObserverUnit>    fObserverUnits  ;
+    private final RobustIntervalTracker fIntervalTracker;
 
-    private int fSize; // Тут не нужен volatile, т.к. используется синхронизация
-
-    private volatile CpuCore  fCPU;
+    private volatile CpuCore  fCPU       ;
     private volatile int      fIndexCPU  ;
     private volatile boolean  fWaitFlag  ;
     private volatile boolean  fPauseFlag ;
     private volatile int      fClockSpeed;
-    private volatile int      fIterationCycles;
+    private volatile long     fCyclesTime;
+    private volatile long     fCyclesCounter  ;
     private volatile boolean  fPrevCpuHoldMode;
 
     /**
      * Конструктор.
      */
-    public ClockSpeedGenerator() {
-        fMutex          = new Object();
-        fCyclesCounter  = new AtomicLong();
-        fClockedUnits   = new ClockedUnit[MAX_UNITS];
-        fIndexCPU       =   -1;
-        fPauseFlag      = true;
-        setClockSpeed(CLOCK_SPEED);
+    public ClockSpeedGenerator(int clockSpeed) {
+        fMutex           = new Object    ();
+        fClockedUnits    = new CopyOnWriteArrayList<>();
+        fObserverUnits   = new CopyOnWriteArrayList<>();
+        fIntervalTracker = new RobustIntervalTracker(1000);
+        fIndexCPU        =   -1;
+        fPauseFlag       = true;
+        setClockSpeed(clockSpeed);
     }
 
     @Override
@@ -48,10 +52,9 @@ public final class ClockSpeedGenerator implements Runnable {
 
     @Override
     public void run() {
-        int  index;
-        long nanos;
-        long endTime;
-        long startTime = System.nanoTime();
+        long     startTime = System.nanoTime();
+        long remainingTime;
+        long       endTime;
 
         // Присваиваем имя потоку
         Thread.currentThread().setName(THREAD_NAME);
@@ -74,17 +77,17 @@ public final class ClockSpeedGenerator implements Runnable {
                     startTime = System.nanoTime();
                 }
 
-                // Рассчитываем конечное время выполнения импульса генератора (подгонка из-за погрешности System.nanoTime())
-                endTime = startTime + TIME_OF_PULSE - 100_000L;
+                // Рассчитываем конечное время выполнения заданного количества тактов
+                // (подгонка из-за погрешности System.nanoTime())
+                endTime = startTime + fCyclesTime - 100_000L;
                 // Выполняем заданное количество тактов генератора без задержек
                 synchronized (this) {
-                    for (long end = fCyclesCounter.get() + fIterationCycles; !fPauseFlag && (fCyclesCounter.get() < end); ) {
+                    final long end = fCyclesCounter + CYCLES;
+                    for (; !fPauseFlag && (fCyclesCounter < end); fCyclesCounter++) {
                         // Выполняем один такт у тактируемых устройств
-                        for (index = 0; index < fSize; index++) {
-                            fClockedUnits[index].cycle();
+                        for (final ClockedUnit fClockedUnit : fClockedUnits) {
+                            fClockedUnit.cycle();
                         }
-                        // Увеличиваем счетчик циклов (тактов) генератора
-                        fCyclesCounter.getAndIncrement();
                     }
                 }
 
@@ -93,11 +96,13 @@ public final class ClockSpeedGenerator implements Runnable {
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
-                    // Усыпляем поток на оставшееся время импульса
-                    if ((nanos = endTime - System.nanoTime()) >= 1_000_000L) {
-                        Thread.sleep(nanos / 1_000_000L);
+                    // Усыпляем поток на оставшееся время выполнения заданного количества тактов
+                    final long currentTime = System.nanoTime();
+                    if ((remainingTime = endTime - currentTime) >= 1_000_000L) {
+                        fIntervalTracker.recordInterval(currentTime - startTime);
+                        Thread.sleep(remainingTime / 1_000_000L);
                     }
-                    // Делаем точную подгонку под оставшееся время импульса
+                    // Делаем точную подгонку под оставшееся время выполнения заданного количества тактов
                     // noinspection StatementWithEmptyBody
                     while (endTime > (startTime = System.nanoTime())) {
                         //
@@ -111,28 +116,39 @@ public final class ClockSpeedGenerator implements Runnable {
     }
 
     /**
-     * Добавляет тактируемое устройство в массив.
-     * (Метод должен вызываться до старта тактового генератора.)
+     * Добавляет тактируемое устройство.
      *
      * @param clockedUnit тактируемое устройство
      */
     public synchronized void addClockedUnit(final ClockedUnit clockedUnit) {
-        if (clockedUnit != null) {
-            int index = 0;
-            for (; index < fSize; index++) {
-                if (fClockedUnits[index].equals(clockedUnit)) {
-                    break;
-                }
+        if ((clockedUnit != null) && !fClockedUnits.contains(clockedUnit)) {
+            if ((clockedUnit instanceof CpuCore) && (fCPU == null)) {
+                // Первый зарегистрированный процессор считается активным до вызова setActiveCpu()
+                fCPU      = (CpuCore) clockedUnit;
+                fIndexCPU = fClockedUnits.size() ;
             }
-            if ((fSize == index) && (fSize < MAX_UNITS)) {
-                if ((clockedUnit instanceof CpuCore) && (fCPU == null)) {
-                    // Первый зарегистрированный процессор считается активным до вызова setActiveCpu()
-                    fCPU      = (CpuCore) clockedUnit;
-                    fIndexCPU = fSize;
-                }
-                fClockedUnits[fSize++] = clockedUnit; // fClockedUnits и fSize изменяются только тут
-            }
+            fClockedUnits.add(clockedUnit);
         }
+    }
+
+    /**
+     * Добавляет устройство-наблюдатель.
+     *
+     * @param observerUnit устройство-наблюдатель
+     */
+    public synchronized void addObserverUnit(final ObserverUnit observerUnit) {
+        if ((observerUnit != null) && !fObserverUnits.contains(observerUnit)) {
+            fObserverUnits.add(observerUnit);
+        }
+    }
+
+    /**
+     * Возвращает время для выполнения CYCLES тактов.
+     *
+     * @return время в наносекундах.
+     */
+    public long getCyclesTime() {
+        return fCyclesTime;
     }
 
     /**
@@ -141,7 +157,7 @@ public final class ClockSpeedGenerator implements Runnable {
      * @return значение счетчика тактов
      */
     public long getCyclesCounter() {
-        return fCyclesCounter.get();
+        return fCyclesCounter;
     }
 
     /**
@@ -153,9 +169,9 @@ public final class ClockSpeedGenerator implements Runnable {
     public synchronized void setActiveCpu(final CpuCore cpu) {
         if (cpu != null) {
             fCPU = cpu;
-            for (int index = 0;   index < fSize; index++) {
-                if (fClockedUnits[index] == cpu) {
-                    fIndexCPU =   index;
+            for (int index = 0; index < fClockedUnits.size(); index++) {
+                if (fClockedUnits.get(index) == cpu) {
+                    fIndexCPU = index;
                     break;
                 }
             }
@@ -172,13 +188,25 @@ public final class ClockSpeedGenerator implements Runnable {
     }
 
     /**
+     * Возвращает приблизительное значение пиковой тактовой частоты
+     * (зависит от ПК, на котором работает эмулятор и участка выполняемого кода).
+     *
+     * @return тактовая частота в Гц
+     */
+    public int getPeakClockSpeed() {
+        final long medianInterval = fIntervalTracker.getMedianInterval();
+        return (medianInterval == 0) ? CLOCK_SPEED : (int) (CYCLES_FOR_NANOS / medianInterval);
+    }
+
+    /**
      * Задает тактовую частоту.
      *
      * @param clockSpeed тактовая частота в Гц
      */
-    public void setClockSpeed(final int clockSpeed) {
-        fClockSpeed      = clockSpeed;
-        fIterationCycles = (int) Math.round(TIME_OF_PULSE * clockSpeed / 1_000_000_000.0);
+    public synchronized void setClockSpeed(final int clockSpeed) {
+        fClockSpeed = clockSpeed;
+        fCyclesTime = Math.round(CYCLES_FOR_NANOS / (double) clockSpeed);
+        fObserverUnits.forEach(ObserverUnit::update);
     }
 
     /**
@@ -252,11 +280,11 @@ public final class ClockSpeedGenerator implements Runnable {
             do {
                 // Адресуемся к массиву через локальную копию индекса: его может сменить setActiveCpu()
                 final int activeIndex = fIndexCPU;
-                for (int index = 0; index < fSize; index++) {
+                for (int index = 0; index < fClockedUnits.size(); index++) {
                     if ( index == activeIndex) {
-                        flag   = fClockedUnits[index].cycle();
+                         flag  = fClockedUnits.get(index).cycle();
                     } else {
-                        fClockedUnits[index].cycle();
+                        fClockedUnits.get(index).cycle();
                     }
                 }
             } while (!flag);

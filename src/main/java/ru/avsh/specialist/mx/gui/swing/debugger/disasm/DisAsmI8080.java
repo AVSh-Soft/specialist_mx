@@ -5,7 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import static ru.avsh.specialist.mx.gui.swing.debugger.disasm.DisAsmResult.*;
 
 /**
- * Класс "Дизассемблер процессора i8080 (К580ВМ80А)".
+ * Класс "Дизассемблер процессора Intel 8080A (КР580ВМ80А)".
  * Команда состоит из кода операции и не более чем двух байтов данных,
  * которые идут в порядке младший-старший.
  */
@@ -21,7 +21,7 @@ public final class DisAsmI8080 implements DisAsm {
     // Имена 16-битных регистровых пар в кодировке команды
     private static final String[] PAIRS = { "B", "D", "H", "SP" };
 
-    // Длина команды процессора i8080 (К580ВМ80А)
+    // Длина команды процессора Intel 8080A (КР580ВМ80А)
     private static final int[] CMD_LEN = {
             1, 3, 1, 1, 1, 1, 2, 1,
             1, 1, 1, 1, 1, 1, 2, 1,
@@ -73,7 +73,7 @@ public final class DisAsmI8080 implements DisAsm {
     };
 
     /**
-     * Возвращает длину команды процессора i8080 по коду операции.
+     * Возвращает длину команды процессора I8080 по коду операции.
      *
      * @param opCode код операции
      * @return длина команды в байтах
@@ -83,7 +83,7 @@ public final class DisAsmI8080 implements DisAsm {
     }
 
     /**
-     * Формирует текст команды i8080.
+     * Формирует текст команды I8080.
      *
      * @param code код операции
      * @param bt1  байт 1 команды (EMPTY/WRONG, если не прочитан)
@@ -93,9 +93,13 @@ public final class DisAsmI8080 implements DisAsm {
     @NotNull
     private static String text(final int code, final int bt1, final int bt2) {
         switch (code) {
-            case 0x00: case 0x08: case 0x10: case 0x18:
-            case 0x20: case 0x28: case 0x30: case 0x38:
+            case 0x00:
                 return "NOP";
+            // Недокументированные NOP: 8080 выполняет их как обычный NOP,
+            // поэтому в дизассемблере они показываются строчными
+            case 0x08: case 0x10: case 0x18:
+            case 0x20: case 0x28: case 0x30: case 0x38:
+                return "nop";
             case 0x01: case 0x11: case 0x21: case 0x31:
                 return "LXI  " + PAIRS[(code >> 4) & 3] + "," + hex16(bt2, bt1);
             case 0x02: return "STAX B";
