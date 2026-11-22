@@ -8,7 +8,6 @@ import ru.avsh.specialist.mx.units.memory.MemoryManager;
 import ru.avsh.specialist.mx.units.types.CpuDebugCore;
 
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -90,9 +89,251 @@ public final class CpuI8080 extends CpuDebugCore {
         fRegs    = new int[10]; // B, C, D, E, H, L, F, A, SP, PC
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
 
-             fCycles = new AtomicInteger();
-          fHoldPhase = new AtomicInteger();
-             fActive = new AtomicBoolean(true);
+           fCycles = new AtomicInteger();
+        fHoldPhase = new AtomicInteger();
+           fActive = new AtomicBoolean();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getName() {
+        return "Intel 8080A";
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isActive() {
+        return fActive.get();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setActive(final boolean active) {
+        fActive.set(active);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public synchronized void run(final int address) {
+        setPC(address);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void reset(boolean clear) {
+        if (clear) {
+            Arrays.fill(fRegs, 0);
+            fRegs[F] = 0b0000_0010; // по умолчанию SZ0A_0P1C
+        } else {
+            setPC(0);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public synchronized void reset(final int address, final boolean resetMemoryUnits) {
+        reset(true);
+        setPC(address);
+        if (resetMemoryUnits) {
+            fMemManager.reset(false);
+            if (fIoManager != null) {
+                fIoManager.reset(false);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void pause(boolean mode) {
+        hold(mode);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void pauseMemoryUnits(final boolean mode) {
+        fMemManager.pause(mode);
+        if (fIoManager != null) {
+            fIoManager.pause(mode);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void hold(boolean mode) {
+        if ((fSpMX != null) && ((fHoldPhase.get() == HOLD_IS_NOT_SET) == mode)) {
+            if (mode) {
+                if (Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
+                    // Для потока тактового генератора останавливаем CPU сразу конечным значением HOLD_ACKNOWLEDGE,
+                    // т.к. здесь вызов всегда происходит в последней фазе работы цикла CPU (из метода cmdFinish())
+                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
+                } else {
+                    // Для других потоков устанавливаем промежуточную фазу остановки CPU и ожидаем её завершения
+                    fHoldPhase.getAndSet(HOLD_IN_PROCESS);
+                    // noinspection StatementWithEmptyBody
+                    while (!fSpMX.isPaused() && (fHoldPhase.get() == HOLD_IN_PROCESS)) {
+                        //
+                    }
+                }
+            } else {
+                // Запускаем CPU
+                fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isHoldAcknowledge() {
+        return fHoldPhase.get() == HOLD_ACKNOWLEDGE;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized int getCommonRegPair(final int commonPair) {
+        switch (commonPair) {
+            case P_BC : return getRegPair(P_BC );
+            case P_DE : return getRegPair(P_DE );
+            case P_HL : return getRegPair(P_HL );
+            case P_PSW: return getRegPair(P_PSW);
+            case SP   : return getSP();
+            case PC   : return getPC();
+            default   : return 0;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void setCommonRegPair(final int commonPair, final int value) {
+        switch (commonPair) {
+            case P_BC : setRegPair(P_BC,  value); break;
+            case P_DE : setRegPair(P_DE,  value); break;
+            case P_HL : setRegPair(P_HL,  value); break;
+            case P_PSW: setRegPair(P_PSW, value); break;
+            case SP   : setSP(value);             break;
+            case PC   : setPC(value);             break;
+            default   :                           break;
+        }
+    }
+
+    // -= Цикл CPU =-
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean cycle() {
+        if (!fActive.get()) {
+            return true;
+        }
+        if (fCycles.get() <= 1)  {
+            switch (fHoldPhase.get()) {
+                case HOLD_IS_NOT_SET:
+                    fCycles.set(cmdStart());
+                    return false;
+                case HOLD_IN_PROCESS:
+                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
+                    return true;
+                case HOLD_ACKNOWLEDGE:
+                    return true;
+                default:
+                    // Если была установлена некорректная фаза
+                    fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
+                    fCycles.set(cmdStart());
+                    return false;
+            }
+        } else {
+            if (fCycles.decrementAndGet() == 1) {
+                cmdFinish();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // -= Методы для отладчика =-
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean debugIsZ80() {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized int debugGetValRegPair(final DebugRegPair regPair) {
+        switch (regPair) {
+            case AF:
+                return (fRegs[A] << 8) | fRegs[F];
+            case BC:
+                return (fRegs[B] << 8) | fRegs[C];
+            case DE:
+                return (fRegs[D] << 8) | fRegs[E];
+            case HL:
+                return (fRegs[H] << 8) | fRegs[L];
+            case SP:
+                return fRegs[SP];
+            case PC:
+                return fRegs[PC];
+            default:
+                return -1;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void debugSetValRegPair(final DebugRegPair regPair, final int value) {
+        switch (regPair) {
+            case AF:
+                fRegs[A]  = (value >> 8) & 0xFF;
+                fRegs[F]  =  value & 0b1101_0111 | 0b10;
+                break;
+            case BC:
+                fRegs[B]  = (value >> 8) & 0xFF;
+                fRegs[C]  =  value & 0xFF;
+                break;
+            case DE:
+                fRegs[D]  = (value >> 8) & 0xFF;
+                fRegs[E]  =  value & 0xFF;
+                break;
+            case HL:
+                fRegs[H]  = (value >> 8) & 0xFF;
+                fRegs[L]  =  value & 0xFF;
+                break;
+            case SP:
+                fRegs[SP] = value & 0xFFFF;
+                break;
+            case PC:
+                fRegs[PC] = value & 0xFFFF;
+                break;
+            default:
+                break;
+        }
     }
 
     @Override
@@ -107,6 +348,8 @@ public final class CpuI8080 extends CpuDebugCore {
                 fMemManager.readByte((fRegs[PC] + 3) & 0xFFFF),
                 fMemManager.readByte((fRegs[PC] + 4) & 0xFFFF));
     }
+
+    // -= Доступ к регистрам =-
 
     /**
      * Получает значение регистра CPU по коду регистра.
@@ -390,6 +633,8 @@ public final class CpuI8080 extends CpuDebugCore {
         fRegs[PC] = (fRegs[PC] + 2) & 0xFFFF;
         return v;
     }
+
+    // -= Исполнение команд =-
 
     /**
      * Начинает выполнение команды CPU.
@@ -1008,287 +1253,5 @@ public final class CpuI8080 extends CpuDebugCore {
         }
         // Проверяем ловушку для следующей команды CPU
         checkTraps(getPC());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getName() {
-        return "Intel 8080A";
-    }
-
-    /**
-     * Переводит CPU в режим ожидания (выполняется захват "HOLD").
-     *
-     * @param mode true/false = установить/снять режим "HOLD"
-     */
-    public void hold(boolean mode) {
-        if ((fSpMX != null) && ((fHoldPhase.get() == HOLD_IS_NOT_SET) == mode)) {
-            if (mode) {
-                if (Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
-                    // Для потока тактового генератора останавливаем CPU сразу конечным значением HOLD_ACKNOWLEDGE,
-                    // т.к. здесь вызов всегда происходит в последней фазе работы цикла CPU (из метода cmdFinish())
-                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
-                } else {
-                    // Для других потоков устанавливаем промежуточную фазу остановки CPU и ожидаем её завершения
-                    fHoldPhase.getAndSet(HOLD_IN_PROCESS);
-                    // noinspection StatementWithEmptyBody
-                    while (!fSpMX.isPaused() && (fHoldPhase.get() == HOLD_IN_PROCESS)) {
-                        //
-                    }
-                }
-            } else {
-                // Запускаем CPU
-                fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
-            }
-        }
-    }
-
-    /**
-     * Показывает установлен ли режим "HOLD" для CPU.
-     *
-     * @return true = установлен режим "HOLD"
-     */
-    @Override
-    public boolean isHoldAcknowledge() {
-        return fHoldPhase.get() == HOLD_ACKNOWLEDGE;
-    }
-
-    /**
-     * Переводит запоминающие устройства и устройства ввода/вывода, подключенные к CPU, в режим "Пауза".
-     *
-     * @param mode true/false = установить/снять режим "Пауза"
-     */
-    public void pauseMemoryUnits(boolean mode) {
-        fMemManager.pause(mode);
-        if (fIoManager != null) {
-            fIoManager.pause(mode);
-        }
-    }
-
-    /**
-     * Выполняет запуск с заданного адреса.
-     *
-     * @param address адрес запуска
-     */
-    public synchronized void run(int address) {
-        setPC(address);
-    }
-
-    /**
-     * Выполняет сброс CPU.
-     *
-     * @param address          адрес запуска
-     * @param resetMemoryUnits true - выполняет сброс запоминающих устройств
-     */
-    public synchronized void reset(int address, boolean resetMemoryUnits) {
-        reset(true);
-        setPC(address);
-        if (resetMemoryUnits) {
-            fMemManager.reset(false);
-            if (fIoManager != null) {
-                fIoManager.reset(false);
-            }
-        }
-    }
-
-    @Override
-    public boolean debugIsZ80() {
-        return false;
-    }
-
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // -= Методы для отладчика =-
-    /**
-     * Получает значение регистровой пары CPU.
-     * (Метод для вызова из отладчика)
-     *
-     * @param regPair регистровая пара
-     * @return значение или -1, если пара не поддерживается
-     */
-    @Override
-    public synchronized int debugGetValRegPair(final DebugRegPair regPair) {
-        switch (regPair) {
-            case AF:
-                return (fRegs[A] << 8) | fRegs[F];
-            case BC:
-                return (fRegs[B] << 8) | fRegs[C];
-            case DE:
-                return (fRegs[D] << 8) | fRegs[E];
-            case HL:
-                return (fRegs[H] << 8) | fRegs[L];
-            case SP:
-                return fRegs[SP];
-            case PC:
-                return fRegs[PC];
-            default:
-                return -1;
-        }
-    }
-
-    /**
-     * Устанавливает значение регистровой пары CPU.
-     * (Метод для вызова из отладчика)
-     *
-     * @param regPair регистровая пара
-     * @param value   значение
-     */
-    @Override
-    public synchronized void debugSetValRegPair(final DebugRegPair regPair, final int value) {
-        switch (regPair) {
-            case AF:
-                fRegs[A]  = (value >> 8) & 0xFF;
-                fRegs[F]  =  value & 0b1101_0111 | 0b10;
-                break;
-            case BC:
-                fRegs[B]  = (value >> 8) & 0xFF;
-                fRegs[C]  =  value & 0xFF;
-                break;
-            case DE:
-                fRegs[D]  = (value >> 8) & 0xFF;
-                fRegs[E]  =  value & 0xFF;
-                break;
-            case HL:
-                fRegs[H]  = (value >> 8) & 0xFF;
-                fRegs[L]  =  value & 0xFF;
-                break;
-            case SP:
-                fRegs[SP] = value & 0xFFFF;
-                break;
-            case PC:
-                fRegs[PC] = value & 0xFFFF;
-                break;
-            default:
-                break;
-        }
-    }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    @Override
-    public boolean cycle() {
-        if (!fActive.get()) {
-            return true;
-        }
-        if (fCycles.get() <= 1)  {
-            switch (fHoldPhase.get()) {
-                case HOLD_IS_NOT_SET:
-                    fCycles.set(cmdStart());
-                    return false;
-                case HOLD_IN_PROCESS:
-                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
-                    return true;
-                case HOLD_ACKNOWLEDGE:
-                    return true;
-                default:
-                    // Если была установлена некорректная фаза
-                    fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
-                    fCycles.set(cmdStart());
-                    return false;
-            }
-        } else {
-            if (fCycles.decrementAndGet() == 1) {
-                cmdFinish();
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Включает или выключает процессор.
-     * Неактивный процессор находится в массиве тактируемых устройств, но не исполняет команды.
-     *
-     * @param active true = процессор активен
-     */
-    @Override
-    public void setActive(final boolean active) {
-        fActive.set(active);
-    }
-
-    /**
-     * Показывает, активен ли процессор.
-     *
-     * @return true = процессор активен
-     */
-    @Override
-    public boolean isActive() {
-        return fActive.get();
-    }
-
-    /**
-     * Возвращает состояние регистровой пары, общей для всех процессоров эмулятора.
-     * Старший байт результата - первый регистр пары, младший байт - второй
-     * (BC, DE, HL; для AF - старший байт A, младший F; SP и PC - адрес целиком).
-     *
-     * @param commonPair индекс регистровой пары: 0 - BC, 2 - DE, 4 - HL, 6 - AF, 8 - SP, 9 - PC
-     * @return значение регистровой пары
-     */
-    @Override
-    public int getCommonRegPair(final int commonPair) {
-        switch (commonPair) {
-            case P_BC : return getRegPair(P_BC );
-            case P_DE : return getRegPair(P_DE );
-            case P_HL : return getRegPair(P_HL );
-            case P_PSW: return getRegPair(P_PSW);
-            case SP   : return getSP();
-            case PC   : return getPC();
-            default   : return 0;
-        }
-    }
-
-    /**
-     * Устанавливает состояние регистровой пары, общей для всех процессоров эмулятора.
-     * Регистр F записывается как есть, без маскирования недокументированных битов.
-     *
-     * @param commonPair индекс регистровой пары: 0 - BC, 2 - DE, 4 - HL, 6 - AF, 8 - SP, 9 - PC
-     * @param value      значение регистровой пары
-     */
-    @Override
-    public void setCommonRegPair(final int commonPair, final int value) {
-        switch (commonPair) {
-            case P_BC : setRegPair(P_BC,  value); break;
-            case P_DE : setRegPair(P_DE,  value); break;
-            case P_HL : setRegPair(P_HL,  value); break;
-            case P_PSW: setRegPair(P_PSW, value); break;
-            case SP   : setSP(value);             break;
-            case PC   : setPC(value);             break;
-            default   :                           break;
-        }
-    }
-
-    @Override
-    public void reset(boolean clear) {
-        if (clear) {
-            Arrays.fill(fRegs, 0);
-            fRegs[F] = 0b0000_0010; // по умолчанию SZ0A_0P1C
-        } else {
-            setPC(0);
-        }
-    }
-
-    /**
-     * Переводит CPU в режим ожидания (выполняется захват "HOLD").
-     *
-     * @param mode - true = установить режим "Пауза" / false = снять режим "Пауза"
-     */
-    @Override
-    public void pause(boolean mode) {
-        hold(mode);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if ((o == null) || (getClass() != o.getClass())) return false;
-        CpuI8080 i8080 = (CpuI8080) o;
-        return Objects.equals(fSpMX, i8080.fSpMX) &&
-               Objects.equals(fMemManager, i8080.fMemManager) &&
-               Objects.equals(fIoManager, i8080.fIoManager);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(fSpMX, fMemManager, fIoManager);
     }
 }

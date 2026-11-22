@@ -166,39 +166,21 @@ public final class CpuZ80 extends CpuDebugCore {
                 fI = 0;
                 fR = 0;
 
-             fCycles = new AtomicInteger();
-          fHoldPhase = new AtomicInteger();
-             fActive = new AtomicBoolean();
-    }
-
-    @Override
-    public String toString() {
-        return String.format("Значения регистров: SZ5H3PNC=%s, A=%02X, B=%02X, C=%02X, D=%02X, E=%02X, H=%02X, L=%02X, IX=%04X, SP=%04X, PC=%04X%n" +
-                             "Память с адреса PC: %02X, %02X, %02X, %02X, %02X, ...",
-                Integer.parseInt(Integer.toBinaryString(fRegs[F])),
-                fRegs[A], fRegs[B], fRegs[C], fRegs[D], fRegs[E], fRegs[H], fRegs[L], getIndex(), fRegs[SP], fRegs[PC],
-                fMemManager.readByte((fRegs[PC]    ) & 0xFFFF),
-                fMemManager.readByte((fRegs[PC] + 1) & 0xFFFF),
-                fMemManager.readByte((fRegs[PC] + 2) & 0xFFFF),
-                fMemManager.readByte((fRegs[PC] + 3) & 0xFFFF),
-                fMemManager.readByte((fRegs[PC] + 4) & 0xFFFF));
+           fCycles = new AtomicInteger();
+        fHoldPhase = new AtomicInteger();
+           fActive = new AtomicBoolean();
     }
 
     /**
-     * Включает или выключает процессор.
-     * Неактивный процессор находится в массиве тактируемых устройств, но не исполняет команды.
-     *
-     * @param active true = процессор активен
+     * {@inheritDoc}
      */
     @Override
-    public void setActive(final boolean active) {
-        fActive.set(active);
+    public String getName() {
+        return "Zilog Z80";
     }
 
     /**
-     * Показывает, активен ли процессор.
-     *
-     * @return true = процессор активен
+     * {@inheritDoc}
      */
     @Override
     public boolean isActive() {
@@ -206,15 +188,111 @@ public final class CpuZ80 extends CpuDebugCore {
     }
 
     /**
-     * Возвращает состояние регистровой пары, общей для всех процессоров эмулятора.
-     * Младший байт результата - первый регистр пары, старший байт - второй
-     * (BC, DE, HL; для AF - младший байт F, старший A; SP и PC - адрес целиком).
-     *
-     * @param commonPair индекс регистровой пары: 0 - BC, 2 - DE, 4 - HL, 6 - AF, 8 - SP, 9 - PC
-     * @return значение регистровой пары
+     * {@inheritDoc}
      */
     @Override
-    public int getCommonRegPair(final int commonPair) {
+    public void setActive(final boolean active) {
+        fActive.set(active);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void run(final int address) {
+        setPC(address);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void reset(final boolean clear) {
+        if (clear) {
+            Arrays.fill(fRegs   , 0);
+            Arrays.fill(fRegsAlt, 0);
+            fIX = 0;
+            fIY = 0;
+            fIndexMode = INDEX_NONE;
+            fMemPtr = 0;
+            fQ = 0;
+            fI = 0;
+            fR = 0;
+            fInterruptEnabled = false;
+        } else {
+            setPC(0);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void reset(final int address, final boolean resetMemoryUnits) {
+        reset(true);
+        setPC(address);
+        if (resetMemoryUnits) {
+            fMemManager.reset(false);
+            if (fIoManager != null) {
+                fIoManager.reset(false);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void pause(final boolean mode) {
+        hold(mode);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void pauseMemoryUnits(final boolean mode) {
+        fMemManager.pause(mode);
+        if (fIoManager != null) {
+            fIoManager.pause(mode);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void hold(final boolean mode) {
+        if ((fSpMX != null) && ((fHoldPhase.get() == HOLD_IS_NOT_SET) == mode)) {
+            if (mode) {
+                if (Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
+                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
+                } else {
+                    fHoldPhase.getAndSet(HOLD_IN_PROCESS);
+                    // noinspection StatementWithEmptyBody
+                    while (!fSpMX.isPaused() && (fHoldPhase.get() == HOLD_IN_PROCESS)) {
+                        //
+                    }
+                }
+            } else {
+                fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isHoldAcknowledge() {
+        return fHoldPhase.get() == HOLD_ACKNOWLEDGE;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized int getCommonRegPair(final int commonPair) {
         switch (commonPair) {
             case P_BC : return getRegPair(P_BC );
             case P_DE : return getRegPair(P_DE );
@@ -227,14 +305,10 @@ public final class CpuZ80 extends CpuDebugCore {
     }
 
     /**
-     * Устанавливает состояние регистровой пары, общей для всех процессоров эмулятора.
-     * Регистры IX и IY не затрагиваются.
-     *
-     * @param commonPair индекс регистровой пары: 0 - BC, 2 - DE, 4 - HL, 6 - AF, 8 - SP, 9 - PC
-     * @param value      значение регистровой пары
+     * {@inheritDoc}
      */
     @Override
-    public void setCommonRegPair(final int commonPair, final int value) {
+    public synchronized void setCommonRegPair(final int commonPair, final int value) {
         switch (commonPair) {
             case P_BC : setRegPair(P_BC,  value); break;
             case P_DE : setRegPair(P_DE,  value); break;
@@ -246,19 +320,54 @@ public final class CpuZ80 extends CpuDebugCore {
         }
     }
 
+    // -= Цикл CPU =-
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean cycle() {
+        if (!fActive.get()) {
+            return true;
+        }
+        if (fCycles.get() <= 1) {
+            switch (fHoldPhase.get()) {
+                case HOLD_IS_NOT_SET:
+                    fCycles.set(cmdStart());
+                    return false;
+                case HOLD_IN_PROCESS:
+                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
+                    return true;
+                case HOLD_ACKNOWLEDGE:
+                    return true;
+                default:
+                    fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
+                    fCycles.set(cmdStart());
+                    return false;
+            }
+        } else {
+            if (fCycles.decrementAndGet() == 1) {
+                // Команда исполнена целиком: проверяем ловушку для следующей
+                // (как у I8080 в cmdFinish()), PC уже указывает на неё
+                checkTraps(getPC());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // -= Методы для отладчика =-
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean debugIsZ80() {
         return true;
     }
 
-    //~ Методы для отладчика ~
-
     /**
-     * Получает значение регистровой пары CPU.
-     * (Метод для вызова из отладчика)
-     *
-     * @param regPair регистровая пара
-     * @return значение или -1, если пара не поддерживается
+     * {@inheritDoc}
      */
     @Override
     public synchronized int debugGetValRegPair(final DebugRegPair regPair) {
@@ -270,7 +379,7 @@ public final class CpuZ80 extends CpuDebugCore {
             case IX    : return fIX;
             case IY    : return fIY;
             case SP    : return getSP();
-            case PC    :  return getPC();
+            case PC    : return getPC();
             case AF_ALT: return (fRegsAlt[A] << 8) | fRegsAlt[F];
             case BC_ALT: return (fRegsAlt[B] << 8) | fRegsAlt[C];
             case DE_ALT: return (fRegsAlt[D] << 8) | fRegsAlt[E];
@@ -280,12 +389,7 @@ public final class CpuZ80 extends CpuDebugCore {
     }
 
     /**
-     * Устанавливает значение регистровой пары CPU.
-     * Регистр F записывается целиком, без маскирования: у Z80 все восемь бит значащие.
-     * (Метод для вызова из отладчика)
-     *
-     * @param regPair регистровая пара
-     * @param value   значение регистровой пары
+     * {@inheritDoc}
      */
     @Override
     public synchronized void debugSetValRegPair(final DebugRegPair regPair, final int value) {
@@ -312,7 +416,20 @@ public final class CpuZ80 extends CpuDebugCore {
         }
     }
 
-    //=-= Доступ к регистрам =-=
+    @Override
+    public String toString() {
+        return String.format("Значения регистров: SZ5H3PNC=%s, A=%02X, B=%02X, C=%02X, D=%02X, E=%02X, H=%02X, L=%02X, IX=%04X, SP=%04X, PC=%04X%n" +
+                             "Память с адреса PC: %02X, %02X, %02X, %02X, %02X, ...",
+                Integer.parseInt(Integer.toBinaryString(fRegs[F])),
+                fRegs[A], fRegs[B], fRegs[C], fRegs[D], fRegs[E], fRegs[H], fRegs[L], getIndex(), fRegs[SP], fRegs[PC],
+                fMemManager.readByte((fRegs[PC]    ) & 0xFFFF),
+                fMemManager.readByte((fRegs[PC] + 1) & 0xFFFF),
+                fMemManager.readByte((fRegs[PC] + 2) & 0xFFFF),
+                fMemManager.readByte((fRegs[PC] + 3) & 0xFFFF),
+                fMemManager.readByte((fRegs[PC] + 4) & 0xFFFF));
+    }
+
+    // -= Доступ к регистрам =-
 
     private int getReg(final int codeReg) {
         return codeReg == M ? fMemManager.readByte(getHL()) : fRegs[codeReg];
@@ -674,38 +791,7 @@ public final class CpuZ80 extends CpuDebugCore {
         }
     }
 
-    //=-= Цикл CPU =-=
-
-    @Override
-    public boolean cycle() {
-        if (!fActive.get()) {
-            return true;
-        }
-        if (fCycles.get() <= 1) {
-            switch (fHoldPhase.get()) {
-                case HOLD_IS_NOT_SET:
-                    fCycles.set(cmdStart());
-                    return false;
-                case HOLD_IN_PROCESS:
-                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
-                    return true;
-                case HOLD_ACKNOWLEDGE:
-                    return true;
-                default:
-                    fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
-                    fCycles.set(cmdStart());
-                    return false;
-            }
-        } else {
-            if (fCycles.decrementAndGet() == 1) {
-                // Команда исполнена целиком: проверяем ловушку для следующей
-                // (как у I8080 в cmdFinish()), PC уже указывает на неё
-                checkTraps(getPC());
-                return true;
-            }
-        }
-        return false;
-    }
+    // -= Исполнение команд =-
 
     private int cmdStart() {
         fIndexMode       = INDEX_NONE;
@@ -718,88 +804,6 @@ public final class CpuZ80 extends CpuDebugCore {
         fQ = fFlagsWritten ? fRegs[F] : 0;
         return cycles;
     }
-
-    @Override
-    public void reset(final boolean clear) {
-        if (clear) {
-            Arrays.fill(fRegs   , 0);
-            Arrays.fill(fRegsAlt, 0);
-                          fIX = 0;
-                          fIY = 0;
-                   fIndexMode = INDEX_NONE;
-                      fMemPtr = 0;
-                           fQ = 0;
-                           fI = 0;
-                           fR = 0;
-            fInterruptEnabled = false;
-        } else {
-            setPC(0);
-        }
-    }
-
-    @Override
-    public void pause(final boolean mode) {
-        hold(mode);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getName() {
-        return "Zilog Z80";
-    }
-
-    @Override
-    public void hold(final boolean mode) {
-        if ((fSpMX != null) && ((fHoldPhase.get() == HOLD_IS_NOT_SET) == mode)) {
-            if (mode) {
-                if (Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
-                    fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
-                } else {
-                    fHoldPhase.getAndSet(HOLD_IN_PROCESS);
-                    // noinspection StatementWithEmptyBody
-                    while (!fSpMX.isPaused() && (fHoldPhase.get() == HOLD_IN_PROCESS)) {
-                        //
-                    }
-                }
-            } else {
-                fHoldPhase.getAndSet(HOLD_IS_NOT_SET);
-            }
-        }
-    }
-
-    @Override
-    public boolean isHoldAcknowledge() {
-        return fHoldPhase.get() == HOLD_ACKNOWLEDGE;
-    }
-
-    @Override
-    public void pauseMemoryUnits(final boolean mode) {
-        fMemManager.pause(mode);
-        if (fIoManager != null) {
-            fIoManager.pause(mode);
-        }
-    }
-
-    @Override
-    public void run(final int address) {
-        setPC(address);
-    }
-
-    @Override
-    public void reset(final int address, final boolean resetMemoryUnits) {
-        reset(true);
-        setPC(address);
-        if (resetMemoryUnits) {
-            fMemManager.reset(false);
-            if (fIoManager != null) {
-                fIoManager.reset(false);
-            }
-        }
-    }
-
-    //=-= Исполнение команд =-=
 
     private int cmdExec() {
         switch (fOpCode) {

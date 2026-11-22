@@ -15,25 +15,19 @@ public interface CpuCore extends ClockedUnit {
     String getName();
 
     /**
-     * Переводит процессор в режим ожидания (выполняется захват "HOLD").
+     * Показывает, активен ли процессор.
      *
-     * @param mode true/false = установить/снять режим "HOLD"
+     * @return true = процессор активен
      */
-    void hold(boolean mode);
+    boolean isActive();
 
     /**
-     * Показывает установлен ли режим "HOLD" для процессора.
+     * Включает или выключает процессор.
+     * Неактивный процессор находится в массиве тактируемых устройств, но не исполняет команды.
      *
-     * @return true = установлен режим "HOLD"
+     * @param active true = процессор активен
      */
-    boolean isHoldAcknowledge();
-
-    /**
-     * Переводит запоминающие устройства и устройства ввода/вывода, подключенные к процессору, в режим "Пауза".
-     *
-     * @param mode true/false = установить/снять режим "Пауза"
-     */
-    void pauseMemoryUnits(boolean mode);
+    void setActive(final boolean active);
 
     /**
      * Выполняет запуск с заданного адреса.
@@ -51,35 +45,25 @@ public interface CpuCore extends ClockedUnit {
     void reset(int address, boolean resetMemoryUnits);
 
     /**
-     * Удаляет все ловушки.
-     * (Метод для вызова из отладчика)
+     * Переводит запоминающие устройства и устройства ввода/вывода, подключенные к процессору, в режим "Пауза".
+     *
+     * @param mode true/false = установить/снять режим "Пауза"
      */
-    void debugClearTraps();
+    void pauseMemoryUnits(boolean mode);
 
     /**
-     * Проверяет, установлена ли по заданному адресу ловушка.
-     * (Метод для вызова из отладчика)
+     * Переводит процессор в режим ожидания (выполняется захват "HOLD").
      *
-     * @param page    номер страницы памяти
-     * @param address адрес
-     * @return true = ловушка установлена
+     * @param mode true/false = установить/снять режим "HOLD"
      */
-    boolean debugIsTrap(int page, int address);
+    void hold(boolean mode);
 
     /**
-     * Включает или выключает процессор.
-     * Неактивный процессор находится в массиве тактируемых устройств, но не исполняет команды.
+     * Показывает установлен ли режим "HOLD" для процессора.
      *
-     * @param active true = процессор активен
+     * @return true = установлен режим "HOLD"
      */
-    void setActive(final boolean active);
-
-    /**
-     * Показывает, активен ли процессор.
-     *
-     * @return true = процессор активен
-     */
-    boolean isActive();
+    boolean isHoldAcknowledge();
 
     /**
      * Возвращает состояние регистровой пары, общей для всех процессоров эмулятора.

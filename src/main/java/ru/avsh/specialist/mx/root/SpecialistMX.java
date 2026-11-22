@@ -528,7 +528,7 @@ public final class SpecialistMX {
      */
     private void run(final int address) {
         pause(true, true);
-        final CpuCore cpu = fCPU.get();
+        final CpuDebugCore cpu = getCpuDebugCore();
         cpu.run(address);
         // Проверяем ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
         if (cpu.debugIsTrap(getPage(), address)) {
@@ -546,7 +546,7 @@ public final class SpecialistMX {
      */
     private void reset(final int address, final boolean resetMemoryUnits) {
         pause(true, true);
-        final CpuCore cpu = fCPU.get();
+        final CpuDebugCore cpu = getCpuDebugCore();
         cpu.reset(address, resetMemoryUnits);
         // Проверяем ловушки (стартовые ловушки не отслеживаются в классе CPUi8080)
         if (cpu.debugIsTrap(getPage(), address)) {
@@ -744,7 +744,7 @@ public final class SpecialistMX {
             fMemoryManager.reset(clear);
             // Очищаем все ловушки, если выбрана полная очистка
             if (clear) {
-                fCPU.get().debugClearTraps();
+                getCpuDebugCore().debugClearTraps();
             }
             // Включаем ROM-диск
             setPage(MainMemory.ROM_DISK);

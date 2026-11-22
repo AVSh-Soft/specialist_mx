@@ -29,14 +29,14 @@ import static ru.avsh.specialist.mx.helpers.Constants.SPMX_ICON_FILE;
  * @author -=AVSh=-
  */
 public abstract class CpuDebugCore implements CpuCore {
-    protected final SpecialistMX  fSpMX;
-    protected final AtomicBoolean fIsDebugRun;
+    protected final SpecialistMX fSpMX;
 
-    protected final           Trap  fCompareTrap;
-    protected final SortedSet<Trap> fTraps      ;
+    private final  AtomicBoolean  fIsDebugRun ;
+    private final           Trap  fCompareTrap;
+    private final SortedSet<Trap> fTraps      ;
 
-    protected volatile boolean fTrapsFlag   ;
-    protected volatile    Trap fTrapStepOver;
+    private volatile boolean fTrapsFlag   ;
+    private volatile    Trap fTrapStepOver;
 
     protected CpuDebugCore(@Nullable SpecialistMX fSpMX) {
         this.fSpMX        = fSpMX;
@@ -52,6 +52,24 @@ public abstract class CpuDebugCore implements CpuCore {
      * @return true = Z80, false = I8080
      */
     public abstract boolean debugIsZ80();
+
+    /**
+     * Получает значение регистровой пары CPU.
+     * Старший байт результата - первый регистр пары, младший байт - второй
+     * (для AF старший байт - A, младший - F; для SP и PC - адрес целиком).
+     *
+     * @param regPair регистровая пара
+     * @return значение регистровой пары или -1, если пара не поддерживается
+     */
+    public abstract int debugGetValRegPair(final DebugRegPair regPair);
+
+    /**
+     * Устанавливает значение регистровой пары CPU.
+     *
+     * @param regPair регистровая пара
+     * @param value   значение регистровой пары
+     */
+    public abstract void debugSetValRegPair(final DebugRegPair regPair, final int value);
 
     /**
      * Запускает отладчик.
@@ -102,24 +120,6 @@ public abstract class CpuDebugCore implements CpuCore {
     }
 
     /**
-     * Получает значение регистровой пары CPU.
-     * Старший байт результата - первый регистр пары, младший байт - второй
-     * (для AF старший байт - A, младший - F; для SP и PC - адрес целиком).
-     *
-     * @param regPair регистровая пара
-     * @return значение регистровой пары или -1, если пара не поддерживается
-     */
-    public abstract int debugGetValRegPair(final DebugRegPair regPair);
-
-    /**
-     * Устанавливает значение регистровой пары CPU.
-     *
-     * @param regPair регистровая пара
-     * @param value   значение регистровой пары
-     */
-    public abstract void debugSetValRegPair(final DebugRegPair regPair, final int value);
-
-    /**
      * Добавляет ловушку.
      * (Метод для вызова из отладчика)
      *
@@ -164,7 +164,6 @@ public abstract class CpuDebugCore implements CpuCore {
      * Удаляет все ловушки.
      * (Метод для вызова из отладчика)
      */
-    @Override
     public void debugClearTraps() {
         fTraps.clear();
         fTrapStepOver =  null;
@@ -179,7 +178,6 @@ public abstract class CpuDebugCore implements CpuCore {
      * @param address адрес
      * @return true = ловушка установлена
      */
-    @Override
     public boolean debugIsTrap(final int page, final int address) {
         final Trap trap = new Trap(page, address);
         return fTrapsFlag && !trap.equals(fTrapStepOver) && (fTraps.contains(trap));
