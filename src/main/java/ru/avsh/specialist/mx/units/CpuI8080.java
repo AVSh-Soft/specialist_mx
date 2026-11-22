@@ -3,16 +3,12 @@ package ru.avsh.specialist.mx.units;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
-import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.MemoryManager;
 import ru.avsh.specialist.mx.units.types.CpuDebugCore;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.SortedSet;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -21,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-public final class CpuI8080 implements CpuDebugCore {
+public final class CpuI8080 extends CpuDebugCore {
     // Количество тактов для каждой команды CPU
     private static final int[] CYCLES = {
                  4, 10,      7,  5,      5,  5,  7,  4,      4, 10,      7,  5,      5,  5,  7,  4,
@@ -68,22 +64,15 @@ public final class CpuI8080 implements CpuDebugCore {
     private static final int HOLD_ACKNOWLEDGE = 2;
 
     private final int[] fRegs;
-    private final Trap  fCompareTrap       ;
-    private final SpecialistMX  fSpMX      ;
     private final AtomicInteger fCycles    ;
     private final AtomicInteger fHoldPhase ;
-    private final AtomicBoolean fIsDebugRun;
     private final AtomicBoolean fActive    ;
 
-    private final SortedSet<Trap> fTraps   ;
     private final MemoryManager fMemManager;
     private final MemoryManager  fIoManager;
 
     private int     fOpCode    ;
     private boolean fTestResult;
-
-    private volatile boolean fTrapsFlag;
-    private volatile Trap fTrapStepOver;
 
     /**
      * Конструктор.
@@ -93,7 +82,8 @@ public final class CpuI8080 implements CpuDebugCore {
      * @param ioManager ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода)
      */
     public CpuI8080(@Nullable SpecialistMX spMX, @NotNull MemoryManager memManager, MemoryManager ioManager) {
-              fSpMX = spMX;
+        super(spMX);
+
         fMemManager = memManager;
          fIoManager =  ioManager;
                                 // 0, 1, 2, 3, 4, 5, 6, 7,  8,  9
@@ -101,11 +91,8 @@ public final class CpuI8080 implements CpuDebugCore {
         fRegs[F] = 0b0000_0010; // Флаги по умолчанию SZ0A_0P1C
 
              fCycles = new AtomicInteger();
-         fIsDebugRun = new AtomicBoolean();
           fHoldPhase = new AtomicInteger();
              fActive = new AtomicBoolean(true);
-        fCompareTrap = new Trap(0,0);
-              fTraps = new ConcurrentSkipListSet<>();
     }
 
     @Override
@@ -1020,13 +1007,7 @@ public final class CpuI8080 implements CpuDebugCore {
                 break;
         }
         // Проверяем ловушку для следующей команды CPU
-        if (fTrapsFlag) {
-            // Здесь без порождения новых объектов (для скорости)
-            fCompareTrap.change((fSpMX != null) ? fSpMX.getPage() : 0, getPC());
-            if (fTraps.contains(fCompareTrap)) {
-                startDebugger();
-            }
-        }
+        checkTraps(getPC());
     }
 
     /**
@@ -1117,17 +1098,6 @@ public final class CpuI8080 implements CpuDebugCore {
         return false;
     }
 
-    @Override
-    @Nullable
-    public SpecialistMX debugGetEmulator() {
-        return fSpMX;
-    }
-
-    @Override
-    public AtomicBoolean debugGetDebugRunFlag() {
-        return fIsDebugRun;
-    }
-
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // -= Методы для отладчика =-
     /**
@@ -1192,123 +1162,6 @@ public final class CpuI8080 implements CpuDebugCore {
             default:
                 break;
         }
-    }
-
-    /**
-     * Добавляет ловушку.
-     * (Метод для вызова из отладчика)
-     *
-     * @param page     номер страницы памяти
-     * @param address  адрес ловушки
-     * @param stepOver true = StepOver ловушка
-     */
-    @Override
-    public void debugAddTrap(final int page, final int address, final boolean stepOver) {
-        final Trap trap = new Trap(page, address);
-        if (!stepOver && trap.equals(fTrapStepOver)) {
-            fTrapStepOver = null;
-        }
-        if (!fTraps.contains(trap)) {
-            if (stepOver) {
-                if (fTrapStepOver != null) {
-                    fTraps.remove(fTrapStepOver);
-                }
-                fTrapStepOver = trap;
-            }
-            fTraps.add(trap);
-        }
-        fTrapsFlag = !fTraps.isEmpty();
-    }
-
-    /**
-     * Удаляет ловушку.
-     * (Метод для вызова из отладчика)
-     *
-     * @param page    номер страницы памяти
-     * @param address адрес ловушки
-     */
-    @Override
-    public void debugRemTrap(final int page, final int address) {
-        final Trap trap = new Trap(page, address);
-        if (trap.equals(fTrapStepOver)) {
-            fTrapStepOver = null;
-        }
-        fTraps.remove(trap);
-        fTrapsFlag = !fTraps.isEmpty();
-    }
-
-    /**
-     * Удаляет все ловушки.
-     * (Метод для вызова из отладчика)
-     */
-    @Override
-    public void debugClearTraps() {
-        fTraps.clear();
-        fTrapStepOver =  null;
-        fTrapsFlag    = false;
-    }
-
-    /**
-     * Проверяет, установлена ли по заданному адресу StepOver ловушка.
-     * (Метод для вызова из отладчика)
-     *
-     * @param page    номер страницы памяти
-     * @param address адрес
-     * @return true = ловушка StepOver установлена
-     */
-    @Override
-    public boolean debugIsStepOverTrap(final int page, final int address) {
-        final Trap trap = new Trap(page, address);
-        return fTrapsFlag && trap.equals(fTrapStepOver) && (fTraps.contains(trap));
-    }
-
-    /**
-     * Проверяет, установлена ли по заданному адресу ловушка.
-     * (Метод для вызова из отладчика)
-     *
-     * @param page    номер страницы памяти
-     * @param address адрес
-     * @return true = ловушка установлена
-     */
-    @Override
-    public boolean debugIsTrap(final int page, final int address) {
-        final Trap trap = new Trap(page, address);
-        return fTrapsFlag && !trap.equals(fTrapStepOver) && (fTraps.contains(trap));
-    }
-
-    /**
-     * Возвращает количество установленных ловушек.
-     * (Метод для вызова из отладчика)
-     *
-     * @return количество установленных ловушек
-     */
-    @Override
-    public int debugGetTrapCount() {
-        return ((fTrapStepOver != null) && fTraps.contains(fTrapStepOver)) ? (fTraps.size() - 1) : fTraps.size();
-    }
-
-    /**
-     * Возвращает ловушку по индексу в списке ловушек.
-     * (Метод для вызова из отладчика)
-     *
-     * @param index индекс ловушки
-     * @return ловушка
-     */
-    @Override
-    public Trap debugGetTrap(final int index) {
-        return fTraps.stream().filter(trap -> !trap.equals(fTrapStepOver)).skip(index).findFirst().orElse(null);
-    }
-
-    /**
-     * Возвращает индекс ловушки.
-     * (Метод для вызова из отладчика)
-     *
-     * @param trap ловушка
-     * @return индекс
-     */
-    @Override
-    public int debugGetTrapIndex(final Trap trap) {
-        return new ArrayList<>(fTraps).indexOf(trap);
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

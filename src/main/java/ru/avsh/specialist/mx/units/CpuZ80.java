@@ -2,15 +2,11 @@ package ru.avsh.specialist.mx.units;
 
 import org.jetbrains.annotations.Nullable;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
-import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.MemoryManager;
 import ru.avsh.specialist.mx.units.types.CpuDebugCore;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.SortedSet;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -78,7 +74,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author -=AVSh=-
  */
-public final class CpuZ80 implements CpuDebugCore {
+public final class CpuZ80 extends CpuDebugCore {
     // Индексы регистров CPU в массиве fRegs (здесь без enum - для скорости)
     private static final int B  = 0;
     private static final int C  = 1;
@@ -133,13 +129,9 @@ public final class CpuZ80 implements CpuDebugCore {
     private final int[]         fRegsAlt   ;
     private final MemoryManager fMemManager;
     private final MemoryManager fIoManager ;
-    private final SpecialistMX  fSpMX      ;
     private final AtomicInteger fCycles    ;
     private final AtomicInteger fHoldPhase ;
     private final AtomicBoolean fActive    ;
-    private final AtomicBoolean fIsDebugRun;
-
-    private final SortedSet<Trap> fTraps      ;
 
     private int     fOpCode          ;
     private int     fIX              ; // Регистр IX
@@ -150,12 +142,7 @@ public final class CpuZ80 implements CpuDebugCore {
     private boolean fFlagsWritten    ; // Текущая команда записала F через АЛУ (для защёлки Q)
     private int     fI               ; // Регистр I
     private int     fR               ; // Регистр R (старший бит сохраняется как записан)
-    private boolean fHalted          ;
     private boolean fInterruptEnabled;
-
-    private volatile boolean fPause       ;
-    private volatile boolean fTrapsFlag   ;
-    private volatile Trap    fTrapStepOver;
 
     /**
      * Конструктор.
@@ -165,7 +152,8 @@ public final class CpuZ80 implements CpuDebugCore {
      * @param ioManager  ссылка на объект класса MemoryManager - "Быстрый диспетчер запоминающих устройств" (устройства ввода/вывода) или null
      */
     public CpuZ80(@Nullable final SpecialistMX spMX, final MemoryManager memManager, final MemoryManager ioManager) {
-              fSpMX = spMX;
+        super(spMX);
+
         fMemManager = memManager;
          fIoManager =  ioManager;
                                   // 0, 1, 2, 3, 4, 5, 6, 7,  8,  9
@@ -179,10 +167,8 @@ public final class CpuZ80 implements CpuDebugCore {
                 fR = 0;
 
              fCycles = new AtomicInteger();
-         fIsDebugRun = new AtomicBoolean();
           fHoldPhase = new AtomicInteger();
              fActive = new AtomicBoolean();
-              fTraps = new ConcurrentSkipListSet<>();
     }
 
     @Override
@@ -207,9 +193,6 @@ public final class CpuZ80 implements CpuDebugCore {
     @Override
     public void setActive(final boolean active) {
         fActive.set(active);
-        if (!active) {
-            fHalted = false;
-        }
     }
 
     /**
@@ -266,17 +249,6 @@ public final class CpuZ80 implements CpuDebugCore {
     @Override
     public boolean debugIsZ80() {
         return true;
-    }
-
-    @Override
-    @Nullable
-    public SpecialistMX debugGetEmulator() {
-        return fSpMX;
-    }
-
-    @Override
-    public AtomicBoolean debugGetDebugRunFlag() {
-        return fIsDebugRun;
     }
 
     //~ Методы для отладчика ~
@@ -337,144 +309,6 @@ public final class CpuZ80 implements CpuDebugCore {
             case DE_ALT: setAltRegPair(D, E, value); break;
             case HL_ALT: setAltRegPair(H, L, value); break;
             default:                                 break;
-        }
-    }
-
-    /**
-     * Добавляет ловушку.
-     * (Метод для вызова из отладчика)
-     *
-     * @param page     номер страницы памяти
-     * @param address  адрес ловушки
-     * @param stepOver true = StepOver ловушка
-     */
-    @Override
-    public void debugAddTrap(final int page, final int address, final boolean stepOver) {
-        final Trap trap = new Trap(page, address);
-        if (!stepOver && trap.equals(fTrapStepOver)) {
-            fTrapStepOver = null;
-        }
-        if (!fTraps.contains(trap)) {
-            if (stepOver) {
-                if (fTrapStepOver != null) {
-                    fTraps.remove(fTrapStepOver);
-                }
-                fTrapStepOver = trap;
-            }
-            fTraps.add(trap);
-        }
-        fTrapsFlag = !fTraps.isEmpty();
-    }
-
-    /**
-     * Удаляет ловушку.
-     * (Метод для вызова из отладчика)
-     *
-     * @param page    номер страницы памяти
-     * @param address адрес ловушки
-     */
-    @Override
-    public void debugRemTrap(final int page, final int address) {
-        final Trap trap = new Trap(page, address);
-        if (trap.equals(fTrapStepOver)) {
-            fTrapStepOver = null;
-        }
-        fTraps.remove(trap);
-        fTrapsFlag = !fTraps.isEmpty();
-    }
-
-    /**
-     * Удаляет все ловушки.
-     * (Метод для вызова из отладчика)
-     */
-    @Override
-    public void debugClearTraps() {
-        fTraps.clear();
-        fTrapStepOver =  null;
-        fTrapsFlag    = false;
-    }
-
-    /**
-     * Проверяет, установлена ли по заданному адресу ловушка (не StepOver).
-     * (Метод для вызова из отладчика)
-     *
-     * @param page    номер страницы памяти
-     * @param address адрес
-     * @return true = ловушка установлена
-     */
-    @Override
-    public boolean debugIsTrap(final int page, final int address) {
-        final Trap trap = new Trap(page, address);
-        return fTrapsFlag && !trap.equals(fTrapStepOver) && fTraps.contains(trap);
-    }
-
-    /**
-     * Проверяет, установлена ли по заданному адресу StepOver ловушка.
-     * (Метод для вызова из отладчика)
-     *
-     * @param page    номер страницы памяти
-     * @param address адрес
-     * @return true = ловушка StepOver установлена
-     */
-    @Override
-    public boolean debugIsStepOverTrap(final int page, final int address) {
-        final Trap trap = new Trap(page, address);
-        return fTrapsFlag && trap.equals(fTrapStepOver) && fTraps.contains(trap);
-    }
-
-    /**
-     * Возвращает количество установленных ловушек (без StepOver).
-     * (Метод для вызова из отладчика)
-     *
-     * @return количество установленных ловушек
-     */
-    @Override
-    public int debugGetTrapCount() {
-        return ((fTrapStepOver != null) && fTraps.contains(fTrapStepOver)) ? (fTraps.size() - 1) : fTraps.size();
-    }
-
-    /**
-     * Возвращает ловушку по индексу в списке ловушек (без StepOver).
-     * (Метод для вызова из отладчика)
-     *
-     * @param index индекс ловушки
-     * @return ловушка или null
-     */
-    @Override
-    public Trap debugGetTrap(final int index) {
-        return new ArrayList<>(fTraps).stream().filter(trap -> !trap.equals(fTrapStepOver)).skip(index).findFirst().orElse(null);
-    }
-
-    /**
-     * Возвращает индекс ловушки в списке ловушек.
-     * (Метод для вызова из отладчика)
-     *
-     * @param trap ловушка
-     * @return индекс или -1
-     */
-    @Override
-    public int debugGetTrapIndex(final Trap trap) {
-        return new ArrayList<>(fTraps).indexOf(trap);
-    }
-
-    /**
-     * Проверяет ловушку для адреса следующей команды.
-     * Вызывается в конце исполненной команды (как у I8080 в cmdFinish()):
-     * к этому моменту PC уже указывает на следующую команду, а текущая
-     * исполнена целиком, поэтому команда под ловушкой не выполняется дважды.
-     * Пока процессор остановлен командой HALT, ловушки не проверяются.
-     */
-    private void checkTraps() {
-        if (fTrapsFlag && !fHalted) {
-            // Ловушка Z80 срабатывает по адресу на любой странице памяти
-            final int pc = getPC();
-            for (final Trap trap : fTraps) {
-                if (trap.getAddress() == pc) {
-                    // Отладчик сам снимает StepOver ловушку, поэтому здесь больше ничего не делаем
-                    startDebugger();
-                    break;
-                }
-            }
         }
     }
 
@@ -866,7 +700,7 @@ public final class CpuZ80 implements CpuDebugCore {
             if (fCycles.decrementAndGet() == 1) {
                 // Команда исполнена целиком: проверяем ловушку для следующей
                 // (как у I8080 в cmdFinish()), PC уже указывает на неё
-                checkTraps();
+                checkTraps(getPC());
                 return true;
             }
         }
@@ -874,13 +708,10 @@ public final class CpuZ80 implements CpuDebugCore {
     }
 
     private int cmdStart() {
-        if (fHalted) {
-            return 4;
-        }
-        fIndexMode        = INDEX_NONE;
-        fFlagsWritten     = false     ;
-        fOpCode           = fetchPC() ; // Байт кода операции (R увеличивается в fetchPC())
-        final int cycles = cmdExec () ;
+        fIndexMode       = INDEX_NONE;
+        fFlagsWritten    = false     ;
+        fOpCode          = fetchPC() ; // Байт кода операции (R увеличивается в fetchPC())
+        final int cycles = cmdExec() ;
         // Защёлка Q по завершении команды: команда, меняющая флаги через АЛУ,
         // оставляет в Q новое значение F; команда, которая флаги не трогает
         // (LD, NOP, JP, CALL, RET, EX AF,AF', POP AF...), обнуляет Q
@@ -900,7 +731,6 @@ public final class CpuZ80 implements CpuDebugCore {
                            fQ = 0;
                            fI = 0;
                            fR = 0;
-                      fHalted = false;
             fInterruptEnabled = false;
         } else {
             setPC(0);
@@ -909,7 +739,7 @@ public final class CpuZ80 implements CpuDebugCore {
 
     @Override
     public void pause(final boolean mode) {
-        fPause = mode;
+        hold(mode);
     }
 
     /**
@@ -922,14 +752,15 @@ public final class CpuZ80 implements CpuDebugCore {
 
     @Override
     public void hold(final boolean mode) {
-        if ((fHoldPhase.get() == HOLD_IS_NOT_SET) == mode) {
+        if ((fSpMX != null) && ((fHoldPhase.get() == HOLD_IS_NOT_SET) == mode)) {
             if (mode) {
                 if (Thread.currentThread().getName().equals(ClockSpeedGenerator.THREAD_NAME)) {
                     fHoldPhase.getAndSet(HOLD_ACKNOWLEDGE);
                 } else {
                     fHoldPhase.getAndSet(HOLD_IN_PROCESS);
-                    while (!fPause && (fHoldPhase.get() == HOLD_IN_PROCESS)) {
-                        Thread.yield();
+                    // noinspection StatementWithEmptyBody
+                    while (!fSpMX.isPaused() && (fHoldPhase.get() == HOLD_IN_PROCESS)) {
+                        //
                     }
                 }
             } else {
@@ -954,7 +785,6 @@ public final class CpuZ80 implements CpuDebugCore {
     @Override
     public void run(final int address) {
         setPC(address);
-        fHalted = false;
     }
 
     @Override
@@ -1533,9 +1363,8 @@ public final class CpuZ80 implements CpuDebugCore {
                 swapRegs(H, L);
                 return 4;
             case 0x76: // HALT
-                fHalted = true;
                 // Оставляем PC на байте HALT: отладчик показывает остановленную команду,
-                // а продолжение исполнения сдвигает PC с неё (см. debugResumeFromHalt)
+                // а продолжение исполнения сдвигает PC с неё
                 setPC((getPC() - 1) & 0xFFFF);
                 startDebugger();
                 return 4;
