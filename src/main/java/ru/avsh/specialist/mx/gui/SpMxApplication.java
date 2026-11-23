@@ -391,14 +391,14 @@ public class SpMxApplication extends Application {
 
         // -= Обработка событий клавиатуры "нажатие" (перехватываем события до всех обработчиков) =-
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            if (!event.isConsumed() && fSpMX.keyCodeReceiver(true , event.getCode())) {
+            if (!event.isConsumed() && fSpMX.keyCodeReceiver(true , event.getCode(), event.getText())) {
                  event.consume   ();
             }
         });
 
         // -= Обработка событий клавиатуры "отпускание" (перехватываем события до всех обработчиков) =-
         scene.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
-            if (!event.isConsumed() && fSpMX.keyCodeReceiver(false, event.getCode())) {
+            if (!event.isConsumed() && fSpMX.keyCodeReceiver(false, event.getCode(), event.getText())) {
                  event.consume   ();
             }
         });

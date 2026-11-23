@@ -4,10 +4,7 @@ import javafx.scene.input.KeyCode;
 import ru.avsh.specialist.mx.units.Speaker;
 import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -243,6 +240,46 @@ public final class KeyboardPort implements MemoryUnit {
         BIT_MASKS_ST.put(KeyCode.F3           , 0x80_200);
         BIT_MASKS_ST.put(KeyCode.F2           , 0x80_400);
         BIT_MASKS_ST.put(KeyCode.F1           , 0x80_800);
+    }
+
+    /*
+     Русские буквы на клавишах ПК: символ -> маска клетки матрицы, где буква напечатана.
+     Для KeyEvent.KEY_PRESSED event.getText() всегда возращает символы в нижнем регистре.
+    */
+    private static final Map<Character, Integer> BIT_MASKS_TEXT_RU = new HashMap<>();
+    static {
+        BIT_MASKS_TEXT_RU.put('й', 0x20_800);
+        BIT_MASKS_TEXT_RU.put('ц', 0x20_400);
+        BIT_MASKS_TEXT_RU.put('у', 0x20_200);
+        BIT_MASKS_TEXT_RU.put('к', 0x20_100);
+        BIT_MASKS_TEXT_RU.put('е', 0x20_080);
+        BIT_MASKS_TEXT_RU.put('н', 0x20_040);
+        BIT_MASKS_TEXT_RU.put('г', 0x20_020);
+        BIT_MASKS_TEXT_RU.put('ш', 0x20_010);
+        BIT_MASKS_TEXT_RU.put('щ', 0x20_008);
+        BIT_MASKS_TEXT_RU.put('з', 0x20_004);
+        BIT_MASKS_TEXT_RU.put('х', 0x20_002);
+        BIT_MASKS_TEXT_RU.put('ъ', 0x08_001);
+        BIT_MASKS_TEXT_RU.put('ф', 0x10_800);
+        BIT_MASKS_TEXT_RU.put('ы', 0x10_400);
+        BIT_MASKS_TEXT_RU.put('в', 0x10_200);
+        BIT_MASKS_TEXT_RU.put('а', 0x10_100);
+        BIT_MASKS_TEXT_RU.put('п', 0x10_080);
+        BIT_MASKS_TEXT_RU.put('р', 0x10_040);
+        BIT_MASKS_TEXT_RU.put('о', 0x10_020);
+        BIT_MASKS_TEXT_RU.put('л', 0x10_010);
+        BIT_MASKS_TEXT_RU.put('д', 0x10_008);
+        BIT_MASKS_TEXT_RU.put('ж', 0x10_004);
+        BIT_MASKS_TEXT_RU.put('э', 0x10_002);
+        BIT_MASKS_TEXT_RU.put('я', 0x08_800);
+        BIT_MASKS_TEXT_RU.put('ч', 0x08_400);
+        BIT_MASKS_TEXT_RU.put('с', 0x08_200);
+        BIT_MASKS_TEXT_RU.put('м', 0x08_100);
+        BIT_MASKS_TEXT_RU.put('и', 0x08_080);
+        BIT_MASKS_TEXT_RU.put('т', 0x08_040);
+        BIT_MASKS_TEXT_RU.put('ь', 0x08_020);
+        BIT_MASKS_TEXT_RU.put('б', 0x08_010);
+        BIT_MASKS_TEXT_RU.put('ю', 0x08_008);
     }
 
     private int fPA;
@@ -485,25 +522,31 @@ public final class KeyboardPort implements MemoryUnit {
      *
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
      * @param keyCode        код клавиши
+     * @param text           текст символа, который дала бы эта клавиша (может быть пустым)
      * @return true = событие клавиатуры обработано
      */
-    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
+    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode, final String text) {
         // Обработка клавиши Shift
         if (KeyCode.SHIFT.equals(keyCode)) {
             fShiftKey.getAndSet(flagKeyPressed);
             return true;
         }
+
         // Обработка остальных клавиш
-        final Integer bitMask = fKeyboardMode.get() ? BIT_MASKS_ST.get(keyCode) : BIT_MASKS_MX.get(keyCode);
+        Integer bitMask = ((text == null) || text.isEmpty()) ? null : BIT_MASKS_TEXT_RU.get(text.charAt(0));
         if (bitMask == null) {
-            return false;
+            bitMask = fKeyboardMode.get() ? BIT_MASKS_ST.get(keyCode) : BIT_MASKS_MX.get(keyCode);
+            if (bitMask == null) {
+                return false;
+            }
         }
+
         if (flagKeyPressed) {
-            if (fKeyBuffer.indexOf(bitMask) == -1) {
-                fKeyBuffer.add    (bitMask);
+            if (!fKeyBuffer.contains(bitMask)) {
+                 fKeyBuffer.add     (bitMask);
             }
         } else {
-                fKeyBuffer.remove (bitMask);
+                fKeyBuffer.remove   (bitMask);
         }
         return true;
     }
