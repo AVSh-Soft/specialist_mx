@@ -4,8 +4,11 @@ import javafx.scene.input.KeyCode;
 import ru.avsh.specialist.mx.units.Speaker;
 import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -15,6 +18,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class KeyboardPort implements MemoryUnit {
     private static final int STORAGE_SIZE = 4;
+
+    // Флаги виртуального управления Shift в старших битах маски
+    private static final int SHIFT_FORCE_ON  = 0x10_00_000;
+    private static final int SHIFT_FORCE_OFF = 0x20_00_000;
+    private static final int KEY_MASK        = 0x00_FF_FFF;
 
     /*
      Матрица клавиш 12х6 - ПК "Специалист MX"
@@ -288,7 +296,8 @@ public final class KeyboardPort implements MemoryUnit {
     private int fPR;
 
     private final Speaker fSpeaker;
-    private final List<Integer> fKeyBuffer;
+    //private final List<Integer> fKeyBuffer;
+    private final Map<KeyCode, Integer> fKeyBuffer;
 
     private final AtomicBoolean fShiftKey;
     private final AtomicBoolean fKeyboardMode;
@@ -301,7 +310,8 @@ public final class KeyboardPort implements MemoryUnit {
     public KeyboardPort(Speaker speaker) {
         fPR        = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
         fSpeaker   =     speaker;
-        fKeyBuffer = new CopyOnWriteArrayList<>();
+        //fKeyBuffer = new CopyOnWriteArrayList<>();
+        fKeyBuffer = new ConcurrentHashMap<>();
 
         fShiftKey     = new AtomicBoolean(false);
         fKeyboardMode = new AtomicBoolean(false);
@@ -321,7 +331,9 @@ public final class KeyboardPort implements MemoryUnit {
                     if         ((fPR & 0b1101_0000) == 0b1000_0000) { // режим - 0 или 1, порт А - вывод
                         result = fPA;
                     } else  if ((fPR & 0b1101_0010) == 0b1001_0000) { // режим - 0 или 1, порт А - ввод, порт B - вывод
-                        for (int curBitMask : fKeyBuffer) {
+                        //for (int curBitMask : fKeyBuffer) {
+                        for (int rawMask : fKeyBuffer.values()) {
+                            int curBitMask = rawMask & KEY_MASK;
                             if ((curBitMask != 0) && ((fPB & (curBitMask >> 12)) == 0)) {
                                 result &= ~curBitMask;
                             }
@@ -334,34 +346,43 @@ public final class KeyboardPort implements MemoryUnit {
                     } else {
                         switch (fPR & 0b1101_0111) {
                             case 0b1000_0010: // режим группы А - 0 или 1, режим группы B - 0, порт А - вывод, порт B - ввод, порт С3-С0 - вывод
-                                for (int curBitMask : fKeyBuffer) {
+                                //for (int curBitMask : fKeyBuffer) {
+                                for (int rawMask : fKeyBuffer.values()) {
+                                    int curBitMask = rawMask & KEY_MASK;
                                     if ((curBitMask != 0) && ((((fPC << 8) | fPA) & curBitMask & 0xFFF) == 0)) {
                                         result &= ~(curBitMask >> 12);
                                     }
                                 }
-                                if (fShiftKey.get()) {
+                                //if (fShiftKey.get()) {
+                                if (isEffectiveShiftPressed()) {
                                     result &= 0b1111_1101;
                                 }
                                 break;
                             case 0b1000_0011: // режим группы А - 0 или 1, режим группы B - 0 или 1, порт А - вывод, порт B - ввод, порт С3-С0 - ввод
                             case 0b1000_0110: // -//-, но порт С3-С0 - в режиме 1 (хз что будет)
                             case 0b1000_0111: // -//-, но порт С3-С0 - в режиме 1 (хз что будет)
-                                for (int curBitMask : fKeyBuffer) {
+                                //for (int curBitMask : fKeyBuffer) {
+                                for (int rawMask : fKeyBuffer.values()) {
+                                    int curBitMask = rawMask & KEY_MASK;
                                     if ((curBitMask != 0) && ((fPA & curBitMask & 0xFF) == 0)) {
                                         result &= ~(curBitMask >> 12);
                                     }
                                 }
-                                if (fShiftKey.get()) {
+                                //if (fShiftKey.get()) {
+                                if (isEffectiveShiftPressed()) {
                                     result &= 0b1111_1101;
                                 }
                                 break;
                             case 0b1001_0010: // режим группы А - 0 или 1, режим группы B - 0, порт А - ввод, порт B - ввод, порт С3-С0 - вывод
-                                for (int curBitMask : fKeyBuffer) {
+                                //for (int curBitMask : fKeyBuffer) {
+                                for (int rawMask : fKeyBuffer.values()) {
+                                    int curBitMask = rawMask & KEY_MASK;
                                     if ((curBitMask != 0) && (((fPC << 8) & curBitMask & 0xF00) == 0)) {
                                         result &= ~(curBitMask >> 12);
                                     }
                                 }
-                                if (fShiftKey.get()) {
+                                //if (fShiftKey.get()) {
+                                if (isEffectiveShiftPressed()) {
                                     result &= 0b1111_1101;
                                 }
                                 break;
@@ -372,7 +393,9 @@ public final class KeyboardPort implements MemoryUnit {
                     break;
                 case 2:
                     if ((fPR & 0b1100_0111) == 0b1000_0001) { // режим группы A - 0 или 1, режим группы B - 0, порт B - вывод, порт C3-C0 - ввод
-                        for (int curBitMask : fKeyBuffer) {
+                        //for (int curBitMask : fKeyBuffer) {
+                        for (int rawMask : fKeyBuffer.values()) {
+                            int curBitMask = rawMask & KEY_MASK;
                             if ((curBitMask != 0) && ((fPB & (curBitMask >> 12)) == 0)) {
                                 result &= ~((curBitMask >> 8) & 0xF);
                             }
@@ -525,7 +548,7 @@ public final class KeyboardPort implements MemoryUnit {
      * @param text           текст символа, который дала бы эта клавиша (может быть пустым)
      * @return true = событие клавиатуры обработано
      */
-    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode, final String text) {
+/*    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode, final String text) {
         // Обработка клавиши Shift
         if (KeyCode.SHIFT.equals(keyCode)) {
             fShiftKey.getAndSet(flagKeyPressed);
@@ -549,5 +572,89 @@ public final class KeyboardPort implements MemoryUnit {
                 fKeyBuffer.remove   (bitMask);
         }
         return true;
+    }*/
+
+    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode, final String text) {
+        if (KeyCode.SHIFT.equals(keyCode)) {
+            fShiftKey.set(flagKeyPressed);
+            return true;
+        }
+
+        if (!flagKeyPressed) {
+            return fKeyBuffer.remove(keyCode) != null;
+        }
+
+        if (fKeyBuffer.containsKey(keyCode)) {
+            return true; // Игнорируем автоповтор ОС, чтобы не потерять исходный Shift
+        }
+
+        Integer bitMask = resolveBitMask(keyCode, text);
+        if (bitMask == null) {
+            return false;
+        }
+
+        fKeyBuffer.put(keyCode, bitMask);
+        return true;
     }
+
+    private Integer resolveBitMask(final KeyCode keyCode, final String text) {
+        boolean shift = fShiftKey.get();
+        char ch = (text != null && !text.isEmpty()) ? text.charAt(0) : 0;
+
+        // 1. Русские буквы
+        Integer ruMask = BIT_MASKS_TEXT_RU.get(ch);
+        if (ruMask != null) {
+            return ruMask;
+        }
+
+        // 2. Разрешение коллизий символов PC <-> Специалист
+        if (shift) {
+            switch (keyCode) {
+                case DIGIT6:    return 0x08_400 | SHIFT_FORCE_OFF; // ^
+                case SEMICOLON: return 0x20_001 | SHIFT_FORCE_OFF; // :
+                case DIGIT2:    return 0x08_008 | SHIFT_FORCE_OFF; // @
+                case QUOTE:     return 0x40_200 | SHIFT_FORCE_ON;  // "
+                case DIGIT7:    return 0x40_020 | SHIFT_FORCE_ON;  // &
+                case DIGIT8:    return 0x20_001 | SHIFT_FORCE_ON;  // *
+                case EQUALS:    return 0x40_800 | SHIFT_FORCE_ON;  // +
+                case DIGIT9:    return 0x40_008 | SHIFT_FORCE_ON;  // (
+                case DIGIT0:    return 0x40_004 | SHIFT_FORCE_ON;  // )
+                case SLASH:     return (ch == ',') ? 0x08_004 : (0x08_002 | SHIFT_FORCE_ON); // , (RU) или ? (EN)
+                default: break;
+            }
+        } else {
+            switch (keyCode) {
+                case QUOTE:     return 0x40_010 | SHIFT_FORCE_ON;  // '
+                case SEMICOLON: return 0x40_800 | SHIFT_FORCE_OFF; // ;
+                case EQUALS:    return 0x40_001 | SHIFT_FORCE_ON;  // =
+                case SLASH:     return (ch == '.') ? 0x10_001 : 0x08_002; // . (RU) или / (EN)
+                case MULTIPLY:  return 0x20_001 | SHIFT_FORCE_ON;  // Numpad *
+                case ADD:       return 0x40_800 | SHIFT_FORCE_ON;  // Numpad +
+                default: break;
+            }
+        }
+
+        // 3. Все остальные клавиши по стандартным таблицам
+        return fKeyboardMode.get() ? BIT_MASKS_ST.get(keyCode) : BIT_MASKS_MX.get(keyCode);
+    }
+/*
+Если потребуется:
+• Добавить обработку русской раскладки для Shift + цифры (Shift+4 → ;, Shift+6 → :, Shift+7 → ?, Shift+2 → ")
+• Или назначить что-то специальное на клавишу ` (BACK_QUOTE)
+Напишите, как всё собралось и заработало!
+ */
+
+    private boolean isEffectiveShiftPressed() {
+        boolean shift = fShiftKey.get();
+        for (int mask : fKeyBuffer.values()) {
+            if ((mask & SHIFT_FORCE_OFF) != 0) {
+                return false;
+            }
+            if ((mask & SHIFT_FORCE_ON) != 0) {
+                shift = true;
+            }
+        }
+        return shift;
+    }
+
 }
