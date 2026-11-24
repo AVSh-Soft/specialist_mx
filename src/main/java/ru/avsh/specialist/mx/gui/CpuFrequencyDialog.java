@@ -38,15 +38,15 @@ public class CpuFrequencyDialog extends Dialog<Integer> {
         getDialogPane().getButtonTypes().addAll(AlertUtil.Option.OK_CANCEL_OPTION.getButtonTypes());
 
         // 1. Слайдер в целых шагах по 100 кГц
-        int minSteps = minHz / STEP_HZ;
-        int maxSteps = maxHz / STEP_HZ;
-        int initialSteps = currentHz / STEP_HZ;
+        final int minSteps     =     minHz / STEP_HZ;
+        final int maxSteps     =     maxHz / STEP_HZ;
+        final int initialSteps = currentHz / STEP_HZ;
 
         slider = new Slider(minSteps, maxSteps, initialSteps);
         slider.setPrefWidth     (340 );
         slider.setShowTickMarks (true);
         slider.setShowTickLabels(true);
-        slider.setMajorTickUnit(Math.max(1, (maxSteps - minSteps) / 5.0));
+        slider.setMajorTickUnit (Math.max(1, (maxSteps - minSteps) / 5.0));
         slider.setMinorTickCount(4);
         slider.setBlockIncrement(1);
 
@@ -72,8 +72,8 @@ public class CpuFrequencyDialog extends Dialog<Integer> {
         final Button defaultBtn = new Button (String.format(
                 Locale.US,"%.1f МГц", ClockSpeedGenerator.CLOCK_SPEED / 1_000_000.0));
         defaultBtn.setTooltip(    new Tooltip(String.format(
-                "Установить частоту по умолчанию (%,d Гц)", ClockSpeedGenerator.CLOCK_SPEED)));
-        defaultBtn.setOnAction(e -> applyFrequency(ClockSpeedGenerator.CLOCK_SPEED));
+                "Установить частоту по умолчанию (%,d Гц)",    ClockSpeedGenerator.CLOCK_SPEED)));
+        defaultBtn.setOnAction(e -> applyFrequency(ClockSpeedGenerator.CLOCK_SPEED)) ;
 
         // Метка с точным значением в Гц
         hzLabel = new Label();
@@ -124,13 +124,13 @@ public class CpuFrequencyDialog extends Dialog<Integer> {
      * и автоматически меняет запятую на точку.
      */
     private TextFormatter<String> createFrequencyFormatter() {
-        UnaryOperator<TextFormatter.Change> filter = change -> {
+        final UnaryOperator<TextFormatter.Change> filter = change -> {
             // Автоматически заменяем запятую на точку при вводе
             if (change.getText().contains(",")) {
                 change.setText(change.getText().replace(',', '.'));
             }
 
-            String newText = change.getControlNewText();
+            final String newText = change.getControlNewText();
             if (M_HZ_PATTERN.matcher(newText).matches()) {
                 return change;
             }
@@ -149,7 +149,7 @@ public class CpuFrequencyDialog extends Dialog<Integer> {
 
         try {
             final double mhz = Double.parseDouble(raw);
-            final    int  hz = (int) Math.round(mhz * 1_000_000L);
+            final    int  hz =   (int) Math.round(mhz * 1_000_000L);
             applyFrequency(hz);
         } catch (NumberFormatException e) {
             applyFrequency(currentHz);
@@ -160,9 +160,9 @@ public class CpuFrequencyDialog extends Dialog<Integer> {
         isUpdating = true;
         try {
             currentHz = snapToStep(targetHz);
-              slider.setValue(currentHz / (double) STEP_HZ);
-            mhzInput.setText (String.format(Locale.US, "%.1f", currentHz / 1_000_000.0));
-             hzLabel.setText (String.format("Точное значение: %,d Гц", currentHz));
+               slider.setValue(currentHz / (double) STEP_HZ);
+             mhzInput.setText (String.format(Locale.US, "%.1f", currentHz / 1_000_000.0));
+              hzLabel.setText (String.format("Точное значение: %,d Гц", currentHz));
         } finally {
             isUpdating = false;
         }

@@ -430,7 +430,15 @@ public class SpMxApplication extends Application {
             }
         });
 
-        // Обработчик вызывается, когда окно закрывается - для завершения работы программы
+        // -= Обработка событий фокуса окна =-
+        primaryStage.focusedProperty().addListener((observable, oldValue, isNowFocused) -> {
+            if (Boolean.FALSE.equals(isNowFocused)) {
+                // Если окно теряет фокус, то сбрасываем буфер клавиатуры
+                fSpMX.clearKeyBuffer();
+            }
+        });
+
+        // -= Обработка событий закрытия окна =-
         primaryStage.setOnCloseRequest(event -> {
             // Запоминаем размеры формы в ini-файле
             fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FORM_WIDTH , primaryStage.getWidth ());
