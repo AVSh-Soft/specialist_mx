@@ -440,8 +440,8 @@ public final class SpecialistMX {
      * @param keyCode        код клавиши
      * @return true = событие клавиатуры обработано
      */
-    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
-        return fKey.keyCodeReceiver(flagKeyPressed, keyCode);
+    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode, final String text) {
+        return fKey.keyCodeReceiver(flagKeyPressed, keyCode, text);
     }
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 

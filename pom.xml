@@ -7,9 +7,13 @@
     <groupId>ru.avsh.specialist.mx</groupId>
     <artifactId>specialist_mx</artifactId>
     <!-- Major.Minor.Release -->
-    <version>2.1.1</version>
+    <version>2.1.2</version>
     <name>Specialist MX</name>
     <description>The emulator of the computer "${project.name}"</description>
+    <organization>
+        <name>"AVSh Software" (Alexander Shevtsov)</name>
+    </organization>
+    <inceptionYear>2017</inceptionYear>
     <packaging>jar</packaging>
 
     <properties>
@@ -27,7 +31,8 @@
 
     <scm>
         <connection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git</connection>
-        <developerConnection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git</developerConnection>
+        <developerConnection>scm:git:https://github.com/${GitHub.username}/${project.artifactId}.git
+        </developerConnection>
         <tag>HEAD</tag>
         <url>https://github.com/${GitHub.username}/${project.artifactId}.git</url>
     </scm>
@@ -47,13 +52,13 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>3.5.0</version>
             </plugin>
 
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>buildnumber-maven-plugin</artifactId>
-                <version>1.4</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <phase>validate</phase>
@@ -79,7 +84,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.16.0</version>
                 <configuration>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <source>${jdkVersion}</source>
@@ -90,11 +95,11 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.1.1</version>
+                <version>3.5.1</version>
                 <configuration>
                     <archive>
                         <manifest>
-                            <!-- Для использования без maven-shade-plugin (в папке lib будут стронние библиотеки) -->
+                            <!-- Для использования без maven-shade-plugin (в папке lib будут сторонние библиотеки) -->
                             <!--addClasspath>true</addClasspath-->
                             <!--classpathPrefix>${lib.dir}/</classpathPrefix-->
                             <!--classpathLayoutType>simple</classpathLayoutType-->
@@ -111,7 +116,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.1.1</version>
+                <version>3.11.0</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -134,7 +139,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.1</version>
+                <version>3.6.2</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -142,6 +147,14 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>${project.groupId}.Main</mainClass>
@@ -155,7 +168,7 @@
             <plugin>
                 <groupId>com.akathist.maven.plugins.launch4j</groupId>
                 <artifactId>launch4j-maven-plugin</artifactId>
-                <version>1.7.25</version>
+                <version>2.6.0</version>
                 <executions>
                     <execution>
                         <id>l4j-clui</id>
@@ -224,7 +237,7 @@
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
-            <version>17.0.0</version>
+            <version>26.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.ini4j</groupId>
@@ -234,7 +247,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.14.0</version>
+            <version>5.14.4</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

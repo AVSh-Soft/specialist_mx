@@ -5,10 +5,10 @@ import ru.avsh.specialist.mx.units.Speaker;
 import ru.avsh.specialist.mx.units.types.MemoryUnit;
 
 import java.util.EnumMap;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -19,6 +19,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class KeyboardPort implements MemoryUnit {
     private static final int STORAGE_SIZE = 4;
 
+    // Флаги виртуального управления Shift в старших битах маски
+    private static final int SHIFT_FORCE_ON  = 0x10_00_000;
+    private static final int SHIFT_FORCE_OFF = 0x20_00_000;
+    private static final int KEY_MASK        = 0x00_FF_FFF;
+
     /*
      Матрица клавиш 12х6 - ПК "Специалист MX"
      ---------------------------------------------------------------------------------
@@ -27,14 +32,11 @@ public final class KeyboardPort implements MemoryUnit {
              | 800 | 400 | 200 | 100 | 080 | 040 | 020 | 010 | 008 | 004 | 002 | 001 |
      --------------------------------------------------------------------------------|
      B7 | 80 | ESC | КОИ |  F1 |  F2 |  F3 |  F4 |  F5 |  F6 |  F7 |  F8 |  F9 | СТР |
-        |    |(Esc)|(F10)|     |     |     |     |     |     |     |     |     |(Ins)|
+        |    |(Esc)|(F10)|     |     |     |     |     |     |     |     |     |(Del)|
      B6 | 40 | ; + | 1 ! | 2 " | 3 # | 4 $ | 5 % | 6 & | 7 ' | 8 ( | 9 ) |  0  | - = |
-        |    |( ` )|     |     |     |     |     |     |     |     |     |     |( - )|
      B5 | 20 | J Й | C Ц | U У | K K | E E | N Н | G Г | [ Ш | ] Щ | Z З | H Х | : * |
-        |    |     |     |     |     |     |     |     |     |     |     |     |( = )|
      B4 | 10 | F Ф | Y Ы | W В | A A | P П | R Р | O O | L Л | D Д | V Ж | \ Э | . > |
      B3 | 08 | Q Я | ^ Ч | S С | M M | I И | T T | X Ь | B Б | @ Ю | , > | / ? |  ЗБ |
-        |    |     |( ' )|     |     |     |     |     |     |( ; )|     |     |     |
      B2 | 04 | Р/Л |Home |  Up |Down |  ?  |  ?  | Spc |  <= |  ПВ |  => |  ПС |  ВК |
         |    |(Alt)|     |     |     |(F11)|(F12)|     |     |(Tab)|     |(End)|(Ent)|
      ---------------------------------------------------------------------------------
@@ -46,14 +48,11 @@ public final class KeyboardPort implements MemoryUnit {
              | 800 | 400 | 200 | 100 | 080 | 040 | 020 | 010 | 008 | 004 | 002 | 001 |
      --------------------------------------------------------------------------------|
      B7 | 80 |  F1 |  F2 |  F3 |  F4 |  F5 |  F6 |  F7 |  F8 |  F9 | Ч.Ф | Б.Ф | СТР |
-        |    |     |     |     |     |     |     |     |     |     |(F10)|(F11)|(Ins)|
+        |    |     |     |     |     |     |     |     |     |     |(F10)|(F11)|(Del)|
      B6 | 40 | ; + | 1 ! | 2 " | 3 # | 4 $ | 5 % | 6 & | 7 ' | 8 ( | 9 ) |  0  | - = |
-        |    |( ` )|     |     |     |     |     |     |     |     |     |     |( - )|
      B5 | 20 | J Й | C Ц | U У | K K | E E | N Н | G Г | [ Ш | ] Щ | Z З | H Х | : * |
-        |    |     |     |     |     |     |     |     |     |     |     |     |( = )|
      B4 | 10 | F Ф | Y Ы | W В | A A | P П | R Р | O O | L Л | D Д | V Ж | \ Э | . > |
      B3 | 08 | Q Я | ^ Ч | S С | M M | I И | T T | X Ь | B Б | @ Ю | , > | / ? |  ЗБ |
-        |    |     |( ' )|     |     |     |     |     |     |( ; )|     |     |     |
      B2 | 04 | Р/Л |Home |  Up |Down | TAB | АР2 | Spc |  <= |  ПВ |  => |  ПС |  ВК |
         |    |(Alt)|     |     |     |(Tab)|(Esc)|     |     |(F12)|     |(End)|(Ent)|
      ---------------------------------------------------------------------------------
@@ -138,7 +137,7 @@ public final class KeyboardPort implements MemoryUnit {
         BIT_MASKS_MX.put(KeyCode.NUMPAD1      , 0x40_400);
         BIT_MASKS_MX.put(KeyCode.BACK_QUOTE   , 0x40_800);
         BIT_MASKS_MX.put(KeyCode.ADD          , 0x40_800);
-        BIT_MASKS_MX.put(KeyCode.INSERT       , 0x80_001);
+        BIT_MASKS_MX.put(KeyCode.DELETE       , 0x80_001);
         BIT_MASKS_MX.put(KeyCode.F9           , 0x80_002);
         BIT_MASKS_MX.put(KeyCode.F8           , 0x80_004);
         BIT_MASKS_MX.put(KeyCode.F7           , 0x80_008);
@@ -231,7 +230,7 @@ public final class KeyboardPort implements MemoryUnit {
         BIT_MASKS_ST.put(KeyCode.NUMPAD1      , 0x40_400);
         BIT_MASKS_ST.put(KeyCode.BACK_QUOTE   , 0x40_800);
         BIT_MASKS_ST.put(KeyCode.ADD          , 0x40_800);
-        BIT_MASKS_ST.put(KeyCode.INSERT       , 0x80_001);
+        BIT_MASKS_ST.put(KeyCode.DELETE       , 0x80_001);
         BIT_MASKS_ST.put(KeyCode.F11          , 0x80_002);
         BIT_MASKS_ST.put(KeyCode.F10          , 0x80_004);
         BIT_MASKS_ST.put(KeyCode.F9           , 0x80_008);
@@ -245,13 +244,52 @@ public final class KeyboardPort implements MemoryUnit {
         BIT_MASKS_ST.put(KeyCode.F1           , 0x80_800);
     }
 
+    /*
+     Русские буквы на клавишах ПК: символ -> маска клетки матрицы, где буква напечатана.
+    */
+    private static final Map<Character, Integer> BIT_MASKS_TEXT_RU = new HashMap<>();
+    static {
+        BIT_MASKS_TEXT_RU.put('й', 0x20_800);
+        BIT_MASKS_TEXT_RU.put('ц', 0x20_400);
+        BIT_MASKS_TEXT_RU.put('у', 0x20_200);
+        BIT_MASKS_TEXT_RU.put('к', 0x20_100);
+        BIT_MASKS_TEXT_RU.put('е', 0x20_080);
+        BIT_MASKS_TEXT_RU.put('н', 0x20_040);
+        BIT_MASKS_TEXT_RU.put('г', 0x20_020);
+        BIT_MASKS_TEXT_RU.put('ш', 0x20_010);
+        BIT_MASKS_TEXT_RU.put('щ', 0x20_008);
+        BIT_MASKS_TEXT_RU.put('з', 0x20_004);
+        BIT_MASKS_TEXT_RU.put('х', 0x20_002);
+        BIT_MASKS_TEXT_RU.put('ъ', 0x08_001);
+        BIT_MASKS_TEXT_RU.put('ф', 0x10_800);
+        BIT_MASKS_TEXT_RU.put('ы', 0x10_400);
+        BIT_MASKS_TEXT_RU.put('в', 0x10_200);
+        BIT_MASKS_TEXT_RU.put('а', 0x10_100);
+        BIT_MASKS_TEXT_RU.put('п', 0x10_080);
+        BIT_MASKS_TEXT_RU.put('р', 0x10_040);
+        BIT_MASKS_TEXT_RU.put('о', 0x10_020);
+        BIT_MASKS_TEXT_RU.put('л', 0x10_010);
+        BIT_MASKS_TEXT_RU.put('д', 0x10_008);
+        BIT_MASKS_TEXT_RU.put('ж', 0x10_004);
+        BIT_MASKS_TEXT_RU.put('э', 0x10_002);
+        BIT_MASKS_TEXT_RU.put('я', 0x08_800);
+        BIT_MASKS_TEXT_RU.put('ч', 0x08_400);
+        BIT_MASKS_TEXT_RU.put('с', 0x08_200);
+        BIT_MASKS_TEXT_RU.put('м', 0x08_100);
+        BIT_MASKS_TEXT_RU.put('и', 0x08_080);
+        BIT_MASKS_TEXT_RU.put('т', 0x08_040);
+        BIT_MASKS_TEXT_RU.put('ь', 0x08_020);
+        BIT_MASKS_TEXT_RU.put('б', 0x08_010);
+        BIT_MASKS_TEXT_RU.put('ю', 0x08_008);
+    }
+
     private int fPA;
     private int fPB;
     private int fPC;
     private int fPR;
 
     private final Speaker fSpeaker;
-    private final List<Integer> fKeyBuffer;
+    private final Map<KeyCode, Integer> fKeyBuffer;
 
     private final AtomicBoolean fShiftKey;
     private final AtomicBoolean fKeyboardMode;
@@ -264,7 +302,7 @@ public final class KeyboardPort implements MemoryUnit {
     public KeyboardPort(Speaker speaker) {
         fPR        = 0b1001_1011; // начальная инициализация - режим 0, все порты на ввод
         fSpeaker   =     speaker;
-        fKeyBuffer = new CopyOnWriteArrayList<>();
+        fKeyBuffer = new ConcurrentHashMap<>();
 
         fShiftKey     = new AtomicBoolean(false);
         fKeyboardMode = new AtomicBoolean(false);
@@ -284,10 +322,11 @@ public final class KeyboardPort implements MemoryUnit {
                     if         ((fPR & 0b1101_0000) == 0b1000_0000) { // режим - 0 или 1, порт А - вывод
                         result = fPA;
                     } else  if ((fPR & 0b1101_0010) == 0b1001_0000) { // режим - 0 или 1, порт А - ввод, порт B - вывод
-                        for (int curBitMask : fKeyBuffer) {
-                            if ((curBitMask != 0) && ((fPB & (curBitMask >> 12)) == 0)) {
-                                result &= ~curBitMask;
-                            }
+                        for (final int rawMask : fKeyBuffer.values()) {
+                             final int curBitMask = rawMask & KEY_MASK;
+                             if ((curBitMask != 0) && ((fPB & (curBitMask >> 12)) == 0)) {
+                                  result &= ~curBitMask;
+                             }
                         }
                     }
                     break;
@@ -297,34 +336,37 @@ public final class KeyboardPort implements MemoryUnit {
                     } else {
                         switch (fPR & 0b1101_0111) {
                             case 0b1000_0010: // режим группы А - 0 или 1, режим группы B - 0, порт А - вывод, порт B - ввод, порт С3-С0 - вывод
-                                for (int curBitMask : fKeyBuffer) {
-                                    if ((curBitMask != 0) && ((((fPC << 8) | fPA) & curBitMask & 0xFFF) == 0)) {
-                                        result &= ~(curBitMask >> 12);
-                                    }
+                                for (final int rawMask : fKeyBuffer.values()) {
+                                     final int curBitMask = rawMask & KEY_MASK;
+                                     if ((curBitMask != 0) && ((((fPC << 8) | fPA) & curBitMask & 0xFFF) == 0)) {
+                                         result &= ~(curBitMask >> 12);
+                                     }
                                 }
-                                if (fShiftKey.get()) {
+                                if (isEffectiveShiftPressed()) {
                                     result &= 0b1111_1101;
                                 }
                                 break;
                             case 0b1000_0011: // режим группы А - 0 или 1, режим группы B - 0 или 1, порт А - вывод, порт B - ввод, порт С3-С0 - ввод
                             case 0b1000_0110: // -//-, но порт С3-С0 - в режиме 1 (хз что будет)
                             case 0b1000_0111: // -//-, но порт С3-С0 - в режиме 1 (хз что будет)
-                                for (int curBitMask : fKeyBuffer) {
-                                    if ((curBitMask != 0) && ((fPA & curBitMask & 0xFF) == 0)) {
-                                        result &= ~(curBitMask >> 12);
-                                    }
+                                for (final int rawMask : fKeyBuffer.values()) {
+                                     final int curBitMask = rawMask & KEY_MASK;
+                                     if ((curBitMask != 0) && ((fPA & curBitMask & 0xFF) == 0)) {
+                                         result &= ~(curBitMask >> 12);
+                                     }
                                 }
-                                if (fShiftKey.get()) {
+                                if (isEffectiveShiftPressed()) {
                                     result &= 0b1111_1101;
                                 }
                                 break;
                             case 0b1001_0010: // режим группы А - 0 или 1, режим группы B - 0, порт А - ввод, порт B - ввод, порт С3-С0 - вывод
-                                for (int curBitMask : fKeyBuffer) {
-                                    if ((curBitMask != 0) && (((fPC << 8) & curBitMask & 0xF00) == 0)) {
-                                        result &= ~(curBitMask >> 12);
-                                    }
+                                for (final int rawMask : fKeyBuffer.values()) {
+                                     final int curBitMask = rawMask & KEY_MASK;
+                                     if ((curBitMask != 0) && (((fPC << 8) & curBitMask & 0xF00) == 0)) {
+                                         result &= ~(curBitMask >> 12);
+                                     }
                                 }
-                                if (fShiftKey.get()) {
+                                if (isEffectiveShiftPressed()) {
                                     result &= 0b1111_1101;
                                 }
                                 break;
@@ -335,10 +377,11 @@ public final class KeyboardPort implements MemoryUnit {
                     break;
                 case 2:
                     if ((fPR & 0b1100_0111) == 0b1000_0001) { // режим группы A - 0 или 1, режим группы B - 0, порт B - вывод, порт C3-C0 - ввод
-                        for (int curBitMask : fKeyBuffer) {
-                            if ((curBitMask != 0) && ((fPB & (curBitMask >> 12)) == 0)) {
-                                result &= ~((curBitMask >> 8) & 0xF);
-                            }
+                        for (final int rawMask : fKeyBuffer.values()) {
+                             final int curBitMask = rawMask & KEY_MASK;
+                             if ((curBitMask != 0) && ((fPB & (curBitMask >> 12)) == 0)) {
+                                 result &= ~((curBitMask >> 8) & 0xF);
+                             }
                         }
                         if ((fPR & 0b10_1000) == 0) { // режим группы A - 0, порт C7-C4 - вывод
                             result &= fPC | 0xF;
@@ -475,6 +518,7 @@ public final class KeyboardPort implements MemoryUnit {
      * Очищает клавиатурный буфер.
      */
     public void clearKeyBuffer() {
+        fShiftKey.set(false);
         if (!fKeyBuffer.isEmpty()) {
              fKeyBuffer.clear();
         }
@@ -485,26 +529,99 @@ public final class KeyboardPort implements MemoryUnit {
      *
      * @param flagKeyPressed true = клавиша нажата, false = клавиша отпущена
      * @param keyCode        код клавиши
+     * @param text           текст символа, который дала бы эта клавиша (может быть пустым)
      * @return true = событие клавиатуры обработано
      */
-    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode) {
-        // Обработка клавиши Shift
+    public boolean keyCodeReceiver(final boolean flagKeyPressed, final KeyCode keyCode, final String text) {
         if (KeyCode.SHIFT.equals(keyCode)) {
-            fShiftKey.getAndSet(flagKeyPressed);
+            fShiftKey.set(flagKeyPressed);
             return true;
         }
-        // Обработка остальных клавиш
-        final Integer bitMask = fKeyboardMode.get() ? BIT_MASKS_ST.get(keyCode) : BIT_MASKS_MX.get(keyCode);
+
+        if (!flagKeyPressed) {
+            return fKeyBuffer.remove(keyCode) != null;
+        }
+
+        // Игнорируем автоповтор ОС, чтобы не потерять исходный Shift
+        if (fKeyBuffer.containsKey(keyCode)) {
+            return true;
+        }
+
+        final Integer bitMask = resolveBitMask(keyCode, text);
         if (bitMask == null) {
             return false;
         }
-        if (flagKeyPressed) {
-            if (fKeyBuffer.indexOf(bitMask) == -1) {
-                fKeyBuffer.add    (bitMask);
+
+        fKeyBuffer.put(keyCode, bitMask);
+        return true;
+    }
+
+    private Integer resolveBitMask(final KeyCode keyCode, final String text) {
+        char ch = 0;
+        if ((text != null) && !text.isEmpty()) {
+            ch = text.charAt(0);
+            // Эффективно переводим в нижний регистр
+            if (((ch >= 'A') && (ch <= 'Z')) || ((ch >= 'А') && (ch <= 'Я'))) {
+                ch = (char) (ch + 0x20);
+            }
+        }
+
+        // 1. Русские буквы
+        final Integer ruMask = BIT_MASKS_TEXT_RU.get(ch);
+        if (ruMask != null) {
+            return ruMask;
+        }
+
+        // 2. Разрешение коллизий символов PC <-> Специалист
+        if (fShiftKey.get()) {
+            switch (keyCode) {
+                case DIGIT2    : return 0x08_008 | SHIFT_FORCE_OFF; // '@'
+                case DIVIDE    : return 0x08_002 | SHIFT_FORCE_OFF; // 'Numpad /'
+                case DIGIT6    : return 0x08_400 | SHIFT_FORCE_OFF; // '^'
+                case SEMICOLON : return 0x20_001 | SHIFT_FORCE_OFF; // ':'
+                case MINUS     : return 0x40_001 | SHIFT_FORCE_OFF; // '-'
+                case SUBTRACT  : return 0x40_001 | SHIFT_FORCE_OFF; // 'Numpad -'
+                case BACK_QUOTE: return 0x08_400 | SHIFT_FORCE_ON ; // '~', но у Специалиста MX будет черта сверху
+                case DIGIT8    : return 0x20_001 | SHIFT_FORCE_ON ; // '*'
+                case DIGIT0    : return 0x40_004 | SHIFT_FORCE_ON ; // ')'
+                case DIGIT9    : return 0x40_008 | SHIFT_FORCE_ON ; // '('
+                case DIGIT7    : return 0x40_020 | SHIFT_FORCE_ON ; // '&'
+                case QUOTE     : return 0x40_200 | SHIFT_FORCE_ON ; // '"'
+                case EQUALS    : return 0x40_800 | SHIFT_FORCE_ON ; // '+'
+                case SLASH     : return (ch == ',')
+                        ?  0x08_004                    // ',' (RU)
+                        : (0x08_002 | SHIFT_FORCE_ON); // '?' (EN)
+                default: break;
             }
         } else {
-                fKeyBuffer.remove (bitMask);
+            switch (keyCode) {
+                case SEMICOLON : return 0x40_800 | SHIFT_FORCE_OFF; // ';'
+                case BACK_QUOTE: return 0x08_008 | SHIFT_FORCE_ON ; // '`'
+                case MULTIPLY  : return 0x20_001 | SHIFT_FORCE_ON ; // 'Numpad *'
+                case EQUALS    : return 0x40_001 | SHIFT_FORCE_ON ; // '='
+                case QUOTE     : return 0x40_010 | SHIFT_FORCE_ON ; // '''
+                case ADD       : return 0x40_800 | SHIFT_FORCE_ON ; // 'Numpad +'
+                case SLASH     : return (ch == '.')
+                        ? 0x10_001  // '.' (RU)
+                        : 0x08_002; // '/' (EN)
+                default: break;
+            }
         }
-        return true;
+
+        // 3. Все остальные клавиши по стандартным таблицам
+        return fKeyboardMode.get() ? BIT_MASKS_ST.get(keyCode) : BIT_MASKS_MX.get(keyCode);
+    }
+
+    private boolean isEffectiveShiftPressed() {
+        boolean shift = fShiftKey.get();
+        for (final int mask : fKeyBuffer.values()) {
+             if ((mask & SHIFT_FORCE_OFF) != 0) {
+                 return false;
+             }
+             if ((mask & SHIFT_FORCE_ON ) != 0) {
+                 shift = true;
+             }
+        }
+        return shift;
     }
 }

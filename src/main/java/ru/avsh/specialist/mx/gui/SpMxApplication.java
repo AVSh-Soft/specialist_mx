@@ -391,14 +391,14 @@ public class SpMxApplication extends Application {
 
         // -= Обработка событий клавиатуры "нажатие" (перехватываем события до всех обработчиков) =-
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-            if (!event.isConsumed() && fSpMX.keyCodeReceiver(true , event.getCode())) {
+            if (!event.isConsumed() && fSpMX.keyCodeReceiver(true , event.getCode(), event.getText())) {
                  event.consume   ();
             }
         });
 
         // -= Обработка событий клавиатуры "отпускание" (перехватываем события до всех обработчиков) =-
         scene.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
-            if (!event.isConsumed() && fSpMX.keyCodeReceiver(false, event.getCode())) {
+            if (!event.isConsumed() && fSpMX.keyCodeReceiver(false, event.getCode(), event.getText())) {
                  event.consume   ();
             }
         });
@@ -430,7 +430,15 @@ public class SpMxApplication extends Application {
             }
         });
 
-        // Обработчик вызывается, когда окно закрывается - для завершения работы программы
+        // -= Обработка событий фокуса окна =-
+        primaryStage.focusedProperty().addListener((observable, oldValue, isNowFocused) -> {
+            if (Boolean.FALSE.equals(isNowFocused)) {
+                // Если окно теряет фокус, то сбрасываем буфер клавиатуры
+                fSpMX.clearKeyBuffer();
+            }
+        });
+
+        // -= Обработка событий закрытия окна =-
         primaryStage.setOnCloseRequest(event -> {
             // Запоминаем размеры формы в ini-файле
             fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FORM_WIDTH , primaryStage.getWidth ());
