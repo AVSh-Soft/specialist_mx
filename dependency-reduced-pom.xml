@@ -148,7 +148,7 @@
               <outfile>${project.build.directory}/${project.artifactId}.exe</outfile>
               <jar>${project.build.directory}/${project.artifactId}-${project.version}.jar</jar>
               <errTitle>${product.name}</errTitle>
-              <downloadUrl>http://java.com/download</downloadUrl>
+              <downloadUrl>https://java.com/download/</downloadUrl>
               <priority>normal</priority>
               <icon>${project.artifactId}.ico</icon>
               <classPath>
@@ -160,6 +160,13 @@
                 <path>./jre</path>
                 <minVersion>${jdkVersion}.0</minVersion>
               </jre>
+              <messages>
+                <startupErr>An error occurred while launching the application.</startupErr>
+                <jreNotFoundErr>This application requires a Java Runtime Environment.</jreNotFoundErr>
+                <jreVersionErr>This application requires a Java Runtime Environment</jreVersionErr>
+                <launcherErr>The registry points to a damaged Java Runtime Environment installation.</launcherErr>
+                <instanceAlreadyExistsMsg>The application is already running.</instanceAlreadyExistsMsg>
+              </messages>
               <versionInfo>
                 <fileVersion>${buildNumber}</fileVersion>
                 <txtFileVersion>${buildNumber}</txtFileVersion>
