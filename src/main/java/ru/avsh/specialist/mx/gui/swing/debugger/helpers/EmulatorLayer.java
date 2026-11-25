@@ -428,6 +428,34 @@ public class EmulatorLayer extends Observable {
     }
 
     /**
+     * Записывает подряд идущие байты в память одной пачкой.
+     * Оптимальнее, чем {@link #writeByte(int, int, int)} в цикле: страница переключается один раз,
+     * событие наблюдателям отправляется одно на всю пачку.
+     *
+     * @param page    страница памяти
+     * @param address адрес первого байта
+     * @param data    массив записываемых байт
+     * @param offset  смещение в массиве, с которого начинаются записываемые байты
+     * @param length  количество записываемых байт
+     */
+    public synchronized void writeBytes(final int page, final int address, final byte[] data, final int offset, final int length) {
+        if ((data == null) || (offset < 0) || (length <= 0)) {
+            return;
+        }
+        final int curPage  = fSpMX.getPage();
+        if (      curPage != page) {
+            fSpMX.setPage(   page);
+        }
+        for (int i = 0; i < length; i++) {
+            fSpMX.writeByte(address + i, data[offset + i]);
+        }
+        if (page !=       curPage) {
+            fSpMX.setPage(curPage);
+        }
+        sendEvent(EventType.MEMORY, page);
+    }
+
+    /**
      * Метод должен вызываться после выполнения каждого шага CPU.
      */
     public synchronized void afterStep() {

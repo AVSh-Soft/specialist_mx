@@ -22,6 +22,7 @@ import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.plaf.basic.BasicLabelUI;
 import javax.swing.table.*;
 import javax.swing.text.AttributeSet;
@@ -29,6 +30,9 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.PlainDocument;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
@@ -93,6 +97,12 @@ public final class DebuggerCPU extends JDialog {
     // Ширина и высота кнопки флага
     private static final int FLAG_BUTTON_WIDTH  = 17;
     private static final int FLAG_BUTTON_HEIGHT = 17;
+
+    // Первый адрес за пределами страницы RAM и RAM-диска (MainMemory.STORAGE_SIZE):
+    // дальше идёт окно обмена страницами и порты устройств
+    private static final int PAGE_END_ADDRESS     = 0xFFC0;
+    // Первый адрес за пределами ROM-диска (MainMemory.ROM_DISK_SIZE)
+    private static final int ROM_PAGE_END_ADDRESS = 0xC000;
 
     // Константы дизассемблера
     private static final int FOR_ALIGNMENT = 16; // Длина участка для выравнивания кода
@@ -332,8 +342,8 @@ public final class DebuggerCPU extends JDialog {
 
         final JButton   findButton = new JButton("Find"  );
         final JButton selectButton = new JButton("Select");
-        final JButton      button3 = new JButton("---"   );
-        final JButton      button4 = new JButton("---"   );
+        final JButton   saveButton = new JButton("Save"  );
+        final JButton   loadButton = new JButton("Load"  );
 
         // Основные кнопки управления отладчиком
         final Action performStep = new AbstractAction("F6 Step") {
@@ -372,6 +382,10 @@ public final class DebuggerCPU extends JDialog {
             findButton.setToolTipText("Осуществляет поиск данных");
           selectButton.setMnemonic('e');
           selectButton.setToolTipText("Осуществляет выделение диапазона адресов в таблице просмотра данных");
+            saveButton.setMnemonic('v');
+            saveButton.setToolTipText("Сохраняет выделенный диапазон адресов в таблице просмотра данных на диск");
+            loadButton.setMnemonic('L');
+            loadButton.setToolTipText("Загружает файл в страницу таблицы просмотра данных с адреса под курсором");
             gotoButton.setMnemonic('G');
             gotoButton.setToolTipText("Выполняет переход к заданному адресу в таблицах просмотра кода/данных");
             toPCButton.setMnemonic('T');
@@ -513,16 +527,16 @@ public final class DebuggerCPU extends JDialog {
                 buttonBar.add(findButton, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 5, 5), 0, 0));
 
-                //---- button2 ----
+                //---- selectButton ----
                 buttonBar.add(selectButton, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 5, 5), 0, 0));
 
-                //---- button3 ----
-                buttonBar.add(button3, new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0,
+                //---- saveButton ----
+                buttonBar.add(saveButton, new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 5, 5), 0, 0));
 
-                //---- button4 ----
-                buttonBar.add(button4, new GridBagConstraints(3, 0, 1, 1, 0.0, 0.0,
+                //---- loadButton ----
+                buttonBar.add(loadButton, new GridBagConstraints(3, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 5, 5), 0, 0));
 
                 //---- gotoButton ----
@@ -762,13 +776,16 @@ public final class DebuggerCPU extends JDialog {
             if (itemEvent.getStateChange() == ItemEvent.SELECTED) {
                 final int index = ((JComboBox) itemEvent.getSource()).getSelectedIndex();
                 // Учитываются особенности класса MainMemory
-                fEmulatorLayer.setDataPage((index == (fEmulatorLayer.getNumPages() - 1)) ? MainMemory.ROM_DISK : index);
+                // Выделение диапазона адресов закреплена за страницей: сохраняем у покидаемой, восстанавливаем у новой
+                fMemDatTable.updateDataPage((index == (fEmulatorLayer.getNumPages() - 1)) ? MainMemory.ROM_DISK : index);
             }
         });
 
         // Определяем обработчики кнопок
           findButton.addActionListener(actionEvent -> findData          ());
         selectButton.addActionListener(actionEvent -> selectAddressRange());
+          saveButton.addActionListener(actionEvent -> saveSelectedBlock ());
+          loadButton.addActionListener(actionEvent -> loadBlockFromFile ());
           gotoButton.addActionListener(actionEvent -> gotoAddress       ());
           toPCButton.addActionListener(actionEvent -> {
                   fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
@@ -793,9 +810,10 @@ public final class DebuggerCPU extends JDialog {
             @Override
             public void windowClosed(WindowEvent e) {
                 // Запоминаем номер страницы Data RAM
-                PrevStaticData.setPrevDataPage(fEmulatorLayer.getDataPage());
-                // Запоминаем адрес, выбранный в таблице данных памяти
-                PrevStaticData.setPrevDataAddress(fMemDatTable.getAddress());
+                PrevStaticData.setPrevDataPage      (fEmulatorLayer.getDataPage()      );
+                // Запоминаем выделенные диапазоны адресов по страницам памяти.
+                  fMemDatTable.savePageSelection    (fEmulatorLayer.getDataPage      ());
+                PrevStaticData.setPrevDataSelections(  fMemDatTable.getPageSelections());
                 // Запоминаем положение окна отладчика
                 PrevStaticData.setPrevLocation(getLocation());
                 // Запоминаем размеры фрейма в ini-файл
@@ -818,8 +836,10 @@ public final class DebuggerCPU extends JDialog {
             }
         }
 
-        // Устанавливаем курсор на адрес = fPrevDataAddress
-        fMemDatTable.gotoAddress(PrevStaticData.getPrevDataAddress());
+        // Восстанавливаем выделенные диапазоны адресов по страницам памяти
+        fMemDatTable.setPageSelections(PrevStaticData.getPrevDataSelections());
+        // Восстанавливаем выделенный диапазон адресов текущей страницы
+        fMemDatTable.restorePageSelection(fEmulatorLayer.getDataPage());
         // Устанавливаем курсор на адрес = PC в таблице fDisAsmTable
         fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
 
@@ -2679,6 +2699,9 @@ public final class DebuggerCPU extends JDialog {
         private static final long serialVersionUID = 9010843821123994652L;
 
         private final transient SelectionModelsContainer selectionModelsContainer;
+        // Выделения диапазонов адресов по страницам памяти: из пары элементов (2 * страница, 2 * страница + 1)
+        // содержит адрес начала и конца выделения, оба 0 = выделения нет (курсор на адрес 0x0000)
+        private final int[] fPageSelections = new int[2 * fEmulatorLayer.getNumPages()];
 
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         /**
@@ -2786,9 +2809,9 @@ public final class DebuggerCPU extends JDialog {
          */
         MemDatTable(TableModel dm) {
             super(dm);
-            // Создааем экземпляр SelectionModelsContainer
+            // Создаваем экземпляр SelectionModelsContainer
             this.selectionModelsContainer = new SelectionModelsContainer(MD_COL_B00, MD_COL_B15);
-            // Настариваем параметры отображения таблицы
+            // Настаиваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
             getTableHeader().setFont(HEADER_FONT);
             setSelectionBackground (Color.yellow);
@@ -2805,6 +2828,8 @@ public final class DebuggerCPU extends JDialog {
             columnModel.setSelectionModel(this.selectionModelsContainer.getColumnSelectionModel());
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new MemDatStringRenderer());
+            // Диапазоны адресов на страницах памяти еще не выделялись - заполняем все элементы 0
+            Arrays.fill(fPageSelections, 0);
             // Подключаемся к fEmulatorLayer для прослушивания
             fEmulatorLayer.addObserver(this);
         }
@@ -2866,11 +2891,85 @@ public final class DebuggerCPU extends JDialog {
          * @param startAddress адрес начала
          * @param endAddress   адрес конца
          */
-        void selectAddressRange(int startAddress, int endAddress) {
+        void selectAddressRange(final int startAddress, final int endAddress) {
             // Переходим к начальному адресу
             gotoAddress(startAddress);
             // Выделяем заданный диапазон адресов
             selectionModelsContainer.selectAddressRange(startAddress, endAddress);
+        }
+
+        /**
+         * Сохраняет текущий выделенный диапазон адресов за указанной страницей памяти.
+         *
+         * @param page номер страницы памяти
+         */
+        void savePageSelection(final int page) {
+            if ((page >= 0) && (page < fPageSelections.length / 2)) {
+                final int startAddress = getStartSelectedAddress();
+                final int   endAddress =   getEndSelectedAddress();
+                if ((startAddress != -1) && (endAddress != -1)) {
+                    fPageSelections[2 * page    ] = startAddress;
+                    fPageSelections[2 * page + 1] =   endAddress;
+                }
+            }
+        }
+
+        /**
+         * Сохраняет текущий выделенный диапазон адресов за текущей страницей памяти.
+         */
+        void syncSelectionToDataPage() {
+            savePageSelection(fEmulatorLayer.getDataPage());
+        }
+
+        /**
+         * Восстанавливает сохранённый диапазон адресов для указанной страницы памяти.
+         *
+         * @param page номер страницы памяти
+         */
+        void restorePageSelection(final int page) {
+            int startAddress = 0;
+            int   endAddress = 0;
+            if ((page >= 0) && (page < fPageSelections.length / 2)) {
+                startAddress = fPageSelections[2 * page    ];
+                  endAddress = fPageSelections[2 * page + 1];
+            }
+            selectAddressRange(startAddress, endAddress);
+        }
+
+        /**
+         * Сохраняет текущий выделенный диапазон адресов за страницей и показывает другую
+         * страницу памяти, восстанавливая её собственный выделенный диапазон адресов.
+         *
+         * @param page номер страницы памяти
+         */
+        void updateDataPage(final int page) {
+            // Сохраняем выделенный диапазон адресов за покидаемой страницей (до её смены в EmulatorLayer)
+            syncSelectionToDataPage   (    );
+            fEmulatorLayer.setDataPage(page);
+            // Восстанавливаем выделенный диапазон адресов новой страницы
+            restorePageSelection(fEmulatorLayer.getDataPage());
+        }
+
+        /**
+         * Возвращает массив с выделенными диапазонами адресов по страницам памяти.
+         * Пара элементов (2 * страница, 2 * страница + 1) содержит адрес начала
+         * и конца выделения, оба 0 = выделения нет.
+         *
+         * @return копия массива с выделенными диапазонами адресов по страницам памяти
+         */
+        int[] getPageSelections() {
+            return fPageSelections.clone();
+        }
+
+        /**
+         * Устанавливает выделенные диапазоны адресов по страницам памяти.
+         *
+         * @param selections массив с выделенными диапазонами адресов (пары "начало/конец" по номерам страниц)
+         */
+        void setPageSelections(final int[] selections) {
+            for (int i = 0; (selections != null) && (i < selections.length) && (i < fPageSelections.length); i++) {
+                fPageSelections[i] = selections[i];
+            }
         }
     }
     //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -2998,6 +3097,150 @@ public final class DebuggerCPU extends JDialog {
                 showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
             }
         }
+    }
+
+    /**
+     * Сохраняет выделенный в таблице просмотра данных диапазон адресов в файл.
+     * Данные берутся из страницы, выбранной в списке страниц данных, а не из активной страницы машины.
+     */
+    private void saveSelectedBlock() {
+        // Сохраняем выделенный диапазон адресов за текущей страницей, чтобы границы всегда относились к ней
+        fMemDatTable.syncSelectionToDataPage();
+        int startAddress = fMemDatTable.getStartSelectedAddress();
+        int   endAddress = fMemDatTable.  getEndSelectedAddress();
+        // Пустое выделение: ни одна строка с байтами не выделена; одна ячейка - тоже не диапазон
+        if ((startAddress == -1) || (endAddress == -1) || (startAddress == endAddress)) {
+            showMessageDialog(this,
+                    "Не выделен диапазон адресов в таблице просмотра данных.\n" +
+                             "Выделите его мышью или кнопкой \"Select\".",
+                    Constants.STR_ERROR, ERROR_MESSAGE);
+            return;
+        }
+        if (startAddress > endAddress) {
+            final int tmp = startAddress;
+            startAddress  =   endAddress;
+              endAddress  =          tmp;
+        }
+
+        final int page  = fEmulatorLayer.getDataPage() ;
+        final int total = endAddress - startAddress + 1;
+        final byte[] data = new byte[total];
+        for (int i = 0; i < total; i++) {
+            data[i] = (byte) fEmulatorLayer.debugReadByte(page, startAddress + i);
+        }
+
+        final JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle     (String.format("Сохранить в файл данные в диапазоне %04X-%04X из страницы \"%s\"",
+                startAddress, endAddress, fEmulatorLayer.getPageName(page)));
+        chooser.setCurrentDirectory(new File(Constants.getCurPath()));
+        chooser.setFileFilter      (new FileNameExtensionFilter("Файлы: *.bin", "bin"));
+        if (chooser.showSaveDialog (this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File file = chooser.getSelectedFile();
+        // Расширение по умолчанию дописывается, только если пользователь его не задал
+        if (file.getName().lastIndexOf('.') == -1) {
+            file = new File(file.getPath().concat(".bin"));
+        }
+        Constants.setCurPath(file.getParent());
+
+        try {
+            Files.write(file.toPath(), data);
+        } catch (IOException ex) {
+            showMessageDialog(this,
+                    String.format("Ошибка записи файла: \"%s\"%n%s", file.getPath(), ex.toString()),
+                    Constants.STR_ERROR, ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * Загружает выбранный файл в страницу просмотра данных, начиная с адреса под курсором в таблице данных.
+     * Данные пишутся в страницу, выбранную в списке страниц данных, а не в активную страницу машины.
+     */
+    private void loadBlockFromFile() {
+        final int page    = fEmulatorLayer.getDataPage();
+        final int address =   fMemDatTable.getAddress ();
+
+        // ROM-диск не перезаписывается: отказываем до показа файлового диалога
+        if (page >= (fEmulatorLayer.getNumPages() - 1)) {
+            showMessageDialog(this,
+                    String.format("Загрузка в страницу \"%s\" не поддерживается: ROM-диск не перезаписывается.",
+                            fEmulatorLayer.getPageName(page)),
+                    Constants.STR_ERROR, ERROR_MESSAGE);
+            return;
+        }
+
+        final JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle(String.format("Загрузка файла с адреса %04X в страницу \"%s\"",
+                address, fEmulatorLayer.getPageName(page)));
+        chooser.setCurrentDirectory(new File(Constants.getCurPath()));
+        if (chooser.showOpenDialog (this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        final File file = chooser.getSelectedFile();
+        Constants.setCurPath(file.getParent());
+
+        // Размер берётся у файловой системы до чтения: большой файл отбрасывается без выделения памяти
+        final long size;
+        byte[] data;
+        try {
+            if (!Files.isRegularFile(file.toPath())) {
+                showMessageDialog(this,
+                        String.format("Выбран не файл: \"%s\".", file.getPath()), Constants.STR_ERROR, ERROR_MESSAGE);
+                return;
+            }
+            size = Files.size(file.toPath());
+        } catch (IOException | SecurityException ex) {
+            showMessageDialog(this,
+                    String.format("Ошибка чтения файла: \"%s\"%n%s", file.getPath(), ex.toString()),
+                    Constants.STR_ERROR, ERROR_MESSAGE);
+            return;
+        }
+
+        final long endAddress = address + size - 1L;
+        // Адреса окна обмена страницами и портов устройств объясняем отдельным сообщением
+        final boolean hitDevices = (address < PAGE_END_ADDRESS) && (endAddress >= PAGE_END_ADDRESS);
+        if ((size > 0L) && (endAddress >= PAGE_END_ADDRESS)) {
+            if (hitDevices) {
+                showMessageDialog(this,
+                        String.format("Файл \"%s\" (%d байт) не загружен: адреса %04X-FFFF не являются "  +
+                                      "памятью страницы, там окно обмена страницами и порты устройств.%n" +
+                                      "Уменьшите размер файла, чтобы он заканчивался не позже адреса %04X.",
+                                file.getName(), size, PAGE_END_ADDRESS, PAGE_END_ADDRESS - 1),
+                        Constants.STR_ERROR, ERROR_MESSAGE);
+            } else {
+                showMessageDialog(this,
+                        String.format("Файл \"%s\" (%d байт) не помещается в страницу: "      +
+                                      "загрузка с адреса %04X заканчивается на адресе %08X, " +
+                                      "а последний допустимый адрес %04X.",
+                                file.getName(), size, address, endAddress, PAGE_END_ADDRESS - 1),
+                        Constants.STR_ERROR, ERROR_MESSAGE);
+            }
+            return;
+        }
+
+        try {
+            data = Files.readAllBytes(file.toPath());
+        } catch (IOException | OutOfMemoryError ex) {
+            showMessageDialog(this,
+                    String.format("Ошибка чтения файла: \"%s\"%n%s", file.getPath(), ex.toString()),
+                    Constants.STR_ERROR, ERROR_MESSAGE);
+            return;
+        }
+        // Файл мог измениться между запросом размера и чтением
+        if (data.length != size) {
+            showMessageDialog(this,
+                    String.format("Файл \"%s\" изменился во время чтения: ожидалось %d байт, прочитано %d.",
+                            file.getName(), size, data.length),
+                    Constants.STR_ERROR, ERROR_MESSAGE);
+            return;
+        }
+
+        fEmulatorLayer.writeBytes(page, address, data, 0, data.length);
+        // Обновляем таблицу данных, чтобы загруженные байты появились на экране
+        fMemDatTable.repaint();
     }
 
     /**
