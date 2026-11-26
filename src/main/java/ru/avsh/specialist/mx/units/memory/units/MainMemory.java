@@ -12,10 +12,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author -=AVSh=-
  */
 public final class MainMemory implements MemoryUnit {
-    private static final int STORAGE_SIZE     = 0xFFC0;
-    private static final int ROM_DISK_SIZE    = 0xC000;
-    private static final int MIN_NUMBER_PAGES =      2; // Минимальное  число страниц памяти: 0 - основная, 1   - RAM-диск (не считая ROM-диск)
-    private static final int MAX_NUMBER_PAGES =      9; // Максимальное число страниц памяти: 0 - основная, 1-8 - RAM-диск (не считая ROM-диск)
+    public static final int STORAGE_SIZE  = 0xFFC0;
+    public static final int ROM_DISK_SIZE = 0xC000;
+
+    private static final int MIN_NUMBER_PAGES = 2; // Минимальное  число страниц памяти: 0 - основная, 1   - RAM-диск (не считая ROM-диск)
+    private static final int MAX_NUMBER_PAGES = 9; // Максимальное число страниц памяти: 0 - основная, 1-8 - RAM-диск (не считая ROM-диск)
 
     // Номер ROM-диска для использования в методах getPage()/setPage()
     public static final int ROM_DISK = MAX_NUMBER_PAGES;

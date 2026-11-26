@@ -15,6 +15,10 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import org.jetbrains.annotations.NotNull;
+import ru.avsh.specialist.mx.cpm.CpmImageReader;
+import ru.avsh.specialist.mx.cpm.CpmImageWriter;
+import ru.avsh.specialist.mx.cpm.DiskProfile;
+import ru.avsh.specialist.mx.cpm.DiskProfileFactory;
 import ru.avsh.specialist.mx.gui.swing.BlockSaveDialog;
 import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
 import ru.avsh.specialist.mx.gui.swing.utils.SwingConfig;
@@ -29,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -58,6 +63,15 @@ public class SpMxApplication extends Application {
     private static final String NO_DISK  = "нет диска";
     private static final String ROM_PREF =  "[ROM] - ";
 
+    private static final String TITLE_INFO  = "Информация";
+    private static final String TITLE_ERROR = "Ошибка"    ;
+
+    private static final String STR_SAVE_FILE    = "Сохранить файл"   ;
+    private static final String ODI_DEFAULT_NAME = "specialist_mx.odi";
+
+    private static final String FILES_ODI_TEXT = "Файлы: *.odi";
+    private static final String FILES_ODI_MASK =        "*.odi";
+
     private final SpecialistMX fSpMX;
 
     /**
@@ -81,10 +95,14 @@ public class SpMxApplication extends Application {
         final      MenuItem  saveItem = new      MenuItem("Сохранить блок...");
         final      MenuItem resetItem = new      MenuItem("Сбросить");
         final      MenuItem  exitItem = new      MenuItem("Выход");
+        final      MenuItem convItem  = new      MenuItem("Конвертировать образ CP/M…");
+        final      MenuItem blankItem = new      MenuItem("Создать загрузочный образ CP/M…");
+        final      Menu       cpmMenu  = new      Menu    ("Образы CP/M", null, convItem, blankItem);
         final      Menu      fileMenu = new      Menu    ("Файл", null,
                                           openItem,
                 new SeparatorMenuItem(),   romItem,
                 new SeparatorMenuItem(), diskAItem, diskBItem,
+                new SeparatorMenuItem(),    cpmMenu,
                 new SeparatorMenuItem(),  saveItem,
                 new SeparatorMenuItem(), resetItem,
                 new SeparatorMenuItem(),  exitItem);
@@ -198,7 +216,7 @@ public class SpMxApplication extends Application {
             chooser.setTitle(STR_OPEN_FILE);
             chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
                     "Файлы: *.rom, *.mon, *.cpu, *.rks, *.odi",
-                    "*.rom", "*.mon", "*.cpu", "*.rks", "*.odi"));
+                    "*.rom", "*.mon", "*.cpu", "*.rks", FILES_ODI_MASK));
             chooser.setInitialDirectory(new File(getCurPath()));
 
             final File file = chooser.showOpenDialog(primaryStage);
@@ -266,6 +284,56 @@ public class SpMxApplication extends Application {
         // -= Вставка или извлечение диска "B" =-
         diskBItem.setOnAction(event -> diskInsertEject(true , null, (CheckMenuItem) event.getSource(), primaryStage));
 
+        // -= Конвертация образа CP/M диска в формат "Специалиста MX" =-
+        convItem.setOnAction(event -> {
+            final FileChooser chooser = new FileChooser();
+            chooser.setTitle(STR_OPEN_FILE);
+            // Маска по расширению здесь не годится: один и тот же линейный образ встречается под
+            // именами .img, .dsk и .odi, а формат определяется геометрией внутри файла. Поэтому
+            // показываем только те файлы, для которых у конвертера есть раскладка по размеру.
+            chooser.getExtensionFilters().addAll(
+                    new FileChooser.ExtensionFilter("Образы CP/M", "*.*"),
+                    new FileChooser.ExtensionFilter("Все файлы"  , "*.*"));
+            chooser.setSelectedExtensionFilter(chooser.getExtensionFilters().get(0));
+            chooser.setInitialDirectory(new File(getCurPath()));
+
+            final File source = chooser.showOpenDialog(primaryStage);
+            if (source == null) {
+                return;
+            }
+            setCurPath(source.getParent());
+
+            if (!isCpmImageSize(source)) {
+                return;
+            }
+
+            final FileChooser saveChooser = new FileChooser();
+            saveChooser.setTitle(STR_SAVE_FILE);
+            saveChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(FILES_ODI_TEXT, FILES_ODI_MASK));
+            saveChooser.setInitialDirectory(source.getParentFile());
+            saveChooser.setInitialFileName(ODI_DEFAULT_NAME);
+
+            final File target = saveChooser.showSaveDialog(primaryStage);
+            if (target != null) {
+                convertCpmImage(source, target);
+            }
+        });
+
+        // -= Создание пустого загрузочного образа CP/M =-
+        blankItem.setOnAction(event -> {
+            final FileChooser chooser = new FileChooser();
+            chooser.setTitle(STR_SAVE_FILE);
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(FILES_ODI_TEXT, FILES_ODI_MASK));
+            chooser.setInitialDirectory(new File(getCurPath()));
+            chooser.setInitialFileName(ODI_DEFAULT_NAME);
+
+            final File target = chooser.showSaveDialog(primaryStage);
+            if (target != null) {
+                setCurPath(target.getParent());
+                createBlankCpmImage(target);
+            }
+        });
+
         // -= Сохранение файла =-
         final EventHandler<ActionEvent> saveEventHandler = event -> {
             // Блокируем главное окно
@@ -324,7 +392,7 @@ public class SpMxApplication extends Application {
             // Выполняем мгновенный останов всех устройств
             fSpMX.pause(true , true);
             // Выводим информацию
-            showMessageDialog(ICON, "Информация", FONT_MONOSPACED, String.format("%s%n%s%n%n%s",
+            showMessageDialog(ICON, TITLE_INFO, FONT_MONOSPACED, String.format("%s%n%s%n%n%s",
                     fSpMX.getGen().toString(), fSpMX.getCPU().toString(), fSpMX.getRAM().toString()), INFORMATION);
             // Запускаем все устройства
             fSpMX.pause(false, true);
@@ -385,7 +453,7 @@ public class SpMxApplication extends Application {
                     //
                 }
             }
-            showMessageDialog(ICON, "Информация", null,
+            showMessageDialog(ICON, TITLE_INFO, null,
                     String.format("%s v%s%n%n%s", name, version, copyright), INFORMATION);
         });
 
@@ -490,7 +558,7 @@ public class SpMxApplication extends Application {
         if (file == null) {
             final FileChooser chooser = new FileChooser();
             chooser.setTitle(STR_OPEN_FILE);
-            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Файлы: *.odi", "*.odi"));
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(FILES_ODI_TEXT, FILES_ODI_MASK));
             chooser.setInitialDirectory(new File(getCurPath()));
 
             insert = (file = chooser.showOpenDialog(stage)) != null;
@@ -511,7 +579,7 @@ public class SpMxApplication extends Application {
                 targetMenuItem.setSelected(false);
                 targetMenuItem.setText(diskName.concat(NO_DISK));
 
-                showMessageDialog(ICON, "Ошибка", null,
+                showMessageDialog(ICON, TITLE_ERROR, null,
                         String.format("Ошибка вставки образа диска: %s%n%s", fileName, e.toString()), ERROR);
             }
         } else {
@@ -538,9 +606,80 @@ public class SpMxApplication extends Application {
             // Переключение процессора при открытом отладчике запрещено
             i8080Item.setSelected(!fSpMX.isZ80());
             z80Item.setSelected  ( fSpMX.isZ80());
-            showMessageDialog(ICON, "Информация", null,
+            showMessageDialog(ICON, TITLE_INFO, null,
                     "Переключение процессора недоступно при открытом отладчике.",
                     WARNING);
+        }
+    }
+
+    /**
+     * Проверяет, что выбранный файл — образ, раскладку которого конвертер знает, иначе показывает
+     * сообщение со списком поддерживаемых размеров.
+     *
+     * @param file выбранный файл
+     * @return true — файл можно конвертировать
+     */
+    private boolean isCpmImageSize(final @NotNull File file) {
+        try {
+            if (DiskProfileFactory.isKnownSize(file)) {
+                return true;
+            }
+
+            showMessageDialog(ICON, TITLE_ERROR, null, String.format(
+                    "Неизвестный размер образа диска: %s (%d байт)%n%nПоддерживаются образы размером:%n%s",
+                    file.getName(), file.length(), DiskProfileFactory.knownSizes()), ERROR);
+
+        } catch (IOException e) {
+            showMessageDialog(ICON, TITLE_ERROR, null,
+                    String.format("Не удалось прочитать файл: %s%n%s", file.getName(), e), ERROR);
+        }
+        return false;
+    }
+
+    /**
+     * Конвертирует образ CP/M с другого компьютера в образ «Специалиста MX» с загрузчиком и CP/M
+     * из ресурсов: файлы переносятся как есть, системная область берётся из ресурса.
+     *
+     * @param source исходный образ
+     * @param target файл, куда пишется результат
+     */
+    private void convertCpmImage(final @NotNull File source, final @NotNull File target) {
+        try {
+            final DiskProfile sourceProfile = DiskProfileFactory.detect(source);
+            final List<CpmImageReader.CpmFile> files =
+                    new CpmImageReader(source, sourceProfile).readAllFiles();
+
+            final CpmImageWriter writer = new CpmImageWriter(DiskProfile.SPECIALIST_MX_ODI_4SYS, true);
+            writer.writeFiles(files, true);
+            writer.saveTo    (target);
+
+            showMessageDialog(ICON, TITLE_INFO, null, String.format(
+                    "Образ сконвертирован: %s%n%nФормат источника: %s%nПеренесено файлов: %d%n%nФайл: %s",
+                    source.getName(), sourceProfile.getName(), files.size(), target.getPath()), INFORMATION);
+
+        } catch (IOException | RuntimeException e) {
+            showMessageDialog(ICON, TITLE_ERROR, null,
+                    String.format("Ошибка конвертации образа: %s%n%s", source.getName(), e), ERROR);
+        }
+    }
+
+    /**
+     * Создаёт пустой загрузочный образ «Специалиста MX»: загрузчик, BDOS и BIOS берутся из
+     * ресурсов проекта, остальное место на диске свободно.
+     *
+     * @param target файл, куда пишется образ
+     */
+    private void createBlankCpmImage(final @NotNull File target) {
+        try {
+            new CpmImageWriter(DiskProfile.SPECIALIST_MX_ODI_4SYS, true).saveTo(target);
+
+            showMessageDialog(ICON, TITLE_INFO, null, String.format(
+                    "Создан пустой загрузочный образ CP/M для \"%s\"%n%n%s",
+                    SPMX_NAME, target.getPath()), INFORMATION);
+
+        } catch (IOException | RuntimeException e) {
+            showMessageDialog(ICON, TITLE_ERROR, null,
+                    String.format("Ошибка создания образа: %n%s", e), ERROR);
         }
     }
 

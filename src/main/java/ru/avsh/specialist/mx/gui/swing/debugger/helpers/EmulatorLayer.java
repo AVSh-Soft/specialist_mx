@@ -7,6 +7,7 @@ import ru.avsh.specialist.mx.gui.swing.debugger.types.MemoryPageType;
 import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
+import ru.avsh.specialist.mx.units.memory.units.MainMemory;
 import ru.avsh.specialist.mx.units.types.CpuDebugCore;
 
 import java.util.Observable;
@@ -92,7 +93,7 @@ public class EmulatorLayer extends Observable {
      * @param checkDetail проверочные детали события (для null детали не важны)
      * @return true = событие необходимо обработать
      */
-    public boolean eventCheck(@NotNull final InnerEvent event, final EventType checkType, final Object checkDetail) {
+    public boolean eventCheck(final @NotNull InnerEvent event, final EventType checkType, final Object checkDetail) {
         if (event.getType() == checkType) {
             final Object detail = event.getDetail();
             return (detail == null) || (checkDetail == null) || detail.equals(checkDetail);
@@ -111,7 +112,7 @@ public class EmulatorLayer extends Observable {
         cpu.hold(false);
         // Отключаем режим "Пауза" для запоминающие устройств
         cpu.pauseMemoryUnits(false);
-        // Выполнем одну команду CPU
+        // Выполняем одну команду CPU
         final boolean result = fSpMX.getGen().execOneCmdCPU();
         // Включаем режим "Пауза" для запоминающие устройств
         cpu.pauseMemoryUnits(true);
@@ -354,6 +355,7 @@ public class EmulatorLayer extends Observable {
         return Constants.NUMBER_PAGES_RAMDISK + 2; // Основная память и ROM-диск не учтены в параметре NUMBER_PAGES_RAMDISK
     }
 
+
     /**
      * Возвращает имя страницы памяти.
      *
@@ -361,12 +363,25 @@ public class EmulatorLayer extends Observable {
      * @return имя страницы
      */
     public String getPageName(final int page) {
+        return getPageName(page, 0);
+    }
+
+    /**
+     * Возвращает имя страницы памяти.
+     * (Для страницы ROM-диска учитывает и текущий адрес обращения.
+     * Требуется для специальных методов, где нужна точная трактовка имени страницы.)
+     *
+     * @param page    номер страницы
+     * @param address адрес
+     * @return имя страницы
+     */
+    public String getPageName(final int page, final int address) {
         if (page == 0) {
             return "RAM";
         } else if ((page > 0) && (page < getNumPages() - 1)) {
             return String.format("RAM disk %d", page);
         } else {
-            return "ROM disk";
+            return (address < MainMemory.ROM_DISK_SIZE) ? "ROM disk" : "RAM";
         }
     }
 

@@ -36,6 +36,7 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.function.IntSupplier;
 import java.util.function.UnaryOperator;
 
 import static javax.swing.JOptionPane.*;
@@ -97,12 +98,6 @@ public final class DebuggerCPU extends JDialog {
     // Ширина и высота кнопки флага
     private static final int FLAG_BUTTON_WIDTH  = 17;
     private static final int FLAG_BUTTON_HEIGHT = 17;
-
-    // Первый адрес за пределами страницы RAM и RAM-диска (MainMemory.STORAGE_SIZE):
-    // дальше идёт окно обмена страницами и порты устройств
-    private static final int PAGE_END_ADDRESS     = 0xFFC0;
-    // Первый адрес за пределами ROM-диска (MainMemory.ROM_DISK_SIZE)
-    private static final int ROM_PAGE_END_ADDRESS = 0xC000;
 
     // Константы дизассемблера
     private static final int FOR_ALIGNMENT = 16; // Длина участка для выравнивания кода
@@ -204,7 +199,7 @@ public final class DebuggerCPU extends JDialog {
      * @param spMX ссылка на главный класс эмулятора
      * @return заголовок окна
      */
-    public static String getTitle(@NotNull final SpecialistMX spMX) {
+    public static String getTitle(final @NotNull SpecialistMX spMX) {
         return getTitle(spMX.isZ80());
     }
 
@@ -223,11 +218,10 @@ public final class DebuggerCPU extends JDialog {
         fFlags = fIsZ80 ? FLAGS_Z80 : FLAGS_I8080;
         fShowIndexRegisters = fIsZ80;
         // Инициализируем слой для взаимодействия с CPU и памятью
-        fEmulatorLayer = new EmulatorLayer(spMX);
+        fEmulatorLayer  = new EmulatorLayer(spMX);
         // Инициализируем модели и таблицы для просмотра кода и данных
-        fDisAsmTable   = new DisAsmTable(new DisAsmTableModel());
-        fMemDatTable   = new MemDatTable(new MemDatTableModel());
-
+        fDisAsmTable    = new DisAsmTable  (new DisAsmTableModel());
+        fMemDatTable    = new MemDatTable  (new MemDatTableModel());
         fFocusedAddress = -1;
         // Инициализируем остальные компоненты и обработчики событий
         initComponents();
@@ -788,9 +782,8 @@ public final class DebuggerCPU extends JDialog {
           loadButton.addActionListener(actionEvent -> loadBlockFromFile ());
           gotoButton.addActionListener(actionEvent -> gotoAddress       ());
           toPCButton.addActionListener(actionEvent -> {
-                  fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
-            fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
-
+            fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
+              fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
         });
          runButton.addActionListener(actionEvent -> runToCursor());
           okButton.addActionListener(actionEvent -> {
@@ -837,11 +830,11 @@ public final class DebuggerCPU extends JDialog {
         }
 
         // Восстанавливаем выделенные диапазоны адресов по страницам памяти
-        fMemDatTable.setPageSelections(PrevStaticData.getPrevDataSelections());
+        fMemDatTable.setPageSelections   (PrevStaticData.getPrevDataSelections());
         // Восстанавливаем выделенный диапазон адресов текущей страницы
         fMemDatTable.restorePageSelection(fEmulatorLayer.getDataPage());
         // Устанавливаем курсор на адрес = PC в таблице fDisAsmTable
-        fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
+        fDisAsmTable.gotoAddress         (fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
 
         final Point prevLocation = PrevStaticData.getPrevLocation();
         if ((prevLocation.getX() < 1.0D) && (prevLocation.getY() < 1.0D)) {
@@ -1108,7 +1101,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Class<?> getColumnClass(int columnIndex) {
+        public Class<?> getColumnClass(final int columnIndex) {
             final Object obj;
             if (   (columnIndex >= 0)
                 && (columnIndex <= getColumnCount())
@@ -1119,7 +1112,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public String getColumnName(int column) {
+        public String getColumnName(final int column) {
             switch (column) {
                 case DA_COL_TRP:
                     return "Л.";
@@ -1136,9 +1129,9 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
-            final int[] buf = getBuffer(rowIndex);
-            if (buf.length == fRecSize) {
+        public Object getValueAt(final int rowIndex, final int columnIndex) {
+            final int[] buf = getBuffer(   rowIndex);
+            if  (buf.length == fRecSize) {
                 switch (columnIndex) {
                     case DA_COL_TRP:
                         return fEmulatorLayer.isTrap(fEmulatorLayer.getCodePage(), rowIndex);
@@ -1148,8 +1141,8 @@ public final class DebuggerCPU extends JDialog {
                         return getDisAsmResult(buf).getText();
                     default:
                         if ((columnIndex >= DA_COL_BT0) && (columnIndex <= DA_COL_BT3)) {
-                            final int bt = buf[IND_CMD + columnIndex - DA_COL_BT0];
-                            return (bt >= 0) ? String.format("%02X", bt) : "";
+                            final int bt = buf[IND_CMD   +  columnIndex  - DA_COL_BT0];
+                            return   (bt >= 0) ? String.format("%02X", bt) : "";
                         }
                         return "";
                 }
@@ -1163,26 +1156,28 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public boolean isCellEditable(int rowIndex, int columnIndex) {
+        public boolean isCellEditable(final int rowIndex, final int columnIndex) {
             switch (columnIndex) {
                 case DA_COL_TRP:
-                    return true;
+                    return true ;
                 case DA_COL_ADR:
                 case DA_COL_CMD:
                     return false;
                 default:
-                    return ((columnIndex >= DA_COL_BT0) && (columnIndex <= DA_COL_BT3))
-                           ? ((String) getValueAt(rowIndex, columnIndex)).length() > 0
-                           : super.isCellEditable(rowIndex, columnIndex);
+                    return (   (columnIndex >= DA_COL_BT0)
+                            && (columnIndex <= DA_COL_BT3)
+                            && isEditable(fEmulatorLayer.getCodePage(), () -> getBuffer(rowIndex)[IND_ADR]))
+                           ? !((String) getValueAt(rowIndex, columnIndex)).isEmpty()
+                           :  super.isCellEditable(rowIndex, columnIndex);
             }
         }
 
         @Override
-        public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-            int page = fEmulatorLayer.getCodePage();
+        public void setValueAt(final Object aValue, final int rowIndex, final int columnIndex) {
+            final int page = fEmulatorLayer.getCodePage();
             switch (columnIndex) {
                 case DA_COL_TRP:
-                    if ((Boolean) aValue) {
+                    if (Boolean.TRUE.equals(aValue)) {
                         fEmulatorLayer.addTrap(page, rowIndex, false);
                     } else {
                         fEmulatorLayer.remTrap(page, rowIndex);
@@ -1229,12 +1224,12 @@ public final class DebuggerCPU extends JDialog {
             }
 
             @Override
-            public Component getTableCellRendererComponent(JTable  table,
-                                                           Object  value,
-                                                           boolean isSelected,
-                                                           boolean hasFocus  ,
-                                                           int     row,
-                                                           int     column) {
+            public Component getTableCellRendererComponent(final JTable  table,
+                                                           final Object  value,
+                                                           final boolean isSelected,
+                                                           final boolean hasFocus  ,
+                                                           final int     row       ,
+                                                           final int     column) {
                 if (table == null) {
                     return this;
                 }
@@ -1284,12 +1279,12 @@ public final class DebuggerCPU extends JDialog {
             private static final long serialVersionUID = 1263217420662494640L;
 
             @Override
-            public Component getTableCellRendererComponent(JTable  table,
-                                                           Object  value,
-                                                           boolean isSelected,
-                                                           boolean hasFocus  ,
-                                                           int     row,
-                                                           int     column) {
+            public Component getTableCellRendererComponent(final JTable  table,
+                                                           final Object  value,
+                                                           final boolean isSelected,
+                                                           final boolean hasFocus  ,
+                                                           final int     row       ,
+                                                           final int     column) {
 
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (table == null) {
@@ -1394,7 +1389,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void update(Observable o, Object arg) {
+        public void update(final Observable o, final Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (   fEmulatorLayer.eventCheck(event, EventType.MEMORY  , fEmulatorLayer.getCodePage())
                 || fEmulatorLayer.eventCheck(event, EventType.PAGE    , MemoryPageType.CODE )
@@ -1451,7 +1446,7 @@ public final class DebuggerCPU extends JDialog {
          */
         private class FlagsRegLabelUI extends BasicLabelUI {
             @Override
-            protected void paintEnabledText(JLabel l, Graphics g, String s, int textX, int textY) {
+            protected void paintEnabledText(final JLabel l, final Graphics g, final String s, int textX, final int textY) {
                 if (!s.isEmpty()) {
                     final int y      = l.getY();
                     final int height = l.getHeight();
@@ -1498,7 +1493,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void update(Observable o, Object arg) {
+        public void update(final Observable o, final Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (   fEmulatorLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.AF)
                 || fEmulatorLayer.eventCheck(event, EventType.STEP    , null)) {
@@ -1532,7 +1527,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Class<?> getColumnClass(int columnIndex) {
+        public Class<?> getColumnClass(final int columnIndex) {
             final Object obj;
             if (   (columnIndex >= 0)
                 && (columnIndex <= getColumnCount())
@@ -1543,7 +1538,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public String getColumnName(int column) {
+        public String getColumnName(final int column) {
             switch (column) {
                 case CR_COL_REG:
                     return "РП";
@@ -1557,7 +1552,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
+        public Object getValueAt(final int rowIndex, final int columnIndex) {
             final DebugRegPair regPair = DebugRegPair.getByRowIndex(rowIndex, fIsZ80, fShowIndexRegisters);
             if (regPair == null) {
                 return null;
@@ -1575,7 +1570,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public boolean isCellEditable(int rowIndex, int columnIndex) {
+        public boolean isCellEditable(final int rowIndex, final int columnIndex) {
             switch (columnIndex) {
                 case CR_COL_REG:
                 case CR_COL_EQU:
@@ -1588,7 +1583,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+        public void setValueAt(final Object aValue, final int rowIndex, final int columnIndex) {
             if (columnIndex == CR_COL_DAT) {
                 final DebugRegPair regPair = DebugRegPair.getByRowIndex(rowIndex, fIsZ80, fShowIndexRegisters);
                 if (regPair == null) {
@@ -1633,7 +1628,7 @@ public final class DebuggerCPU extends JDialog {
              */
             private class MultiColorLabelUI extends BasicLabelUI {
                 @Override
-                protected void paintEnabledText(JLabel l, Graphics g, String s, int textX, int textY) {
+                protected void paintEnabledText(final JLabel l, final Graphics g, String s, int textX, final int textY) {
                     if (!s.isEmpty()) {
                         final int index = l.getDisplayedMnemonicIndex();
                             Color color = (fCompareResult <= 0) ? l.getForeground() : Color.red;
@@ -1663,12 +1658,13 @@ public final class DebuggerCPU extends JDialog {
             }
 
             @Override
-            public Component getTableCellRendererComponent(JTable  table,
-                                                           Object  value,
-                                                           boolean isSelected,
-                                                           boolean hasFocus  ,
-                                                           int     row,
-                                                           int     column) {
+            public Component getTableCellRendererComponent(final JTable  table,
+                                                           final Object  value,
+                                                           final boolean isSelected,
+                                                           final boolean hasFocus  ,
+                                                           final int     row       ,
+                                                           final int     column) {
+
                 super.setHorizontalAlignment(CENTER);
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (table == null) {
@@ -1676,7 +1672,7 @@ public final class DebuggerCPU extends JDialog {
                 }
                 fPaintColumn   =  table.convertColumnIndexToModel(column);
                 final DebugRegPair regPair = DebugRegPair.getByRowIndex(table.convertRowIndexToModel(row), fIsZ80, fShowIndexRegisters);
-                fCompareResult = (regPair != null) ? fEmulatorLayer.getChangesRegPair(regPair) : -1;
+                fCompareResult =  (regPair != null) ? fEmulatorLayer.getChangesRegPair(regPair) : -1;
 
                 if (fCompareResult >= 0) {
                     setBackground(table.getSelectionBackground());
@@ -1701,7 +1697,7 @@ public final class DebuggerCPU extends JDialog {
                 }
 
                 setValue(value);
-                return this;
+                return   this  ;
             }
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1713,14 +1709,11 @@ public final class DebuggerCPU extends JDialog {
             super(dm);
             // Настраиваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
-            getTableHeader().setFont(HEADER_FONT);
-            setSelectionBackground (Color.yellow);
+            getTableHeader().setFont(HEADER_FONT );
+            setSelectionBackground  (Color.yellow);
             getColumnModel().getColumn(CR_COL_REG).setMaxWidth(28);
             getColumnModel().getColumn(CR_COL_EQU).setMaxWidth(19);
             getColumnModel().getColumn(CR_COL_DAT).setMaxWidth(40);
-/*            // Высота таблицы задаётся по числу строк: таблица выводится без скроллера
-            setPreferredScrollableViewportSize(new Dimension(getPreferredSize().width,
-                                                             getRowHeight() * CR_NUM_ROWS + getRowMargin()));*/
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
             setDefaultRenderer(String.class, new RegCpuStringRenderer());
@@ -1729,7 +1722,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void update(Observable o, Object arg) {
+        public void update(final Observable o, final Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (   fEmulatorLayer.eventCheck(event, EventType.REG_PAIR, null)
                 || fEmulatorLayer.eventCheck(event, EventType.STEP    , null)) {
@@ -1762,7 +1755,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Class<?> getColumnClass(int columnIndex) {
+        public Class<?> getColumnClass(final int columnIndex) {
             final Object obj;
             if (   (columnIndex >= 0)
                 && (columnIndex <= getColumnCount())
@@ -1773,7 +1766,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public String getColumnName(int column) {
+        public String getColumnName(final int column) {
             if (column == SP_COL_DAT) {
                 return "(SP)";
             }
@@ -1781,7 +1774,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
+        public Object getValueAt(final int rowIndex, final int columnIndex) {
             if (columnIndex == SP_COL_DAT) {
                 final int page    = fEmulatorLayer.getCpuPage();
                 final int address = fEmulatorLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
@@ -1792,12 +1785,12 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public boolean isCellEditable(int rowIndex, int columnIndex) {
+        public boolean isCellEditable(final int rowIndex, final int columnIndex) {
             return (columnIndex == SP_COL_DAT) || super.isCellEditable(rowIndex, columnIndex);
         }
 
         @Override
-        public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+        public void setValueAt(final Object aValue, final int rowIndex, final int columnIndex) {
             if (columnIndex == SP_COL_DAT) {
                 final int page    = fEmulatorLayer.getCpuPage();
                 final int address = fEmulatorLayer.getValRegPair(DebugRegPair.SP) + (rowIndex << 1);
@@ -1834,12 +1827,13 @@ public final class DebuggerCPU extends JDialog {
             private static final long serialVersionUID = 2680876900372610398L;
 
             @Override
-            public Component getTableCellRendererComponent(JTable  table,
-                                                           Object  value,
-                                                           boolean isSelected,
-                                                           boolean hasFocus  ,
-                                                           int     row,
-                                                           int     column) {
+            public Component getTableCellRendererComponent(final JTable  table,
+                                                           final Object  value,
+                                                           final boolean isSelected,
+                                                           final boolean hasFocus  ,
+                                                           final int     row       ,
+                                                           final int     column) {
+
                 super.setHorizontalAlignment(CENTER);
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
@@ -1874,8 +1868,8 @@ public final class DebuggerCPU extends JDialog {
             super(dm);
             // Настаиваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
-            getTableHeader().setFont(HEADER_FONT);
-            setSelectionBackground (Color.yellow);
+            getTableHeader().setFont(HEADER_FONT );
+            setSelectionBackground  (Color.yellow);
             getColumnModel().getColumn(SP_COL_DAT).setMaxWidth(40);
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
             // Подключаем рисовальщика полей
@@ -1885,7 +1879,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void update(Observable o, Object arg) {
+        public void update(final Observable o, final Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (   fEmulatorLayer.eventCheck(event, EventType.REG_PAIR, DebugRegPair.SP)
                 || fEmulatorLayer.eventCheck(event, EventType.MEMORY  , fEmulatorLayer.getCpuPage())
@@ -1920,7 +1914,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Class<?> getColumnClass(int columnIndex) {
+        public Class<?> getColumnClass(final int columnIndex) {
             final Object obj;
             if (   (columnIndex >= 0)
                 && (columnIndex <= getColumnCount())
@@ -1931,7 +1925,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public String getColumnName(int column) {
+        public String getColumnName(final int column) {
             switch (column) {
                 case TP_COL_PAG:
                     return "Страница";
@@ -1943,7 +1937,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
+        public Object getValueAt(final int rowIndex, final int columnIndex) {
             final Trap trap = fEmulatorLayer.getTrap(rowIndex);
             switch (columnIndex) {
                 case TP_COL_PAG:
@@ -1970,12 +1964,12 @@ public final class DebuggerCPU extends JDialog {
             private static final long serialVersionUID = -7287183392747810798L;
 
             @Override
-            public Component getTableCellRendererComponent(JTable  table,
-                                                           Object  value,
-                                                           boolean isSelected,
-                                                           boolean hasFocus  ,
-                                                           int     row,
-                                                           int     column) {
+            public Component getTableCellRendererComponent(final JTable  table,
+                                                           final Object  value,
+                                                           final boolean isSelected,
+                                                           final boolean hasFocus  ,
+                                                           final int     row       ,
+                                                           final int     column) {
 
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (table == null) {
@@ -2013,10 +2007,10 @@ public final class DebuggerCPU extends JDialog {
          */
         TrapsTable(TableModel dm) {
             super(dm);
-            // Настариваем параметры отображения таблицы
+            // Настаиваем параметры отображения таблицы
             setFont(DEFAULT_FONT);
-            getTableHeader().setFont(HEADER_FONT);
-            setSelectionBackground (Color.yellow);
+            getTableHeader().setFont(HEADER_FONT );
+            setSelectionBackground  (Color.yellow);
             getColumnModel().getColumn(TP_COL_PAG).setMaxWidth(94);
             getColumnModel().getColumn(TP_COL_ADR).setMaxWidth(46);
             setSelectionMode(ListSelectionModel.SINGLE_SELECTION );
@@ -2027,7 +2021,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void update(Observable o, Object arg) {
+        public void update(final Observable o, final Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (fEmulatorLayer.eventCheck(event, EventType.TRAPS, null)) {
                 // Обновляем данные в таблице
@@ -2053,7 +2047,7 @@ public final class DebuggerCPU extends JDialog {
          */
         CpuMemPageLabel() {
             super();
-            // Настариваем параметры отображения метки
+            // Настаиваем параметры отображения метки
             setOpaque(true);
             setFont(DEFAULT_FONT);
             setBorder(FOCUS_BORDER);
@@ -2073,7 +2067,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void update(Observable o, Object arg) {
+        public void update(final Observable o, final Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (   fEmulatorLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CPU)
                 || fEmulatorLayer.eventCheck(event, EventType.STEP, null)) {
@@ -2093,7 +2087,7 @@ public final class DebuggerCPU extends JDialog {
          */
         CodeMemPagesComboBox() {
             super();
-            // Настариваем параметры отображения метки
+            // Настаиваем параметры отображения метки
             setFont(DEFAULT_FONT);
             setMinimumSize(new Dimension(50, 17));
             // Добавляем элементы списка
@@ -2108,7 +2102,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void update(Observable o, Object arg) {
+        public void update(final Observable o, final Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (   fEmulatorLayer.eventCheck(event, EventType.PAGE, MemoryPageType.CODE)
                 || fEmulatorLayer.eventCheck(event, EventType.STEP, null)) {
@@ -2132,7 +2126,7 @@ public final class DebuggerCPU extends JDialog {
          */
         DataMemPagesComboBox() {
             super();
-            // Настариваем параметры отображения списка
+            // Настаиваем параметры отображения списка
             setFont(DEFAULT_FONT);
             setMinimumSize(new Dimension(50, 17));
             // Добавляем элементы списка
@@ -2147,7 +2141,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void update(Observable o, Object arg) {
+        public void update(final Observable o, final Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (fEmulatorLayer.eventCheck(event, EventType.PAGE, MemoryPageType.DATA)) {
                 final int index = (fEmulatorLayer.getDataPage() >= MainMemory.ROM_DISK) ?
@@ -2179,7 +2173,7 @@ public final class DebuggerCPU extends JDialog {
         private int currentColumnSelectionIndex0 = -1;
         private int currentColumnSelectionIndex1 = -1;
 
-        SelectionModelsContainer(int columnMinIndex, int columnMaxIndex) {
+        SelectionModelsContainer(final int columnMinIndex, final int columnMaxIndex) {
             this.columnMinIndex = columnMinIndex;
             this.columnMaxIndex = columnMaxIndex;
 
@@ -2273,7 +2267,7 @@ public final class DebuggerCPU extends JDialog {
             private static final long serialVersionUID = 3849612944826298882L;
 
             @Override
-            public boolean isSelectedIndex(int index) {
+            public boolean isSelectedIndex(final int index) {
                 boolean result = super.isSelectedIndex(index);
                 if (result) {
                     int rowMinSelIndex = this.getMinSelectionIndex();
@@ -2309,7 +2303,7 @@ public final class DebuggerCPU extends JDialog {
             }
 
             @Override
-            public void setSelectionInterval(int index0, int index1) {
+            public void setSelectionInterval(final int index0, final int index1) {
                 final boolean isManyRows = super.getMinSelectionIndex() != super.getMaxSelectionIndex();
                 super.setSelectionInterval(index0, index1);
 
@@ -2389,21 +2383,21 @@ public final class DebuggerCPU extends JDialog {
             }
 
             @Override
-            public void setAnchorSelectionIndex(int index) {
+            public void setAnchorSelectionIndex(final int index) {
                 if (!currentColumnSelectionModel.equals(columnSelectionModelMiddle)) {
                      currentColumnSelectionModel.setAnchorSelectionIndex(index);
                 }
             }
 
             @Override
-            public void setLeadSelectionIndex(int index) {
+            public void setLeadSelectionIndex(final int index) {
                 if (!currentColumnSelectionModel.equals(columnSelectionModelMiddle)) {
                      currentColumnSelectionModel.setLeadSelectionIndex(index);
                 }
             }
 
             @Override
-            public void addSelectionInterval(int index0, int index1) {
+            public void addSelectionInterval(final int index0, final int index1) {
                 // Тут так можно, для правильной работы gotoTableCell()
                 currentColumnSelectionIndex0 = index0;
                 currentColumnSelectionIndex1 = index1;
@@ -2411,21 +2405,21 @@ public final class DebuggerCPU extends JDialog {
             }
 
             @Override
-            public void removeSelectionInterval(int index0, int index1) {
+            public void removeSelectionInterval(final int index0, final int index1) {
                 if (!currentColumnSelectionModel.equals(columnSelectionModelMiddle)) {
                      currentColumnSelectionModel.removeSelectionInterval(index0, index1);
                 }
             }
 
             @Override
-            public void insertIndexInterval(int index, int length, boolean before) {
+            public void insertIndexInterval(final int index, final int length, final boolean before) {
                 if (!currentColumnSelectionModel.equals(columnSelectionModelMiddle)) {
                      currentColumnSelectionModel.insertIndexInterval(index, length, before);
                 }
             }
 
             @Override
-            public void removeIndexInterval(int index0, int index1) {
+            public void removeIndexInterval(final int index0, final int index1) {
                 if (!currentColumnSelectionModel.equals(columnSelectionModelMiddle)) {
                      currentColumnSelectionModel.removeIndexInterval(index0, index1);
                 }
@@ -2474,7 +2468,7 @@ public final class DebuggerCPU extends JDialog {
             }
 
             @Override
-            public void setValueIsAdjusting(boolean valueIsAdjusting) {
+            public void setValueIsAdjusting(final boolean valueIsAdjusting) {
                 columnSelectionModelTop   .setValueIsAdjusting(valueIsAdjusting);
                 columnSelectionModelMiddle.setValueIsAdjusting(valueIsAdjusting);
                 columnSelectionModelBottom.setValueIsAdjusting(valueIsAdjusting);
@@ -2496,15 +2490,15 @@ public final class DebuggerCPU extends JDialog {
             }
 
             @Override
-            public void addListSelectionListener(ListSelectionListener x) {
-                columnSelectionModelTop   .addListSelectionListener   (x);
-                columnSelectionModelBottom.addListSelectionListener   (x);
+            public void addListSelectionListener(final ListSelectionListener x) {
+                columnSelectionModelTop   .addListSelectionListener(x);
+                columnSelectionModelBottom.addListSelectionListener(x);
             }
 
             @Override
-            public void removeListSelectionListener(ListSelectionListener x) {
-                columnSelectionModelTop   .removeListSelectionListener   (x);
-                columnSelectionModelBottom.removeListSelectionListener   (x);
+            public void removeListSelectionListener(final ListSelectionListener x) {
+                columnSelectionModelTop   .removeListSelectionListener(x);
+                columnSelectionModelBottom.removeListSelectionListener(x);
             }
         }
     }
@@ -2533,7 +2527,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Class<?> getColumnClass(int columnIndex) {
+        public Class<?> getColumnClass(final int columnIndex) {
             final Object obj;
             if (   (columnIndex >= 0)
                 && (columnIndex <= getColumnCount())
@@ -2544,7 +2538,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public String getColumnName(int column) {
+        public String getColumnName(final int column) {
             switch (column) {
                 case MD_COL_ADR:
                     return STR_ADDRESS;
@@ -2573,7 +2567,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
+        public Object getValueAt(final int rowIndex, final int columnIndex) {
             final int page = fEmulatorLayer.getDataPage();
             switch (columnIndex) {
                 case MD_COL_ADR:
@@ -2608,7 +2602,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public boolean isCellEditable(int rowIndex, int columnIndex) {
+        public boolean isCellEditable(final int rowIndex, final int columnIndex) {
             switch (columnIndex) {
                 case MD_COL_ADR:
                     return false;
@@ -2629,14 +2623,14 @@ public final class DebuggerCPU extends JDialog {
                 case MD_COL_B14:
                 case MD_COL_B15:
                 case MD_COL_STR:
-                    return true;
+                    return isEditable(fEmulatorLayer.getDataPage(), () -> rowIndex << 4);
                 default:
                     return super.isCellEditable(rowIndex, columnIndex);
             }
         }
 
         @Override
-        public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+        public void setValueAt(final Object aValue, final int rowIndex, final int columnIndex) {
             final int page = fEmulatorLayer.getDataPage();
             switch (columnIndex) {
                 //case MD_COL_ADR:
@@ -2722,7 +2716,7 @@ public final class DebuggerCPU extends JDialog {
              */
             private class MultiColorLabelUI extends BasicLabelUI {
                 @Override
-                protected void paintEnabledText(JLabel l, Graphics g, String s, int textX, int textY) {
+                protected void paintEnabledText(final JLabel l, final Graphics g, final String s, int textX, final int textY) {
                     if (!s.isEmpty()) {
                         final Color foreground = l.getForeground();
                         final int   index      = l.getDisplayedMnemonicIndex();
@@ -2763,12 +2757,13 @@ public final class DebuggerCPU extends JDialog {
             }
 
             @Override
-            public Component getTableCellRendererComponent(JTable  table,
-                                                           Object  value,
-                                                           boolean isSelected,
-                                                           boolean hasFocus  ,
-                                                           int     row,
-                                                           int     column) {
+            public Component getTableCellRendererComponent(final JTable  table,
+                                                           final Object  value,
+                                                           final boolean isSelected,
+                                                           final boolean hasFocus  ,
+                                                           final int     row       ,
+                                                           final int     column) {
+
                 super.setHorizontalAlignment(CENTER);
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
@@ -2776,7 +2771,7 @@ public final class DebuggerCPU extends JDialog {
                     return this;
                 }
 
-                fPaintRow    = table.convertRowIndexToModel(row);
+                fPaintRow    = table.convertRowIndexToModel   (row   );
                 fPaintColumn = table.convertColumnIndexToModel(column);
 
                 if (isSelected) {
@@ -2835,7 +2830,7 @@ public final class DebuggerCPU extends JDialog {
         }
 
         @Override
-        public void update(Observable o, Object arg) {
+        public void update(final Observable o, final Object arg) {
             final InnerEvent event = (InnerEvent) arg;
             if (   fEmulatorLayer.eventCheck(event, EventType.MEMORY, fEmulatorLayer.getDataPage())
                 || fEmulatorLayer.eventCheck(event, EventType.PAGE  , MemoryPageType.DATA)
@@ -2999,7 +2994,7 @@ public final class DebuggerCPU extends JDialog {
      * @param column колонка (в формате просмотра)
      * @param setFocus true = установить фокус на таблице
      */
-    private void gotoTableCell(final JTable table, int row, int column, boolean setFocus) {
+    private void gotoTableCell(final JTable table, final int row, final int column, final boolean setFocus) {
         // Выделяем необходимую строку и колонку в таблице
         table.clearSelection();
         table.addRowSelectionInterval   (row   , row   );
@@ -3087,14 +3082,14 @@ public final class DebuggerCPU extends JDialog {
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         final InputAddressPanel inputAddressPanel = new InputAddressPanel();
-        int result =  showConfirmDialog(DebuggerCPU.this, inputAddressPanel, "Select block ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
+        int result =  showConfirmDialog(this, inputAddressPanel, "Select block ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
         if (result == OK_OPTION) {
             try {
                 fMemDatTable.selectAddressRange(
                         Integer.parseInt((String) inputAddressPanel.fStartAddress.getValue(), 16),
                         Integer.parseInt((String) inputAddressPanel.  fEndAddress.getValue(), 16));
             } catch (NumberFormatException e) {
-                showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
             }
         }
     }
@@ -3131,7 +3126,7 @@ public final class DebuggerCPU extends JDialog {
 
         final JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle     (String.format("Сохранить в файл данные в диапазоне %04X-%04X из страницы \"%s\"",
-                startAddress, endAddress, fEmulatorLayer.getPageName(page)));
+                startAddress, endAddress, fEmulatorLayer.getPageName(page, startAddress)));
         chooser.setCurrentDirectory(new File(Constants.getCurPath()));
         chooser.setFileFilter      (new FileNameExtensionFilter("Файлы: *.bin", "bin"));
         if (chooser.showSaveDialog (this) != JFileChooser.APPROVE_OPTION) {
@@ -3149,7 +3144,7 @@ public final class DebuggerCPU extends JDialog {
             Files.write(file.toPath(), data);
         } catch (IOException ex) {
             showMessageDialog(this,
-                    String.format("Ошибка записи файла: \"%s\"%n%s", file.getPath(), ex.toString()),
+                    String.format("Ошибка записи файла: \"%s\"%n%s", file.getPath(), ex),
                     Constants.STR_ERROR, ERROR_MESSAGE);
         }
     }
@@ -3163,7 +3158,7 @@ public final class DebuggerCPU extends JDialog {
         final int address =   fMemDatTable.getAddress ();
 
         // ROM-диск не перезаписывается: отказываем до показа файлового диалога
-        if (page >= (fEmulatorLayer.getNumPages() - 1)) {
+        if ((page >= (fEmulatorLayer.getNumPages() - 1)) && (address < MainMemory.ROM_DISK_SIZE)) {
             showMessageDialog(this,
                     String.format("Загрузка в страницу \"%s\" не поддерживается: ROM-диск не перезаписывается.",
                             fEmulatorLayer.getPageName(page)),
@@ -3172,19 +3167,18 @@ public final class DebuggerCPU extends JDialog {
         }
 
         final JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle(String.format("Загрузка файла с адреса %04X в страницу \"%s\"",
-                address, fEmulatorLayer.getPageName(page)));
+        chooser.setDialogTitle(String.format(
+                "Загрузка файла с адреса %04X в страницу \"%s\"", address, fEmulatorLayer.getPageName(page, address)));
         chooser.setCurrentDirectory(new File(Constants.getCurPath()));
         if (chooser.showOpenDialog (this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
 
-        final File file = chooser.getSelectedFile();
-        Constants.setCurPath(file.getParent());
+        final File file = chooser.getSelectedFile() ;
+              Constants.setCurPath(file.getParent());
 
         // Размер берётся у файловой системы до чтения: большой файл отбрасывается без выделения памяти
         final long size;
-        byte[] data;
         try {
             if (!Files.isRegularFile(file.toPath())) {
                 showMessageDialog(this,
@@ -3194,41 +3188,32 @@ public final class DebuggerCPU extends JDialog {
             size = Files.size(file.toPath());
         } catch (IOException | SecurityException ex) {
             showMessageDialog(this,
-                    String.format("Ошибка чтения файла: \"%s\"%n%s", file.getPath(), ex.toString()),
+                    String.format("Ошибка чтения файла: \"%s\"%n%s", file.getPath(), ex),
                     Constants.STR_ERROR, ERROR_MESSAGE);
             return;
         }
 
         final long endAddress = address + size - 1L;
-        // Адреса окна обмена страницами и портов устройств объясняем отдельным сообщением
-        final boolean hitDevices = (address < PAGE_END_ADDRESS) && (endAddress >= PAGE_END_ADDRESS);
-        if ((size > 0L) && (endAddress >= PAGE_END_ADDRESS)) {
-            if (hitDevices) {
-                showMessageDialog(this,
-                        String.format("Файл \"%s\" (%d байт) не загружен: адреса %04X-FFFF не являются "  +
-                                      "памятью страницы, там окно обмена страницами и порты устройств.%n" +
-                                      "Уменьшите размер файла, чтобы он заканчивался не позже адреса %04X.",
-                                file.getName(), size, PAGE_END_ADDRESS, PAGE_END_ADDRESS - 1),
-                        Constants.STR_ERROR, ERROR_MESSAGE);
-            } else {
-                showMessageDialog(this,
-                        String.format("Файл \"%s\" (%d байт) не помещается в страницу: "      +
-                                      "загрузка с адреса %04X заканчивается на адресе %08X, " +
-                                      "а последний допустимый адрес %04X.",
-                                file.getName(), size, address, endAddress, PAGE_END_ADDRESS - 1),
-                        Constants.STR_ERROR, ERROR_MESSAGE);
-            }
+        if ((size > 0L) && (endAddress >= MainMemory.STORAGE_SIZE)) {
+            showMessageDialog(this,
+                    String.format("Файл \"%s\" (%d байт) не помещается в страницу: "      +
+                                  "загрузка с адреса %04X заканчивается на адресе %08X, " +
+                                  "а последний допустимый адрес %04X.",
+                            file.getName(), size, address, endAddress, MainMemory.STORAGE_SIZE - 1),
+                    Constants.STR_ERROR, ERROR_MESSAGE);
             return;
         }
 
+        final byte[] data;
         try {
             data = Files.readAllBytes(file.toPath());
         } catch (IOException | OutOfMemoryError ex) {
             showMessageDialog(this,
-                    String.format("Ошибка чтения файла: \"%s\"%n%s", file.getPath(), ex.toString()),
+                    String.format("Ошибка чтения файла: \"%s\"%n%s", file.getPath(), ex),
                     Constants.STR_ERROR, ERROR_MESSAGE);
             return;
         }
+
         // Файл мог измениться между запросом размера и чтением
         if (data.length != size) {
             showMessageDialog(this,
@@ -3240,7 +3225,7 @@ public final class DebuggerCPU extends JDialog {
 
         fEmulatorLayer.writeBytes(page, address, data, 0, data.length);
         // Обновляем таблицу данных, чтобы загруженные байты появились на экране
-        fMemDatTable.repaint();
+          fMemDatTable.repaint();
     }
 
     /**
@@ -3317,7 +3302,7 @@ public final class DebuggerCPU extends JDialog {
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         final InputAddressPanel inputAddressPanel = new InputAddressPanel();
-        int result =  showConfirmDialog(DebuggerCPU.this, inputAddressPanel, "Go to ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
+        final int result =  showConfirmDialog(this, inputAddressPanel, "Go to ...", OK_CANCEL_OPTION, QUESTION_MESSAGE);
         if (result == OK_OPTION) {
             int codeAddress = inputAddressPanel.getAddress(false);
             int dataAddress = inputAddressPanel.getAddress(true );
@@ -3345,11 +3330,11 @@ public final class DebuggerCPU extends JDialog {
             private final JTextField fBytes;
             private final JTextField fChars;
 
-            // Функция - преобразует строку из байт в строку из символов.
+            // Функция - преобразует строку из байтов в строку из символов.
             private final transient UnaryOperator<String> bytesToChars = strBytes -> {
                     strBytes = strBytes.trim();
                 if (strBytes.matches(REGEXP_STRING_BYTES)) {
-                    String[] b = strBytes.split(" +"); // разбиваем строку из байт на отдельные байты
+                    String[] b = strBytes.split(" +"); // разбиваем строку из байтов на отдельные байты
                       char[] s = new char[b.length];
 
                     for (int i = b.length - 1; i >= 0; i--) {
@@ -3368,8 +3353,8 @@ public final class DebuggerCPU extends JDialog {
             private InputDataPanel() {
                 super(new GridBagLayout());
 
-                JLabel bytesLabel = new JLabel("Байты :");
-                JLabel charsLabel = new JLabel("Строка:");
+                final JLabel bytesLabel = new JLabel("Байты :");
+                final JLabel charsLabel = new JLabel("Строка:");
                 fBytes = new JTextField(new PlainDocument() {
                     private static final long serialVersionUID = 3384345776522390223L;
 
@@ -3423,21 +3408,21 @@ public final class DebuggerCPU extends JDialog {
                 // Используем для синхронного преобразования вводимых байт в текст
                 fBytes.getDocument().addDocumentListener(new DocumentListener() {
                     @Override
-                    public void insertUpdate(DocumentEvent e) {
+                    public void insertUpdate (final DocumentEvent e) {
                         if (fBytes.isFocusOwner()) {
-                            String strBytes = fBytes.getText().trim();
-                            fBytes.setBackground((strBytes.equals("") || strBytes.matches(REGEXP_STRING_BYTES)) ? fChars.getBackground() : Color.pink);
+                            final String strBytes = fBytes.getText().trim();
+                            fBytes.setBackground((strBytes.isEmpty() || strBytes.matches(REGEXP_STRING_BYTES)) ? fChars.getBackground() : Color.pink);
                             fChars.setText(bytesToChars.apply(fBytes.getText()));
                         }
                     }
 
                     @Override
-                    public void removeUpdate(DocumentEvent e) {
+                    public void removeUpdate (final DocumentEvent e) {
                         insertUpdate(e);
                     }
 
                     @Override
-                    public void changedUpdate(DocumentEvent e) {
+                    public void changedUpdate(final DocumentEvent e) {
                         //
                     }
                 });
@@ -3445,10 +3430,10 @@ public final class DebuggerCPU extends JDialog {
                 // Используем для синхронного преобразования вводимых символов в байты
                 fChars.getDocument().addDocumentListener(new DocumentListener() {
                     @Override
-                    public void insertUpdate(DocumentEvent e) {
+                    public void insertUpdate (final DocumentEvent e) {
                         if (fChars.isFocusOwner()) {
-                            String strBytes = "";
-                            String strChars = fChars.getText();
+                                  String strBytes = "";
+                            final String strChars = fChars.getText();
                             for (int i = 0, len = strChars.length(); i < len; i++) {
                                  final int  val = KOI8.indexOf(strChars.charAt(i));
                                 strBytes = strBytes.concat(String.format("%02X ", (val == -1) ? 0 : val));
@@ -3458,27 +3443,27 @@ public final class DebuggerCPU extends JDialog {
                     }
 
                     @Override
-                    public void removeUpdate(DocumentEvent e) {
+                    public void removeUpdate (final DocumentEvent e) {
                         insertUpdate(e);
                     }
 
                     @Override
-                    public void changedUpdate(DocumentEvent e) {
+                    public void changedUpdate(final DocumentEvent e) {
                         //
                     }
                 });
 
                 // Используем для перевода фокуса на следующий компонент
-                ActionListener al = e -> ((JComponent)e.getSource()).transferFocus();
+                final ActionListener al = e -> ((JComponent)e.getSource()).transferFocus();
                 fBytes.addActionListener(al);
                 fChars.addActionListener(al);
 
-                // Используем для проверки корректности строки из байт
+                // Используем для проверки корректности строки из байтов
                 fBytes.addFocusListener(new FocusAdapter() {
                     @Override
                     public void focusLost(FocusEvent e) {
-                        String strBytes = fBytes.getText().trim();
-                        if (!( strBytes.equals("") || strBytes.matches(REGEXP_STRING_BYTES))) {
+                        final String strBytes = fBytes.getText().trim();
+                        if (!(strBytes.isEmpty() || strBytes.matches(REGEXP_STRING_BYTES))) {
                             showMessageDialog(DebuggerCPU.this,
                                     String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes),
                                     Constants.STR_ERROR, ERROR_MESSAGE);
@@ -3538,20 +3523,20 @@ public final class DebuggerCPU extends JDialog {
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         final InputDataPanel inputDataPanel = new InputDataPanel();
-        int result = showConfirmDialog(DebuggerCPU.this, inputDataPanel,
+        final int result = showConfirmDialog(DebuggerCPU.this, inputDataPanel,
                 String.format("Поиск в странице: [%s]", fEmulatorLayer.getPageName(fEmulatorLayer.getDataPage())),
                 OK_CANCEL_OPTION, QUESTION_MESSAGE);
 
         if (result == OK_OPTION) {
-            int  start   = (fMemDatTable.getAddress() + 1) & 0xFFFF;
-            int  address = inputDataPanel.find(start);
-            if ((address == -2) && (start > 0)) {
-                 address = inputDataPanel.find(0);
+            final int start   = (fMemDatTable.getAddress() + 1) & 0xFFFF;
+                  int address = inputDataPanel.find(start);
+            if ((     address == -2) && (start > 0)) {
+                      address = inputDataPanel.find(0);
             }
                    if (address >=  0) {
                 fMemDatTable.gotoAddress(address);
             } else if (address == -2) {
-                showMessageDialog(DebuggerCPU.this,
+                showMessageDialog(this,
                         String.format("Заданные для поиска данные:%n[%s]%nНе найдены!", PrevStaticData.getPrevStringBytes()),
                         "Информация", INFORMATION_MESSAGE);
             }
@@ -3570,7 +3555,7 @@ public final class DebuggerCPU extends JDialog {
             // Уведомляем слушателей об изменениях
             fEmulatorLayer.afterStep();
             // Устанавливаем курсор на позицию = PC
-            fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
+            fDisAsmTable  .gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
         }
     }
 
@@ -3581,8 +3566,8 @@ public final class DebuggerCPU extends JDialog {
         // Показываем код из страницы, в которой работает CPU
         fEmulatorLayer.setCodePage(fEmulatorLayer.getCpuPage());
         // Получаем адрес следующей команды после команды вызова подпрограммы (CALL/RST)
-        int address = ((DisAsmTableModel) fDisAsmTable.getModel()).getAddressAfterCallCmd(fEmulatorLayer.getValRegPair(DebugRegPair.PC));
-        if (address < 0) {
+        final int address = ((DisAsmTableModel) fDisAsmTable.getModel()).getAddressAfterCallCmd(fEmulatorLayer.getValRegPair(DebugRegPair.PC));
+        if (      address < 0) {
             step();
         } else {
             // Сохраняем регистровые пары
@@ -3600,5 +3585,16 @@ public final class DebuggerCPU extends JDialog {
     private void runToCursor() {
         fEmulatorLayer.setCpuPage(fEmulatorLayer.getCodePage());
         fEmulatorLayer.setValRegPair(DebugRegPair.PC, getFocusedRowModel(fDisAsmTable));
+    }
+
+    /**
+     * Проверяет возможность редактирования данных (область ROM-диска не редактируется).
+     *
+     * @param page            страница
+     * @param addressSupplier получатель адреса
+     * @return true - можно редактировать
+     */
+    private boolean isEditable(final int page, final @NotNull IntSupplier addressSupplier) {
+        return (page < fEmulatorLayer.getNumPages() - 1) || (addressSupplier.getAsInt() >= MainMemory.ROM_DISK_SIZE);
     }
 }
