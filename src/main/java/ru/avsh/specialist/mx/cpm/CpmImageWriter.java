@@ -328,34 +328,35 @@ public final class CpmImageWriter {
         writeDirArea(dirArea);
     }
 
-    /**
-     * Читает область каталога из образа.
-     *
-     * Записи каталога лежат подряд с шагом 32 байта от начала каталога: каталог занимает первые
-     * блоки диска, но его записи не выровнены по блокам (у «Специалиста MX» на 1024-байтный блок
-     * приходится 32 записи, а не 4).
-     *
-     * @return байты области каталога в объёме {@link DiskProfile#getDirEntries()} записей
-     */
     private byte[] readDirArea() {
         final byte[] dirArea = new byte[fProfile.getDirEntries() * DIR_ENTRY_SIZE];
-        final int    base    = fLayout.dirEntryOffset(0, DIR_ENTRY_SIZE);
-        final int    length  = Math.min(dirArea.length, Math.max(0, fImage.length - base));
-        if (length > 0) {
-            System.arraycopy(fImage, base, dirArea, 0, length);
+        Arrays.fill(dirArea, FREE_BYTE);
+
+        final int dirBlocks = dirBlocksCount();
+        int copied = 0;
+        for (int b = 0; (b < dirBlocks) && (copied < dirArea.length); b++) {
+            final byte[] block = readBlock(b);
+            final int len = Math.min(block.length, dirArea.length - copied);
+            System.arraycopy(block, 0, dirArea, copied, len);
+            copied += len;
         }
         return dirArea;
     }
 
-    /**
-     * Записывает область каталога обратно в образ.
-     *
-     * @param dirArea байты области каталога
-     */
     private void writeDirArea(final byte[] dirArea) {
-        final int base = fLayout.dirEntryOffset(0, DIR_ENTRY_SIZE);
-        System.arraycopy(dirArea, 0, fImage, base, Math.min(dirArea.length, fImage.length - base));
+        final int dirBlocks = dirBlocksCount();
+        final int blockSize = fProfile.getBlockSize();
+        int offset = 0;
+        for (int b = 0; (b < dirBlocks) && (offset < dirArea.length); b++) {
+            final byte[] block = new byte[blockSize];
+            Arrays.fill(block, FREE_BYTE);
+            final int len = Math.min(blockSize, dirArea.length - offset);
+            System.arraycopy(dirArea, offset, block, 0, len);
+            writeBlock(b, block);
+            offset += len;
+        }
     }
+
 
     /**
      * Возвращает число блоков, занятых каталогом.

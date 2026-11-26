@@ -18,12 +18,11 @@ import java.util.List;
  *
  * @author -=AVSh=-
  */
-public final class CpmConverterSelfTest {
-
+public final class CpmConverterSelfTest1 {
     /** Размер логической записи CP/M (хвост файла при чтении дополняется до кратности 128 байтам). */
     private static final int RECORD_SIZE = 128;
 
-    private CpmConverterSelfTest() {
+    private CpmConverterSelfTest1() {
         //
     }
 

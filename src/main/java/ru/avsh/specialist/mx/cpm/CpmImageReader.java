@@ -252,25 +252,17 @@ public final class CpmImageReader {
         return result;
     }
 
-    /**
-     * Читает область каталога из образа.
-     *
-     * Каталог CP/M плоский — папок в файловой системе нет: записи каталога лежат подряд,
-     * с шагом 32 байта, начиная сразу за системными дорожками, и любая из них может описывать
-     * любой файл на диске. Каталог занимает первые блоки диска как обычный файл, но его записи
-     * не выровнены по блокам. Проверено на рабочих образах: у {@code tpas.odi} каталог это
-     * 40 записей подряд (0x5000…0x52FF), хотя блок диска — 1024 байта. Чтение «по четыре
-     * записи в блоке» рвёт каталог на 8 записей на блок и прячет всё, что дальше, — файлы
-     * становятся короче настоящих, а записи второго экстента теряются.
-     *
-     * @return байты области каталога в объёме {@link DiskProfile#getDirEntries()} записей
-     */
     private byte[] readDirArea() {
         final byte[] dirArea = new byte[fProfile.getDirEntries() * DIR_ENTRY_SIZE];
-        final int    base    = fLayout.dirEntryOffset(0, DIR_ENTRY_SIZE);
-        final int    length  = Math.min(dirArea.length, Math.max(0, fImage.length - base));
-        if (length > 0) {
-            System.arraycopy(fImage, base, dirArea, 0, length);
+        Arrays.fill(dirArea, (byte) FREE_BYTE);
+
+        final int dirBlocks = (dirArea.length + fProfile.getBlockSize() - 1) / fProfile.getBlockSize();
+        int copied = 0;
+        for (int b = 0; (b < dirBlocks) && (copied < dirArea.length); b++) {
+            final byte[] block = readBlock(b);
+            final int len = Math.min(block.length, dirArea.length - copied);
+            System.arraycopy(block, 0, dirArea, copied, len);
+            copied += len;
         }
         return dirArea;
     }
