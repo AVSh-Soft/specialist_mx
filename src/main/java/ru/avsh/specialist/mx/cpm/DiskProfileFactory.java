@@ -242,14 +242,12 @@ public final class DiskProfileFactory {
         // Записи каталога лежат подряд с шагом 32 байта, начиная с блока каталога: у профиля
         // с 4 системными дорожками это два блока после их конца, у профиля с 2 — сразу за ними.
         final byte[] dirArea = readDirArea(image, p);
-        //final int     dirBase         = new BlockLayout(p).dirEntryOffset(0, DIR_ENTRY_SIZE);
         for (int i = 0; i < p.getDirEntries(); i++) {
             final int offset = /*dirBase +*/ i * DIR_ENTRY_SIZE;
-            if ((offset < 0) || ((offset + DIR_ENTRY_SIZE) > image.length)) {
+            if ((offset < 0) || ((offset + DIR_ENTRY_SIZE) > dirArea.length)) {
                 return -1000;
             }
 
-            //final int status = image[offset] & 0xFF;
             final int status = dirArea[offset] & 0xFF;
             if (firstStatus < 0) {
                 firstStatus = status;
@@ -270,7 +268,7 @@ public final class DiskProfileFactory {
                 break;
             }
 
-            if (isGoodEntry(image, offset, is16Bit, recordsPerBlock, maxBlocks)) {
+            if (isGoodEntry(dirArea, offset, is16Bit, recordsPerBlock, maxBlocks)) {
                 goodEntries++;
             } else {
                 badEntries++;
@@ -287,12 +285,12 @@ public final class DiskProfileFactory {
             // с живых записей, либо с пометки 0xE5. Первая запись с ненулевым кодом
             // пользователя и при этом несогласованная означает, что по этому смещению каталога
             // нет вовсе, — так выглядит раскладка, у которой «каталог» попал на данные.
-            return ((firstStatus == FREE_BYTE) ? 0 : -50) + freeAreaScore(image, p);
+            return ((firstStatus == FREE_BYTE) ? 0 : -50) + freeAreaScore(dirArea);
         }
         // Каталог согласован, но это может быть и каталог «Специалиста MX» с другим числом
         // системных дорожек: тот же блок 1024, те же указатели. Различают их только начало
         // диска (там загрузчик, а не данные) и наличие самих записей каталога по смещению.
-        final int start = (isSystemArea(image, p) ? 20 : 0) + (hasDirectoryBytes(image, p) ? 20 : 0);
+        final int start = (isSystemArea(image, p) ? 20 : 0) + (hasDirectoryBytes(dirArea) ? 20 : 0);
         return filled + start;
     }
 
@@ -344,28 +342,14 @@ public final class DiskProfileFactory {
         return (usedPointers > 0) && (recordsNeeded <= pointerSlots * recordsPerBlock);
     }
 
-    /**
-     * Оценивает, насколько байты на месте каталога похожи на настоящий каталог CP/M.
-     *
-     * Свободная часть каталога проверяется только когда заполненных записей нет или область
-     * каталога прочитана целиком: между записями каталога лежат данные файлов, и там нули
-     * вполне обычны. Первые же байты каталога — другое дело: у настоящего CP/M-диска это
-     * либо живая запись, либо пометка {@code 0xE5} от форматирования, но не нули от данных.
-     *
-     * @param image первая половина области каталога (начало записи)
-     * @param p     проверяемый профиль
-     * @return 1 — свободная часть каталога заполнена как положено, 0 — непонятно, -1 — это данные
-     */
-    private static int freeAreaScore(final byte[] image, final DiskProfile p) {
-        final int base = new BlockLayout(p).dirEntryOffset(0, DIR_ENTRY_SIZE);
-        if ((base + 32) > image.length) {
+    private static int freeAreaScore(final byte[] dirArea) {
+        if (dirArea.length < 32) {
             return -1;
         }
-
-        int  free  = 0;
-        int  erased = 0;
+        int free = 0;
+        int erased = 0;
         for (int i = 0; (i < 32) && (free == 0); i++) {
-            final int b = image[base + i] & 0xFF;
+            final int b = dirArea[i] & 0xFF;
             if (b == FREE_BYTE) {
                 erased++;
             } else if (b == 0) {
@@ -378,32 +362,20 @@ public final class DiskProfileFactory {
         return (erased > 0) ? 1 : 0;
     }
 
-    /**
-     * Проверяет, что в области каталога стоят живые записи.
-     *
-     * Угадать, что каталога нет, можно по байтам: форматирование заполняет область каталога
-     * байтом {@code 0xE5}, а записи файлов — это печатные имена с номерами блоков. Если же
-     * по смещению каталога лежат нули (пустая область) или код загрузчика, то каталога здесь
-     * нет вовсе, и складная оценка получится только за счёт случайных байтов.
-     *
-     * @param image байты образа диска
-     * @param p     проверяемый профиль
-     * @return true — по смещению каталога стоят записи, а не пустота и не код
-     */
-    private static boolean hasDirectoryBytes(final byte[] image, final DiskProfile p) {
-        final int base = new BlockLayout(p).dirEntryOffset(0, DIR_ENTRY_SIZE);
-        if (((base + 32) > image.length)
-                || (image[base] == 0) || (image[base] == FREE_BYTE)) {
+    private static boolean hasDirectoryBytes(final byte[] dirArea) {
+        if ((dirArea.length < 32)
+                || (dirArea[0] == 0) || (dirArea[0] == FREE_BYTE)) {
             return false;
         }
         for (int c = 1; c <= 8; c++) {
-            final int ch = image[base + c] & 0x7F;
+            final int ch = dirArea[c] & 0x7F;
             if ((ch < 0x20) || (ch > 0x7E)) {
                 return false;
             }
         }
         return true;
     }
+
 
     /**
      * Проверяет, что по смещению каталога лежит начало системной области: загрузчик с таблицей
