@@ -241,14 +241,16 @@ public final class DiskProfileFactory {
 
         // Записи каталога лежат подряд с шагом 32 байта, начиная с блока каталога: у профиля
         // с 4 системными дорожками это два блока после их конца, у профиля с 2 — сразу за ними.
-        final int     dirBase         = new BlockLayout(p).dirEntryOffset(0, DIR_ENTRY_SIZE);
+        final byte[] dirArea = readDirArea(image, p);
+        //final int     dirBase         = new BlockLayout(p).dirEntryOffset(0, DIR_ENTRY_SIZE);
         for (int i = 0; i < p.getDirEntries(); i++) {
-            final int offset = dirBase + i * DIR_ENTRY_SIZE;
+            final int offset = /*dirBase +*/ i * DIR_ENTRY_SIZE;
             if ((offset < 0) || ((offset + DIR_ENTRY_SIZE) > image.length)) {
                 return -1000;
             }
 
-            final int status = image[offset] & 0xFF;
+            //final int status = image[offset] & 0xFF;
+            final int status = dirArea[offset] & 0xFF;
             if (firstStatus < 0) {
                 firstStatus = status;
             }
@@ -463,4 +465,24 @@ public final class DiskProfileFactory {
         }
         return image[entryOffset + 16 + pointerIndex] & 0xFF;
     }
+
+    /**
+     * Собирает область каталога кандидата в логическом порядке записей (с учётом skewTable).
+     */
+    private static byte[] readDirArea(final byte[] image, final DiskProfile p) {
+        final int dirEntries = p.getDirEntries();
+        final byte[] dirArea = new byte[dirEntries * DIR_ENTRY_SIZE];
+        java.util.Arrays.fill(dirArea, (byte) 0xE5);
+
+        final BlockLayout layout = new BlockLayout(p);
+        for (int i = 0; i < dirEntries; i++) {
+            final int off = layout.dirEntryOffset(i, DIR_ENTRY_SIZE);
+            if ((off < 0) || ((off + DIR_ENTRY_SIZE) > image.length)) {
+                break;
+            }
+            System.arraycopy(image, off, dirArea, i * DIR_ENTRY_SIZE, DIR_ENTRY_SIZE);
+        }
+        return dirArea;
+    }
+
 }
