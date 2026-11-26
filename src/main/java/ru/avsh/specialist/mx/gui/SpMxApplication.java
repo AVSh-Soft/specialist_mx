@@ -7,10 +7,12 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
@@ -46,11 +48,16 @@ import static ru.avsh.specialist.mx.gui.utils.AlertUtil.*;
 import static ru.avsh.specialist.mx.helpers.Constants.*;
 
 /**
- * Класс для формирования главного окна приложения (меню, кнопоки обработчики событий).
+ * Класс для формирования главного окна приложения (меню, кнопок обработчики событий).
  *
  * @author -=AVSh=-
  */
 public class SpMxApplication extends Application {
+    // Инстанс иконки эмулятора "Специалист MX"
+    public static final Image ICON           = getResourceAsStream(SPMX_ICON_FILE).map(Image::new).orElse(null);
+    // Инстанс шрифта семейства "Monospaced"
+    public static final Font FONT_MONOSPACED = Font.font("Monospaced");
+
     private static final double IMAGE_WIDTH         = Screen.SCREEN_WIDTH ;
     private static final double IMAGE_HEIGHT        = Screen.SCREEN_HEIGHT;
     private static final double IMAGE_DOUBLE_WIDTH  = Screen.SCREEN_WIDTH  << 1;

@@ -228,12 +228,6 @@ public final class CpmImageReader {
 
             final ByteArrayOutputStream out = new ByteArrayOutputStream();
             for (final Extent ext : extents) {
-                // Одна запись каталога — один экстент: столько записей по 128 байт, сколько
-                // блоков перечислено в её указателях. У «Специалиста MX» (блок 1024) это
-                // 8 блоков × 8 записей = 64 записи, а RC=128 в первом экстенте означает, что
-                // файл продолжается в следующей записи каталога с EX=1 (так размечен
-                // TURBO.COM на рабочем диске). Ограничение по RC не даёт прочитать в файл
-                // блоки следующего экстента, если RC меньше объявленных блоков.
                 final int ptrsPerEntry = fProfile.is16BitBlockPointers() ? 8 : 16;
                 final int maxRecordsPerEntry = ptrsPerEntry * (fProfile.getBlockSize() / RECORD_SIZE);
                 final int exm = Math.max(0, (maxRecordsPerEntry / MAX_RECORDS_IN_ENTRY) - 1);

@@ -1,8 +1,5 @@
 package ru.avsh.specialist.mx.helpers;
 
-import javafx.scene.image.Image;
-import javafx.scene.text.Font;
-
 import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
@@ -57,12 +54,6 @@ public final class Constants {
     // Количество страниц RAM-диска у ПК "Специалист MX" (от 1 до 8)
     // (здесь только количество страницы RAM-диска - без основной памяти и ROM-диска)
     public static final int NUMBER_PAGES_RAMDISK = 8;
-
-    // Инстанс иконки эмулятора "Специалист MX"
-    public static final Image ICON = getResourceAsStream(SPMX_ICON_FILE).map(Image::new).orElse(null);
-
-    // Инстанс шрифта семейства "Monospaced"
-    public static final Font FONT_MONOSPACED = Font.font("Monospaced");
 
     // Текущий путь к файлам эмулятора "Специалист MX"
     private static String fCurPath = APP_DIR;
