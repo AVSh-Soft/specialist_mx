@@ -23,6 +23,7 @@
           <include>**/*.rom</include>
           <include>**/*.png</include>
           <include>**/*.css</include>
+          <include>**/*.bin</include>
         </includes>
       </resource>
       <resource>

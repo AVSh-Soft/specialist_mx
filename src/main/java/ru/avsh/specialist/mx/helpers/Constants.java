@@ -88,7 +88,7 @@ public final class Constants {
      *
      * @param fCurPath - текущий путь
      */
-    public static void setCurPath(String fCurPath) {
+    public static void setCurPath(final String fCurPath) {
         Constants.fCurPath = fCurPath;
     }
 
