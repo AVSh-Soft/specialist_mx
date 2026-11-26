@@ -234,8 +234,12 @@ public final class CpmImageReader {
                 // файл продолжается в следующей записи каталога с EX=1 (так размечен
                 // TURBO.COM на рабочем диске). Ограничение по RC не даёт прочитать в файл
                 // блоки следующего экстента, если RC меньше объявленных блоков.
-                final int recordsPerEntry = ext.fBlocks.size() * fProfile.getBlockSize() / RECORD_SIZE;
-                int       bytesRemaining  = Math.min(ext.fRecordCount, recordsPerEntry) * RECORD_SIZE;
+                final int ptrsPerEntry = fProfile.is16BitBlockPointers() ? 8 : 16;
+                final int maxRecordsPerEntry = ptrsPerEntry * (fProfile.getBlockSize() / RECORD_SIZE);
+                final int exm = Math.max(0, (maxRecordsPerEntry / MAX_RECORDS_IN_ENTRY) - 1);
+                final int actualRecords = ((ext.fExtentNum & exm) * MAX_RECORDS_IN_ENTRY) + ext.fRecordCount;
+                int bytesRemaining = Math.min(actualRecords, maxRecordsPerEntry) * RECORD_SIZE;
+
                 for (final int blockNum : ext.fBlocks) {
                     if ((blockNum == 0) || (bytesRemaining <= 0)) {
                         continue;

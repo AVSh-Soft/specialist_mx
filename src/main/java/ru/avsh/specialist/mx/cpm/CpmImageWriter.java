@@ -47,8 +47,8 @@ public final class CpmImageWriter {
     /** Сколько раз пробуем подобрать уникальное имя с суффиксом {@code ~N}. */
     private static final int MAX_UNIQUE_NAME_ATTEMPTS = 999;
 
-    /** Наибольшая длина файла, которую CP/M может прочитать: всё адресное пространство. */
-    private static final int MAX_FILE_SIZE = 0x10_000;
+    /** Наибольшая длина файла в CP/M 2.2: 512 логических экстентов по 16 КБ (8 МБ). */
+    private static final int MAX_FILE_SIZE = 8 * 1024 * 1024;
 
     private final byte[]      fImage;
     private final DiskProfile fProfile;
@@ -299,13 +299,18 @@ public final class CpmImageWriter {
             // В записи столько блоков, сколько их нужно описанной части файла, а не столько,
             // сколько осталось от файла целиком: лишние блоки в записи BDOS посчитает частью
             // файла и прочитает его длиннее настоящего.
+            final int exm = Math.max(0, (recordsPerEntry / RECORD_SIZE) - 1);
             final int blocksInThisEntry = Math.min(ptrsPerEntry, blocksNeeded - blockCursor);
             final int recordsInThisEntry = Math.min(recordsLeft, recordsPerEntry);
-            final int rc = (recordsInThisEntry == 0) ? 0
-                    : ((recordsInThisEntry % RECORD_SIZE == 0) ? RECORD_SIZE : (recordsInThisEntry % RECORD_SIZE));
+            final int logicalExtent = (recordsInThisEntry == 0)
+                    ? (extIdx * (exm + 1))
+                    : (extIdx * (exm + 1) + ((recordsInThisEntry - 1) / RECORD_SIZE));
+            final int rc = (recordsInThisEntry == 0)
+                    ? 0
+                    : (((recordsInThisEntry - 1) % RECORD_SIZE) + 1);
 
-            dirArea[off + 12] = (byte) (extIdx & EXTENT_MASK_EX);
-            dirArea[off + 14] = (byte) ((extIdx >> 5) & EXTENT_MASK_S2);
+            dirArea[off + 12] = (byte) (logicalExtent & EXTENT_MASK_EX);
+            dirArea[off + 14] = (byte) ((logicalExtent >> 5) & EXTENT_MASK_S2);
             dirArea[off + 15] = (byte) (rc & 0xFF);
 
             for (int p = 0; p < blocksInThisEntry; p++) {

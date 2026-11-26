@@ -420,31 +420,25 @@ public final class DiskProfileFactory {
      * @return true — по смещению каталога действительно лежит системная область
      */
     private static boolean isSystemArea(final byte[] image, final DiskProfile p) {
-        final int base = p.getSystemAreaSize();
-        if ((base < 0) || (base + 32 > image.length)) {
+        final int sysSize = p.getSystemAreaSize();
+        if ((sysSize <= 0) || (sysSize > image.length) || (p.getReservedTracks() == 0)) {
             return false;
         }
-        if (p.getReservedTracks() == 0) {
-            return false;
-        }
-
-        // Загрузчик начинается с перехода на свой код.
-        if ((image[base] & 0xFF) == 0xC3) {
+        // Загрузчик начинается с перехода на свой код в самом начале диска (смещение 0).
+        if ((image[0] & 0xFF) == 0xC3) {
             return true;
         }
-
-        // Внутри 8 системных дорожек — DPB с числом записей на дорожке и маской блока.
-        final int  dirBytes  = p.getDirEntries() * DIR_ENTRY_SIZE;
-        final long limit     = Math.min((long) p.getImageSize() - dirBytes - 16, 0x2000);
-        final int  sectorsPerTrack = p.getSectorsPerTrack();
-        final int  blockMask = p.getBlockSize() / RECORD_SIZE - 1;
-        for (int i = base; i < (base + limit); i++) {
+        // Внутри системных дорожек (0 .. sysSize) ищем DPB с SPT и BLM.
+        final int sectorsPerTrack = p.getSectorsPerTrack() * (p.getSectorSize() / RECORD_SIZE);
+        final int blockMask = p.getBlockSize() / RECORD_SIZE - 1;
+        for (int i = 0; i < sysSize - 16; i++) {
             if (((image[i] & 0xFF) == sectorsPerTrack) && ((image[i + 1] & 0xFF) == blockMask)) {
                 return true;
             }
         }
         return false;
     }
+
 
     /**
      * Читает номер блока из записи каталога по индексу указателя.

@@ -177,6 +177,6 @@ public final class DiskProfile {
      * 256 записей, системная область 20 480 байт.
      */
     public static final DiskProfile SPECIALIST_MX_ODI_4SYS = new DiskProfile(
-            "Specialist MX ODI (800 KB, 4 sys tracks)", 80, 2, 5, 1024, 4, 1024, 256, null
+            "Specialist MX ODI (800 KB, 4 sys tracks)", 80, 2, 5, 1024, 4, 2048, 128, null
     );
 }
