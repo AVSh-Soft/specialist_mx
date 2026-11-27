@@ -653,8 +653,7 @@ public class SpMxApplication extends Application {
     private void convertCpmImage(final @NotNull File source, final @NotNull File target) {
         try {
             final DiskProfile sourceProfile = DiskProfileFactory.detect(source);
-            final List<CpmImageReader.CpmFile> files =
-                    new CpmImageReader(source, sourceProfile).readAllFiles();
+            final List<CpmImageReader.CpmFile> files = DiskProfileFactory.readAllFiles(source);
 
             final CpmImageWriter writer = new CpmImageWriter(DiskProfile.SPECIALIST_MX_ODI_4SYS, true);
             writer.writeFiles(files, true);

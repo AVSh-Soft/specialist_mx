@@ -3,65 +3,82 @@ package ru.avsh.specialist.mx.cpm;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
- * Распознаёт формат образа CP/M по размеру файла и содержимому каталога.
+ * Распознаёт формат образа CP/M по содержимому файла.
  *
- * Профилей одного размера бывает несколько (200, 400 и 800 КБ), и различаются они числом
- * системных дорожек и размером блока. Размер файла отсекает заведомо чужие форматы, а между
- * совпавшими по размеру решает каталог: побеждает раскладка, в которой каталог начинается
- * так, как его читает {@link CpmImageReader}.
+ * <p>Три категории форматов обрабатываются по-разному. Запись B.01 (см.
+ * {@link KdiImageReader#isB01(byte[])}) — это образ «Специалиста MX» с 32-байтным заголовком
+ * загрузчика в начале файла: раскладка у неё известна профилем {@link DiskProfile#SPECIALIST_MX_800K},
+ * угадывать нечего. Контейнер KDI (см. {@link KdiImageReader}) описывает себя сам: в его
+ * 256-байтном заголовке лежат геометрия и таблица параметров диска, поэтому профиль строится
+ * из заголовка, а тело читается как линейный образ без угадывания. Линейный образ, наоборот,
+ * ничего о себе не сообщает: размер файла отсекает заведомо чужие форматы, а между совпавшими
+ * по размеру решает каталог — побеждает раскладка, у которой байты на месте каталога читаются
+ * как настоящие записи CP/M.
+ *
+ * <p>В списке раскладок {@link #KNOWN_PROFILES} лежат только те, что прочитали образы,
+ * снятые с настоящих дисков: «Специалист MX» с четырьмя и с двумя системными дорожками,
+ * Osborne 1 SSDD (200 КБ) и IBM 8" SSSD. Раскладки, для которых эталонного образа нет,
+ * (Osborne 1 SSSD на 100 КБ, Kaypro II и 4, Amstrad CPC Data и System, CP/M 720 КБ,
+ * «Специалист» с блоком 4096) из конвертера убраны: непроверенная раскладка молча отдаёт
+ * мусор вместо имён файлов, и держать её хуже, чем не открывать образ вовсе.
+ *
+ * Расширение файла не учитывается: линейный образ встречается под именами {@code .img},
+ * {@code .dsk} и {@code .odi}, а под {@code .kdi} лежат и контейнер, и запись B.01. Определять
+ * формат по расширению значит повторять ту же ошибку в другом месте. Эмуляторные контейнеры,
+ * которых здесь нет (.td0, .imd, DSK Amstrad), нужно предварительно разложить в KDI или
+ * линейный образ.
+ *
+ * <p>Отдельная категория — образы с сайта «Корвета» ({@code Abris.kdi}, {@code cpm80.kdi},
+ * {@code Ep.kdi}, {@code Proffer.kdi} и д.): настоящего KDI-заголовка у них нет, зато первый
+ * сектор объявляет раскладку диска — так называемый «Орион-стандарт». Его разбирает
+ * {@link OrionImageReader}: из DPB на смещении 16 берутся размер блока, число записей
+ * каталога и размер дорожки, а {@code OFS} указывает, где на самом деле лежит каталог.
+ * Голосование каталогом остаётся только для линейных образов, которые о себе ничего
+ * не сообщают.
  *
  * @author -=AVSh=-
  */
 public final class DiskProfileFactory {
-
-    /** Одна запись каталога CP/M описывает 16 КБ — 128 записей по 128 байт. */
-    private static final int MAX_EXTENT_RECORDS = 128;
-
     /** Код пользователя CP/M — от 0 до 15; всё выше — уже не каталог, а данные. */
     private static final int MAX_USER_NUMBER = 15;
-
     /** Байт «свободно» в каталоге CP/M. */
     private static final int FREE_BYTE = 0xE5;
-
     /** Размер записи каталога в байтах. */
     private static final int DIR_ENTRY_SIZE = 32;
-
     /** Размер логической записи CP/M — по ней считается счётчик записей в экстенте. */
     private static final int RECORD_SIZE = 128;
+    /**
+     * Системных дорожек в записи B.01. Каталог CP/M начинается по смещению 20 480 файла,
+     * то есть через 20 448 байт после 32-байтного загрузчика; три дорожки по 5120 дали бы
+     * 15 360 байт, а каталог по 20 448 попадает на четвёртую — так же, как у
+     * {@code SPECIALIST_MX_ODI_4SYS}, но с поправкой на то, что системная область профиля
+     * отсчитывается от начала образа, а не файла.
+     */
+    private static final int B01_SYSTEM_TRACKS = 4;
+    /**
+     * Поправка к началу области данных записи B.01: каталог CP/M стоит по смещению 20 480
+     * файла, то есть 20 448 от начала образа, — на 32 байта раньше конца четырёх системных
+     * дорожек. Эти 32 байта и есть загрузчик «Корвета», который лежит в начале файла.
+     */
+    private static final int B01_DIR_OFFSET = -32;
 
     private static final List<DiskProfile> KNOWN_PROFILES;
 
     static {
         final List<DiskProfile> list = new ArrayList<>();
 
-        // Порядок важен: профили одного размера различаются только раскладкой, и при равной
-        // оценке каталога побеждает первый. Первым идёт «Специалист MX» — тот формат, ради
-        // которого писан конвертер, и образ этого размера скорее он, чем чужой.
+        // В списке только те раскладки, которые читаются образами, снятыми с настоящих
+        // дисков, и закреплены в CpmConverterSelfTest. Порядок важен: профили одного размера
+        // различаются только раскладкой, и при равной оценке каталога побеждает первый.
+        // Первым идёт «Специалист MX» — тот формат, ради которого писан конвертер, и образ
+        // этого размера скорее он, чем чужой.
         list.add(DiskProfile.SPECIALIST_MX_ODI_4SYS);
 
         // Специалист MX / Корвет 800 КБ — 2 системные дорожки, блок 2048
         list.add(DiskProfile.SPECIALIST_MX_800K);
-
-        // Специалист MX / Корвет 800 КБ — 3 системные дорожки, блок 2048
-        list.add(new DiskProfile(
-                "Specialist MX / Korvet ODI (800 KB, 3 sys tracks)", 80, 2, 5, 1024, 3, 2048, 128, null
-        ));
-
-        // Специалист MX 800 КБ — 2 системные дорожки, блок 4096
-        list.add(new DiskProfile(
-                "Specialist MX ODI (800 KB, 4K block)", 80, 2, 5, 1024, 2, 4096, 256, null
-        ));
-
-        // Советский CP/M 720 КБ (737 280 байт) — 80x2x9x512
-        list.add(new DiskProfile(
-                "CP/M 720 KB (80x2x9x512)", 80, 2, 9, 512, 2, 2048, 128, null
-        ));
 
         // Osborne 1 SSDD (200 КБ) — 40x1x5x1024, блок 2048 (osb1sssd у cpmtools:
         // BSH 4 BLM 15 DSM 91). При блоке 1024 два блока каталога занимали бы четыре
@@ -69,30 +86,6 @@ public final class DiskProfileFactory {
         list.add(new DiskProfile(
                 "Osborne 1 SSDD (200 KB)", 40, 1, 5, 1024, 3, 2048, 64,
                 new int[]{1, 3, 5, 2, 4}
-        ));
-
-        // Osborne 1 SSSD (100 КБ) — 40x1x10x256
-        list.add(new DiskProfile(
-                "Osborne 1 SSSD (100 KB)", 40, 1, 10, 256, 3, 2048, 64,
-                new int[]{1, 3, 5, 7, 9, 2, 4, 6, 8, 10}
-        ));
-
-        // Kaypro 4 / 2X (400 КБ) — 40 цилиндров по две стороны, 10x512, блок 2048
-        list.add(new DiskProfile(
-                "Kaypro 4 (400 KB)", 40, 2, 10, 512, 1, 2048, 64, null
-        ));
-
-        // Kaypro II / 2 (200 КБ) — 40x1x10x512
-        list.add(DiskProfile.KAYPRO_II);
-
-        // Amstrad CPC / PCW Data (180 КБ) — 40x1x9x512, без системных дорожек
-        list.add(new DiskProfile(
-                "Amstrad CPC Data (180 KB)", 40, 1, 9, 512, 0, 1024, 64, null
-        ));
-
-        // Amstrad CPC / PCW System (180 КБ) — 40x1x9x512, 2 системные дорожки
-        list.add(new DiskProfile(
-                "Amstrad CPC System (180 KB)", 40, 1, 9, 512, 2, 1024, 64, null
         ));
 
         // IBM 8" SSSD (250 КБ) — 77x1x26x128, перемежение на 6
@@ -109,26 +102,38 @@ public final class DiskProfileFactory {
     }
 
     /**
-     * Подбирает наиболее подходящий профиль диска по размеру файла и содержимому каталога.
+     * Подбирает наиболее подходящий профиль диска по содержимому файла.
+     *
+     * <p>Файл читается один раз и проходит три проверки подряд: запись B.01 (см.
+     * {@link KdiImageReader#isB01(byte[])}), заголовок контейнера KDI (см.
+     * {@link KdiImageReader}), затем размер линейного образа с голосованием каталога.
      *
      * @param file файл образа диска
      * @return профиль, описывающий раскладку образа
      * @throws IOException если файл не читается или его размер не совпадает ни с одним форматом
      */
     public static DiskProfile detect(final File file) throws IOException {
-        final byte[] image    = Files.readAllBytes(file.toPath());
-        final long   fileSize = image.length;
+        final byte[] image = Files.readAllBytes(file.toPath());
+        final String name  = file.getName();
 
-        final List<DiskProfile> candidates = new ArrayList<>();
-        for (final DiskProfile profile : KNOWN_PROFILES) {
-            if (profile.getImageSize() == fileSize) {
-                candidates.add(profile);
-            }
+        if (KdiImageReader.isB01(image)) {
+            return b01Profile(name);
         }
 
+        final KdiImageReader.KdiHeader kdi = tryReadKdi(image, name);
+        if (kdi != null) {
+            return kdi.getProfile();
+        }
+
+        if (OrionImageReader.isOrionImage(image, name)) {
+            return OrionImageReader.readProfile(image, name);
+        }
+
+        final List<DiskProfile> candidates = linearCandidates(image.length);
         if (candidates.isEmpty()) {
             throw new IOException(String.format(
-                    "Неизвестный размер образа диска: %d байт. Поддерживаются: %s", fileSize, knownSizes()));
+                    "Неизвестный размер образа диска: %d байт. Поддерживаются: %s",
+                    image.length, knownSizes()));
         }
 
         // Профилей одного размера бывает несколько, поэтому решение принимает каталог.
@@ -147,8 +152,151 @@ public final class DiskProfileFactory {
      * @throws IOException если файл не читается
      */
     public static List<DiskProfile> candidates(final File file) throws IOException {
-        final long fileSize = Files.size(file.toPath());
+        final byte[] image = Files.readAllBytes(file.toPath());
 
+        if (KdiImageReader.isB01(image)) {
+            return Collections.singletonList(b01Profile(file.getName()));
+        }
+
+        final KdiImageReader.KdiHeader kdi = tryReadKdi(image, file.getName());
+        if (kdi != null) {
+            // Контейнер описывает раскладку сам, поэтому кандидат у него ровно один.
+            return Collections.singletonList(kdi.getProfile());
+        }
+
+        if (OrionImageReader.isOrionImage(image, file.getName())) {
+            return Collections.singletonList(OrionImageReader.readProfile(image, file.getName()));
+        }
+        return linearCandidates(image.length);
+    }
+
+    /**
+     * Проверяет, что конвертер умеет открывать образ такого файла: по этому признаку GUI решает,
+     * стоит ли вообще отдавать файл конвертеру.
+     *
+     * <p>Совпадения размера мало: у контейнера KDI файл на 256 байт длиннее линейного тела,
+     * у записи B.01 — на 32 байта, а у линейного образа того же диска ровно {@code 819200}
+     * байт. Поэтому служебные части проверяются отдельно, по своим признакам.
+     *
+     * @param file файл образа диска
+     * @return true — размер или заголовок образа конвертеру известен
+     * @throws IOException если файл не читается
+     */
+    public static boolean isKnownSize(final File file) throws IOException {
+        return !candidates(file).isEmpty();
+    }
+
+    /**
+     * Читает файлы с образа любого поддерживаемого формата.
+     *
+     * <p>Формат определяется по содержимому, тем же порядком, что и в {@link #detect(File)}:
+     * запись B.01 разбирается по профилю «Специалиста» после отрезания 32 байт, контейнер KDI —
+     * вместе со своим заголовком, линейный образ — по найденной раскладке.
+     *
+     * @param file файл образа диска
+     * @return файлы в порядке появления их первых записей в каталоге
+     * @throws IOException если формат не распознан или каталог не разбирается
+     */
+    public static List<CpmImageReader.CpmFile> readAllFiles(final File file) throws IOException {
+        final byte[] image = Files.readAllBytes(file.toPath());
+        final String name  = file.getName();
+
+        if (KdiImageReader.isB01(image)) {
+            return CpmImageReader.readAllFiles(b01ToLinear(image), b01Profile(name));
+        }
+
+        final KdiImageReader.KdiHeader kdi = tryReadKdi(image, name);
+        if (kdi != null) {
+            return CpmImageReader.readAllFiles(
+                    KdiImageReader.toLinearImage(image, name), kdi.getProfile());
+        }
+
+        if (OrionImageReader.isOrionImage(image, name)) {
+            return OrionImageReader.readAllFiles(image, name);
+        }
+
+        final List<DiskProfile> candidates = linearCandidates(image.length);
+        if (candidates.isEmpty()) {
+            throw new IOException(String.format(
+                    "Неизвестный размер образа диска: %d байт. Поддерживаются: %s",
+                    image.length, knownSizes()));
+        }
+        return CpmImageReader.readAllFiles(image, selectByDirectory(image, candidates));
+    }
+
+    /**
+     * Строит профиль для записи B.01.
+     *
+     * <p>Запись B.01 — образ «Специалиста MX» с 32 байтами загрузчика «Корвета» в начале
+     * файла. Загрузчик наложен поверх начала образа, а не добавлен перед ним: каталог CP/M
+     * стоит в файле по смещению 20 480, то есть через четыре системные дорожки по 5120 байт
+     * и на 32 байта раньше, чем кончается четырёхдорожечная системная область. Те самые
+     * 32 байта и есть загрузчик — их и сдвигает {@link #b01ToLinear(byte[])}.
+     *
+     * <p>Раскладка — как у {@link DiskProfile#SPECIALIST_MX_ODI_4SYS} (80 цилиндров, две
+     * стороны, пять секторов по 1024, блок 2048, 128 записей каталога, 16-битные указатели
+     * блоков), только начало области данных сдвинуто на {@value #B01_DIR_OFFSET} байт.
+     * Готовый профиль не переиспользуется: имя должно сказать в диалоге конвертера, что
+     * образ пришёл из записи B.01, а не из {@code *.odi}.
+     *
+     * <p>Голосовать каталогом здесь нельзя: записи B.01 не описывают себя вообще, а каталог
+     * другого формата того же размера читается по сдвинутой раскладке и даёт мусор вместо
+     * имён файлов. Поэтому B.01 узнаётся по подписи и признаку в {@link KdiImageReader#isB01}.
+     *
+     * @param fileName имя файла образа
+     * @return профиль раскладки образа «Специалиста MX» на 800 КБ
+     */
+    private static DiskProfile b01Profile(final String fileName) {
+        return new DiskProfile("B.01 Specialist MX — " + fileName,
+                80, 2, 5, 1024, B01_SYSTEM_TRACKS, 2048, 128, null, B01_DIR_OFFSET);
+    }
+
+    /**
+     * Собирает линейный образ из записи B.01.
+     *
+     * <p>В файле записи B.01 первые 32 байта — загрузчик «Корвета», наложенный поверх начала
+     * образа. Данные диска начинаются с байта 32 файла, поэтому образ сдвигается на 32 байта
+     * назад: байты {@code [32..819199]} становятся байтами {@code [0..819167]}, длина образа
+     * остаётся {@code 819168} байт.
+     *
+     * <p>После сдвига каталог CP/M оказывается на 20 448 — ровно там, куда его ставит
+     * {@link DiskProfile#getDirOffset()} профиля записи B.01, а номера блоков в каталоге
+     * отсчитываются уже от начала сдвинутого образа. Сами байты загрузчика копируются обратно
+     * на места {@code 0..31}: они лежат внутри последней системной дорожки, на чтение каталога
+     * и файлов не влияют, но с ними картинка диска в отладчике остаётся узнаваемой.
+     *
+     * @param image байты файла записи B.01
+     * @return линейный образ «Специалиста MX» со сдвигом на 32 байта
+     */
+    private static byte[] b01ToLinear(final byte[] image) {
+        final byte[] linear = Arrays.copyOfRange(image, KdiImageReader.B01_HEADER_SIZE,
+                image.length);
+        System.arraycopy(image, 0, linear, 0, KdiImageReader.B01_HEADER_SIZE);
+        return linear;
+    }
+
+    /**
+     * Пробует прочитать заголовок контейнера KDI.
+     *
+     * @param image байты файла образа
+     * @param name  имя файла для сообщения об ошибке
+     * @return заголовок контейнера или null, если файл не KDI
+     */
+    private static KdiImageReader.KdiHeader tryReadKdi(final byte[] image, final String name) {
+        try {
+            return KdiImageReader.readHeader(image, name);
+        } catch (final IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Возвращает профили, размер образа которых равен длине файла.
+     *
+     * @param fileSize длина файла в байтах
+     * @return профили-кандидаты (пустой список, если размер ни с одним не совпал)
+     */
+    private static List<DiskProfile> linearCandidates(final int fileSize) {
         final List<DiskProfile> result = new ArrayList<>();
         for (final DiskProfile profile : KNOWN_PROFILES) {
             if (profile.getImageSize() == fileSize) {
@@ -156,18 +304,6 @@ public final class DiskProfileFactory {
             }
         }
         return result;
-    }
-
-    /**
-     * Проверяет, что для файла такого размера вообще есть раскладка: по этому признаку GUI решает,
-     * стоит ли вообще открывать образ в конвертере.
-     *
-     * @param file файл образа диска
-     * @return true — размер образа известен конвертеру
-     * @throws IOException если файл не читается
-     */
-    public static boolean isKnownSize(final File file) throws IOException {
-        return !candidates(file).isEmpty();
     }
 
     /**
@@ -243,7 +379,7 @@ public final class DiskProfileFactory {
         // с 4 системными дорожками это два блока после их конца, у профиля с 2 — сразу за ними.
         final byte[] dirArea = readDirArea(image, p);
         for (int i = 0; i < p.getDirEntries(); i++) {
-            final int offset = /*dirBase +*/ i * DIR_ENTRY_SIZE;
+            final int offset = i * DIR_ENTRY_SIZE;
             if ((offset < 0) || ((offset + DIR_ENTRY_SIZE) > dirArea.length)) {
                 return -1000;
             }
@@ -259,10 +395,10 @@ public final class DiskProfileFactory {
                 break;
             }
 
-            // Код пользователя — от 0 до 15. Всё остальное означает, что на месте каталога
-            // лежат данные файла или код программы: у bst_cpm_v1.3.odi сразу за каталогом
-            // идёт загрузчик. Это не «конец каталога»: настоящий каталог свободные записи
-            // заполняет байтом 0xE5, а не кодом, поэтому такая запись — признак чужой раскладки.
+            // Код пользователя — от 0 до 15. Всё остальное означает, что по этому смещению
+            // каталога нет: там чужие байты — у Osborne 1 за живыми записями идёт код
+            // программы. Настоящий каталог свободные записи заполняет байтом 0xE5, а не
+            // кодом, поэтому такая запись — признак чужой раскладки.
             if (status > MAX_USER_NUMBER) {
                 badEntries++;
                 break;
@@ -342,13 +478,23 @@ public final class DiskProfileFactory {
         return (usedPointers > 0) && (recordsNeeded <= pointerSlots * recordsPerBlock);
     }
 
+    /**
+     * Добавляет к оценке начало области каталога, если каталог начинается пометкой «свободно»
+     * или нулём.
+     *
+     * Ноль в начале области данных встречается ещё реже, чем {@code 0xE5}, и означает
+     * форматированный, но не использованный диск: так CP/M 2.2 готовит новый образ.
+     *
+     * @param dirArea записи каталога подряд
+     * @return 1 — область начинается пометкой «свободно», 0 — нулём, -1 — ничего из этого
+     */
     private static int freeAreaScore(final byte[] dirArea) {
-        if (dirArea.length < 32) {
+        if (dirArea.length < DIR_ENTRY_SIZE) {
             return -1;
         }
         int free = 0;
         int erased = 0;
-        for (int i = 0; (i < 32) && (free == 0); i++) {
+        for (int i = 0; (i < DIR_ENTRY_SIZE) && (free == 0); i++) {
             final int b = dirArea[i] & 0xFF;
             if (b == FREE_BYTE) {
                 erased++;
@@ -362,11 +508,17 @@ public final class DiskProfileFactory {
         return (erased > 0) ? 1 : 0;
     }
 
+    /**
+     * Проверяет, что в области каталога есть хотя бы одна строка с именем файла.
+     *
+     * @param dirArea записи каталога подряд
+     * @return true — в первой записи лежат печатные символы имени
+     */
     private static boolean hasDirectoryBytes(final byte[] dirArea) {
-        if ((dirArea.length < 32)
-                || (dirArea[0] == 0) || (dirArea[0] == FREE_BYTE)) {
+        if ((dirArea.length < DIR_ENTRY_SIZE) || (dirArea[0] == 0) || (dirArea[0] == FREE_BYTE)) {
             return false;
         }
+
         for (int c = 1; c <= 8; c++) {
             final int ch = dirArea[c] & 0x7F;
             if ((ch < 0x20) || (ch > 0x7E)) {
@@ -375,7 +527,6 @@ public final class DiskProfileFactory {
         }
         return true;
     }
-
 
     /**
      * Проверяет, что по смещению каталога лежит начало системной области: загрузчик с таблицей
@@ -413,7 +564,6 @@ public final class DiskProfileFactory {
         return false;
     }
 
-
     /**
      * Читает номер блока из записи каталога по индексу указателя.
      *
@@ -439,12 +589,17 @@ public final class DiskProfileFactory {
     }
 
     /**
-     * Собирает область каталога кандидата в логическом порядке записей (с учётом skewTable).
+     * Собирает область каталога кандидата в логическом порядке записей (с учётом таблицы
+     * перемежения).
+     *
+     * @param image байты образа диска
+     * @param p     проверяемый профиль
+     * @return записи каталога подряд; если образ кончается раньше, хвост остаётся {@code 0xE5}
      */
     private static byte[] readDirArea(final byte[] image, final DiskProfile p) {
         final int dirEntries = p.getDirEntries();
         final byte[] dirArea = new byte[dirEntries * DIR_ENTRY_SIZE];
-        java.util.Arrays.fill(dirArea, (byte) 0xE5);
+        Arrays.fill(dirArea, (byte) 0xE5);
 
         final BlockLayout layout = new BlockLayout(p);
         for (int i = 0; i < dirEntries; i++) {
@@ -456,5 +611,4 @@ public final class DiskProfileFactory {
         }
         return dirArea;
     }
-
 }

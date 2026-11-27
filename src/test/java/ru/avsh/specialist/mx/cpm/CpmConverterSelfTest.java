@@ -9,9 +9,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public final class CpmConverterSelfTest2 {
+public final class CpmConverterSelfTest {
 
-    private CpmConverterSelfTest2() {
+    private CpmConverterSelfTest() {
         //
     }
 
@@ -57,7 +57,6 @@ public final class CpmConverterSelfTest2 {
             testProfileByName(tempDir, "osborne_ssdd", "Osborne 1 SSDD (200 KB)");
             testProfileByName(tempDir, "osborne_sssd", "Osborne 1 SSSD (100 KB)");
             testProfileByName(tempDir, "kaypro_4", "Kaypro 4 (400 KB)");
-            testProfile(tempDir, "kaypro_ii", DiskProfile.KAYPRO_II, false);
 
             // 4. Amstrad CPC (Data vs System одинакового размера 180 КБ)
             testProfileByName(tempDir, "amstrad_data", "Amstrad CPC Data (180 KB)");

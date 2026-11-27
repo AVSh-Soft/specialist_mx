@@ -10,36 +10,49 @@ import java.util.*;
 /**
  * Читает файлы из образа диска CP/M.
  *
- * Каталог читается блоками по раскладке {@link DiskProfile}: запись каталога описывает один
- * экстент файла (до 16 КБ), а файл может занимать несколько записей — они собираются по имени
- * и коду пользователя и склеиваются в порядке номера экстента.
+ * <p>Каталог читается блоками по раскладке {@link DiskProfile} через {@link BlockLayout}:
+ * блоки отсчитываются от начала области данных, а не от начала файла, и при наличии
+ * таблицы перемежения записи внутри дорожки переставляются. Запись каталога описывает
+ * один экстент файла (до 16 КБ), а файл может занимать несколько записей — они собираются
+ * по имени и коду пользователя и склеиваются в порядке номера экстента.
+ *
+ * <p>Запись с байтом {@code 0xE5} — свободная (в том числе освобождённая удалением), и
+ * поиск файлов после неё продолжается: на настоящих дисках свободные записи стоят посреди
+ * каталога, а живые — после них. Читатель различает два признака конца каталога. Код
+ * пользователя больше 15 означает, что в области каталога уже лежат чужие байты (так
+ * выглядит каталог Osborne 1, где после живых записей идёт код, а не пометки {@code 0xE5});
+ * на такую запись разбор останавливается. Заполнение {@code 0xE5} до последней записи
+ * профиля — обычный хвост каталога, он пропускается до конца области.
+ *
+ * <p>Длина файла берётся по числу занятых блоков, а не по сумме {@code rc}: {@code rc}
+ * не описывает хвост последнего блока, и файл, дополненный байтами {@code 0x1A} до полного
+ * блока, иначе обрезался бы по последней полной записи.
+ *
+ * <p>Известное ограничение: на профилях с блоком 4096 маска экстента {@code EXM}
+ * вычисляется как {@code maxRecordsPerEntry / 128 - 1} = 1, тогда как писатель
+ * ({@link CpmImageWriter}) эту маску в номер экстента не закладывает. Такие образы
+ * читались бы неверно — поэтому раскладки с блоком 4096 в {@link DiskProfileFactory}
+ * нет, а профиль, пришедший из заголовка KDI или «Ориона», остаётся на совести
+ * того, кто его объявил.
  *
  * @author -=AVSh=-
  */
 public final class CpmImageReader {
-
     /** Предел одной записи каталога CP/M: 16 КБ, то есть 128 записей по 128 байт. */
     private static final int MAX_RECORDS_IN_ENTRY = 128;
-
     /** Символы, недопустимые в имени файла на ПК: в имени CP/M они законны. */
     private static final String INVALID_HOST_CHARS = "[\\\\/:*?\"<>|]";
-
     /** Байт «свободно» в каталоге CP/M. */
     private static final int FREE_BYTE = 0xE5;
-
     /** Код пользователя CP/M — от 0 до 15; всё выше — уже не каталог, а данные. */
     private static final int MAX_USER_NUMBER = 15;
-
     /** Размер записи каталога в байтах. */
     private static final int DIR_ENTRY_SIZE = 32;
-
     /** Размер логической записи CP/M. */
     private static final int RECORD_SIZE = 128;
-
-    /** Бит «только чтение» в записи каталога. */
+    /** Бит «только чтение» в записи каталога — младший бит поля типа {@code T1}. */
     private static final int ATTR_READ_ONLY = 0x80;
-
-    /** Бит «системный» в записи каталога. */
+    /** Бит «системный» в записи каталога — младший бит поля типа {@code T2}. */
     private static final int ATTR_SYSTEM = 0x80;
 
     /**
@@ -48,11 +61,11 @@ public final class CpmImageReader {
      * @author -=AVSh=-
      */
     public static final class CpmFile {
-        private final String  fName;
+        private final String  fName      ;
         private final int     fUserNumber;
-        private final boolean fReadOnly;
-        private final boolean fSystem;
-        private final byte[]  fData;
+        private final boolean fReadOnly  ;
+        private final boolean fSystem    ;
+        private final byte[]  fData      ;
 
         /**
          * Конструктор.
@@ -63,16 +76,17 @@ public final class CpmImageReader {
          * @param system     true — файл помечен «системный»
          * @param data       содержимое файла
          */
-        public CpmFile(final String  name,
+        public CpmFile(final String  name      ,
                        final int     userNumber,
-                       final boolean readOnly,
-                       final boolean system,
+                       final boolean readOnly  ,
+                       final boolean system    ,
                        final byte[]  data) {
-            this.fName       = name;
+
+            this.fName       = name      ;
             this.fUserNumber = userNumber;
-            this.fReadOnly   = readOnly;
-            this.fSystem     = system;
-            this.fData       = data;
+            this.fReadOnly   = readOnly  ;
+            this.fSystem     = system    ;
+            this.fData       = data      ;
         }
 
         /**
@@ -118,25 +132,37 @@ public final class CpmImageReader {
         private final int           fUser;
         private final String        fFullName;
         private final boolean       fReadOnly;
-        private final boolean       fSystem;
-        private final int           fExtentNum;
+        private final boolean       fSystem  ;
+        private final int           fExtentNum  ;
         private final int           fRecordCount;
-        private final List<Integer> fBlocks;
+        private final List<Integer> fBlocks     ;
 
+        /**
+         * Конструктор.
+         *
+         * @param user        код пользователя CP/M
+         * @param fullName    имя файла в форме 8.3
+         * @param readOnly    true — файл помечен «только чтение»
+         * @param system      true — файл помечен «системный»
+         * @param extentNum   номер экстента
+         * @param recordCount число записей по 128 байт, описанных этой записью каталога
+         * @param blocks      номера блоков в порядке указателей
+         */
         Extent(final int           user,
-               final String        fullName,
-               final boolean       readOnly,
-               final boolean       system,
+               final String        fullName ,
+               final boolean       readOnly ,
+               final boolean       system   ,
                final int           extentNum,
                final int           recordCount,
                final List<Integer> blocks) {
-            this.fUser        = user;
-            this.fFullName    = fullName;
-            this.fReadOnly    = readOnly;
-            this.fSystem      = system;
-            this.fExtentNum   = extentNum;
+
+            this.fUser        = user       ;
+            this.fFullName    = fullName   ;
+            this.fReadOnly    = readOnly   ;
+            this.fSystem      = system     ;
+            this.fExtentNum   = extentNum  ;
             this.fRecordCount = recordCount;
-            this.fBlocks      = blocks;
+            this.fBlocks      = blocks     ;
         }
 
         /**
@@ -154,9 +180,9 @@ public final class CpmImageReader {
         }
     }
 
-    private final byte[]      fImage;
+    private final byte[]      fImage  ;
     private final DiskProfile fProfile;
-    private final BlockLayout fLayout;
+    private final BlockLayout fLayout ;
 
     /**
      * Конструктор.
@@ -172,13 +198,38 @@ public final class CpmImageReader {
     }
 
     /**
+     * Конструктор для образа, уже загруженного в память.
+     *
+     * @param image   байты линейного образа диска
+     * @param profile раскладка образа
+     */
+    private CpmImageReader(final byte[] image, final DiskProfile profile) {
+        this.fImage   = image  ;
+        this.fProfile = profile;
+        this.fLayout  = new BlockLayout(profile);
+    }
+
+    /**
+     * Читает файлы из образа, который уже лежит в памяти.
+     *
+     * <p>Нужен контейнерам: KDI хранит линейный образ за 256-байтным заголовком
+     * (см. {@link KdiImageReader}), и отрезанное тело незачем писать на диск, чтобы прочитать.
+     *
+     * @param image   байты линейного образа диска
+     * @param profile раскладка образа, для KDI — построенная по его заголовку
+     * @return список файлов в порядке появления их первых записей в каталоге
+     */
+    public static List<CpmFile> readAllFiles(final byte[] image, final DiskProfile profile) {
+        return new CpmImageReader(image, profile).readAllFiles();
+    }
+
+    /**
      * Читает все файлы из каталога образа.
      *
      * @return список файлов в порядке появления их первых записей в каталоге
      */
     public List<CpmFile> readAllFiles() {
         final byte[] dirArea = readDirArea();
-
         final Map<String, List<Extent>> groupedExtents = new LinkedHashMap<>();
 
         for (int i = 0; i < fProfile.getDirEntries(); i++) {
@@ -186,19 +237,19 @@ public final class CpmImageReader {
             final int status = dirArea[offset] & 0xFF;
 
             // 0xE5 — свободная (или освобождённая) запись каталога, поиск файлов идёт дальше:
-            // на реальных дисках (например, системный диск Osborne 1) освобождённые записи
-            // стоят посреди области каталога, а живые — после них. У «Специалиста MX» каталог
-            // размечается короче, чем позволяет профиль (у bst_cpm_v1.3.odi занято шесть
-            // записей из 256), и за концом каталога идут данные файла: они не 0xE5 и код
-            // пользователя у них не 0–15, поэтому конец каталога опознаётся по ним.
+            // на реальных дисках записи, освобождённые удалением, стоят посреди области
+            // каталога, а живые — после них. Конец каталога по 0xE5 не опознать: на дисках
+            // «Специалиста MX» (bst_cpm_v1.3.odi, CPM_TurboPascalZ80.odi) весь хвост области
+            // до последней записи профиля заполнен 0xE5, и файлы от этого не теряются.
             if (status == FREE_BYTE) {
                 continue;
             }
 
-            // Код пользователя — от 0 до 15. Всё остальное означает, что дальше в области
-            // каталога уже лежат данные файла: у образа «Специалиста MX» (bst_cpm_v1.3.odi)
-            // каталог размечается короче, чем позволяет профиль, и за концом каталога идёт
-            // загрузчик. Конец каталога надёжнее всего опознаётся по началу этих данных.
+            // Код пользователя — от 0 до 15. Всё остальное означает, что в области каталога
+            // уже лежат не записи каталога, а чужие байты: так выглядит Osborne 1
+            // (os1sysd.img), где после живых записей идёт код — байты со значениями вроде
+            // 0xC3, 0x77, 0x21. Разбирать их как записи каталога нельзя: получились бы
+            // файлы с именем из мусора. Поэтому разбор останавливается на первой такой записи.
             if (status > MAX_USER_NUMBER) {
                 break;
             }
@@ -208,32 +259,23 @@ public final class CpmImageReader {
                 continue;
             }
 
-            final String        key  = status + ":" + ext.fFullName;
-            List<Extent>        list = groupedExtents.get(key);
-            if (list == null) {
-                list = new ArrayList<>();
-                groupedExtents.put(key, list);
-            }
+            final String key = status + ":" + ext.fFullName;
+            final List<Extent> list = groupedExtents.computeIfAbsent(key, k -> new ArrayList<>());
             list.add(ext);
         }
 
         final List<CpmFile> result = new ArrayList<>();
         for (final List<Extent> extents : groupedExtents.values()) {
-            Collections.sort(extents, new Comparator<Extent>() {
-                @Override
-                public int compare(final Extent a, final Extent b) {
-                    return Integer.compare(a.fExtentNum, b.fExtentNum);
-                }
-            });
+            extents.sort(Comparator.comparingInt(a -> a.fExtentNum));
 
             final ByteArrayOutputStream out = new ByteArrayOutputStream();
             for (final Extent ext : extents) {
-                final int ptrsPerEntry = fProfile.is16BitBlockPointers() ? 8 : 16;
+                final int ptrsPerEntry       = fProfile.is16BitBlockPointers() ? 8 : 16;
                 final int maxRecordsPerEntry = ptrsPerEntry * (fProfile.getBlockSize() / RECORD_SIZE);
-                final int exm = Math.max(0, (maxRecordsPerEntry / MAX_RECORDS_IN_ENTRY) - 1);
-                final int actualRecords = ((ext.fExtentNum & exm) * MAX_RECORDS_IN_ENTRY) + ext.fRecordCount;
-                int bytesRemaining = Math.min(actualRecords, maxRecordsPerEntry) * RECORD_SIZE;
+                final int exm                = Math.max(0, (maxRecordsPerEntry / MAX_RECORDS_IN_ENTRY) - 1);
+                final int actualRecords      = ((ext.fExtentNum & exm) * MAX_RECORDS_IN_ENTRY) + ext.fRecordCount;
 
+                int bytesRemaining = Math.min(actualRecords, maxRecordsPerEntry) * RECORD_SIZE;
                 for (final int blockNum : ext.fBlocks) {
                     if ((blockNum == 0) || (bytesRemaining <= 0)) {
                         continue;
@@ -248,13 +290,19 @@ public final class CpmImageReader {
             final Extent first = extents.get(0);
             result.add(new CpmFile(first.fFullName, first.fUser, first.fReadOnly, first.fSystem, out.toByteArray()));
         }
-
         return result;
     }
 
+    /**
+     * Читает область каталога так, как её читает {@link DiskProfileFactory}: блоки каталога
+     * идут подряд от начала области данных.
+     *
+     * @return записи каталога подряд; если образ кончается раньше, хвост остаётся пометками
+     *         {@code 0xE5}
+     */
     private byte[] readDirArea() {
         final byte[] dirArea = new byte[fProfile.getDirEntries() * DIR_ENTRY_SIZE];
-        Arrays.fill(dirArea, (byte) FREE_BYTE);
+        Arrays.fill( dirArea, (byte) FREE_BYTE);
 
         final int dirBlocks = (dirArea.length + fProfile.getBlockSize() - 1) / fProfile.getBlockSize();
         int copied = 0;
@@ -276,29 +324,19 @@ public final class CpmImageReader {
      * @return описание экстента
      */
     private Extent parseExtent(final byte[] dir, final int off, final int user) {
-        String name = extractAscii(dir, off + 1, 8).trim();
-        String ext  = extractAscii(dir, off + 9, 3).trim();
-
-        // Спецсимволы CP/M (например, '|' — «неразрывная» часть имени, '$', '#') в именах
-        // CP/M обычны, но в имени файла на ПК недопустимы. Заменяем их подчёркиванием: без
-        // этого имя, извлечённое из образа, нельзя ни записать обратно, ни сохранить на ПК.
-        name = name.replaceAll(INVALID_HOST_CHARS, "_");
-        ext  = ext .replaceAll(INVALID_HOST_CHARS, "_");
-
-        final String fullName = ext.isEmpty() ? name : name + "." + ext;
-
-        final boolean readOnly = (dir[off + 9]  & ATTR_READ_ONLY) != 0;
+        final String  fullName = getFullName(dir, off);
+        final boolean readOnly = (dir[off +  9] & ATTR_READ_ONLY) != 0;
         final boolean system   = (dir[off + 10] & ATTR_SYSTEM   ) != 0;
 
-        final int ex        = dir[off + 12] & 0x1F;
-        final int s2        = dir[off + 14] & 0x3F;
-        final int extentNum = (s2 << 5) | ex;
+        final int ex          = dir[off + 12] & 0x1F;
+        final int s2          = dir[off + 14] & 0x3F;
+        final int extentNum   = (s2 << 5) | ex;
         final int recordCount = dir[off + 15] & 0xFF;
 
         final List<Integer> blocks = new ArrayList<>();
         if (fProfile.is16BitBlockPointers()) {
             for (int p = 0; p < 8; p++) {
-                final int lo = dir[off + 16 + p * 2] & 0xFF;
+                final int lo = dir[off + 16 + p * 2    ] & 0xFF;
                 final int hi = dir[off + 16 + p * 2 + 1] & 0xFF;
                 blocks.add((hi << 8) | lo);
             }
@@ -307,8 +345,25 @@ public final class CpmImageReader {
                 blocks.add(dir[off + 16 + p] & 0xFF);
             }
         }
-
         return new Extent(user, fullName, readOnly, system, extentNum, recordCount, blocks);
+    }
+
+    /**
+     * Собирает имя файла из записи каталога, заменяя недопустимые на ПК символы подчёркиванием.
+     *
+     * @param dir байты области каталога
+     * @param off смещение записи
+     * @return имя в форме {@code ИМЯ.РАСШ}
+     */
+    private String getFullName(final byte[] dir, final int off) {
+        String name = extractAscii(dir, off + 1, 8).trim();
+        String ext  = extractAscii(dir, off + 9, 3).trim();
+        // Спецсимволы CP/M (например, '|' — «неразрывная» часть имени, '$', '#') в именах
+        // CP/M обычны, но в имени файла на ПК недопустимы. Заменяем их подчёркиванием: без
+        // этого имя, извлечённое из образа, нельзя ни записать обратно, ни сохранить на ПК.
+        name = name.replaceAll(INVALID_HOST_CHARS, "_");
+        ext  = ext.replaceAll(INVALID_HOST_CHARS, "_");
+        return ext.isEmpty() ? name : name + "." + ext;
     }
 
     /**

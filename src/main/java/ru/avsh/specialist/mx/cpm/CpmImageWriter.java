@@ -9,50 +9,71 @@ import java.util.*;
 /**
  * Пишет файлы в образ диска CP/M.
  *
- * Образ можно взять уже существующий (дописать файлы в готовый диск) или создать заново —
- * чистым либо с системными дорожками из ресурсов проекта. Файлы раскладываются по свободным
- * блокам, на каждый экстент пишется своя запись каталога; имя приводится к форме 8.3, а при
- * конфликте имён подбирается суффикс {@code ~1}, {@code ~2}…
+ * <p>Образ можно взять уже существующий (дописать файлы в готовый диск) или создать заново —
+ * чистым либо с системными дорожками из ресурсов проекта. Файлы раскладываются по первым
+ * свободным блокам, каждая запись каталога описывает свой экстент; имя приводится к форме 8.3,
+ * а при конфликте имён подбирается суффикс {@code ~1}, {@code ~2}… (до {@code ~999}).
+ *
+ * <p>Размер файла ограничен не только местом на диске. {@code MAX_FILE_SIZE} (8 МБ) —
+ * верхняя граница адресуемости CP/M 2.2: номер экстента собирается из пяти бит {@code EX}
+ * и шести бит {@code S2}, то есть 2048 значений по 16 КБ. Реальный предел на конкретном
+ * образе ниже: программа читает файл в 64 КБ адресного пространства, а запись каталога
+ * с {@code blockSize / 128 * 16} записями по 128 байт вмещает 16 КБ при блоке 1024,
+ * 32 КБ при 2048 и 64 КБ при 4096. Поэтому «.COM больше 64 КБ» проверяется не здесь,
+ * а на стороне CP/M, и таких файлов в поддерживаемых форматах всё равно не бывает.
+ *
+ * <p>Известное ограничение: маска экстента {@code EXM} при записи не применяется —
+ * номер экстента растёт простым шагом {@code extIdx * (exm + 1)}. Для блоков 1024 и 2048
+ * это совпадает с {@code EX} и {@code S2}, как их читает {@link CpmImageReader}, поэтому
+ * диски «Специалиста MX» (блок 2048) и Osborne (блок 2048) собираются верно. Для блока 4096
+ * маска экстента в записи должна кодировать позицию внутри «экстента» иначе, поэтому
+ * такие образы собирались бы неверно — раскладки с блоком 4096 в {@link DiskProfileFactory}
+ * нет; GUI всегда пишет в {@link DiskProfile#SPECIALIST_MX_ODI_4SYS}.
  *
  * @author -=AVSh=-
  */
 public final class CpmImageWriter {
-
-    /** Разрешаем только латиницу, цифры и безопасные спецсимволы CP/M. */
-    private static final String INVALID_CPM_CHARS = "[^A-Z0-9_$#@!%&'()\\-~^+]";
-
+    /**
+     * Разрешаем латиницу в обоих регистрах, цифры и безопасные спецсимволы CP/M.
+     *
+     * <p>Строчная латиница в CP/M 2.2 законна, и образы ей пользуются (в {@code microdos.kdi}
+     * есть файл {@code aa}). Если бы строчные буквы заменялись подчёркиванием, круглая
+     * сверка портила бы имя, а BDOS вёл бы себя иначе, чем ожидает пользователь.
+     */
+    private static final String INVALID_CPM_CHARS = "[^A-Za-z0-9_$#@!%&'()\\-~^+]";
     /** Байт «свободно» в каталоге и на месте незанятых данных. */
     private static final byte FREE_BYTE = (byte) 0xE5;
-
     /** Байт заполнения хвоста кластера — код конца файла в текстовых файлах CP/M. */
     private static final byte EOF_BYTE = (byte) 0x1A;
-
     /** Код пользователя CP/M — от 0 до 15. */
     private static final int MAX_USER_NUMBER = 0x0F;
-
     /** Размер записи каталога в байтах. */
     private static final int DIR_ENTRY_SIZE = 32;
-
     /** Размер логической записи CP/M. */
     private static final int RECORD_SIZE = 128;
-
-    /** Биты «только чтение» (байт 9) и «системный» (байт 10) в записи каталога. */
+    /**
+     * Бит «только чтение» в байте 9 записи каталога (младший бит поля {@code T1}) — по документации
+     * CP/M 2.2 атрибут ставится на первый символ расширения.
+     */
     private static final int ATTR_READ_ONLY = 0x80;
+    /** Бит «системный» в байте 10 записи каталога (младший бит поля {@code T2}). */
     private static final int ATTR_SYSTEM    = 0x80;
 
     /** Предел номера экстента: он занимает пять бит в байте EX и шесть в байте S2. */
     private static final int EXTENT_MASK_EX = 0x1F;
     private static final int EXTENT_MASK_S2 = 0x3F;
-
     /** Сколько раз пробуем подобрать уникальное имя с суффиксом {@code ~N}. */
     private static final int MAX_UNIQUE_NAME_ATTEMPTS = 999;
-
-    /** Наибольшая длина файла в CP/M 2.2: 512 логических экстентов по 16 КБ (8 МБ). */
+    /**
+     * Верхняя граница адресуемости файла в CP/M 2.2: номер экстента — пять бит {@code EX}
+     * и шесть бит {@code S2}, то есть 2048 номеров по 16 КБ в записи каталога (8 МБ).
+     * Предел одного файла на конкретном образе ниже — см. {@link CpmImageWriter}.
+     */
     private static final int MAX_FILE_SIZE = 8 * 1024 * 1024;
 
-    private final byte[]      fImage;
+    private final byte[]      fImage  ;
     private final DiskProfile fProfile;
-    private final BlockLayout fLayout;
+    private final BlockLayout fLayout ;
 
     /**
      * Открывает существующий (например, шаблонный загрузочный) образ для дозаписи файлов.
@@ -120,7 +141,7 @@ public final class CpmImageWriter {
      * @throws IOException если на диске нет места или каталог заполнен
      */
     public void writeFile(final CpmImageReader.CpmFile file, final boolean overwrite) throws IOException {
-        writeFileInternal(file, overwrite, new HashSet<String>());
+        writeFileInternal(file, overwrite, new HashSet<>());
     }
 
     /**
@@ -140,7 +161,9 @@ public final class CpmImageWriter {
             }
             final byte[] data = Files.readAllBytes(hostFile.toPath());
             cpmFiles.add(new CpmImageReader.CpmFile(
-                    hostFile.getName(),
+                    // Имя с ПК приводится к верхнему регистру здесь: имена из каталога
+                    // пишутся обратно как есть, чтобы не менять байты записи диска.
+                    hostFile.getName().toUpperCase(Locale.ROOT),
                     userNumber & MAX_USER_NUMBER,
                     !hostFile.canWrite(),
                     false,
@@ -176,15 +199,9 @@ public final class CpmImageWriter {
 
         // Форматируем базовое имя в 8.3
         final String[] nameExt = format83Name(file.getName());
+        final int user = file.getUserNumber() & MAX_USER_NUMBER;
         String fName = nameExt[0];
         String fExt  = nameExt[1];
-
-        final int user = file.getUserNumber() & MAX_USER_NUMBER;
-
-        final String dirName = String.format("%-8s", fName).substring(0, 8);
-        final String dirExt  = String.format("%-3s", fExt ).substring(0, 3);
-        fName = dirName;
-        fExt  = dirExt;
 
         final String batchKey = user + ":" + fName + "." + fExt;
 
@@ -215,40 +232,56 @@ public final class CpmImageWriter {
 
         final byte[] data = file.getData();
         if (data.length > MAX_FILE_SIZE) {
-            // CP/M грузит .COM и открывает файл по адресу, а адресное пространство кончается
-            // на 64 КБ: более длинный файл не читается ни одной программой, зато занимает
-            // место на диске и молча получает обрезанное содержимое.
+            // Здесь заканчивается адресуемость, а не место на диске: номер экстента в записи
+            // каталога шестибитный по S2, и файл длиннее 2048 экстентов не описать вовсе.
             throw new IOException(String.format(
                     "Файл слишком велик для CP/M (более %d байт): %s", MAX_FILE_SIZE, file.getName()));
         }
         final int    totalRecords = (data.length + RECORD_SIZE - 1) / RECORD_SIZE;
         final int    blocksNeeded = (data.length + fProfile.getBlockSize() - 1) / fProfile.getBlockSize();
+        final boolean is16Bit         = fProfile.is16BitBlockPointers();
+        final int     ptrsPerEntry    = is16Bit ? 8 : 16;
+        final int     recordsPerEntry = ptrsPerEntry * (fProfile.getBlockSize() / RECORD_SIZE);
+        final int     totalExtents    = Math.max(1, (totalRecords + recordsPerEntry - 1) / recordsPerEntry);
+
+        // Каждая запись каталога описывает свой экстент, и экстент начинается на его границе:
+        // между блоками одного экстента зазора быть не может. У «Специалиста MX» (блок 2048,
+        // 16-битные указатели) экстент — это 8 блоков, поэтому файл из одного блока занимает
+        // в записи каталога первое место, а остальные семь остаются нулевыми. Файл, который
+        // помещается в один экстент, получает блоки подряд, как их пишет BDOS.
+        final int blocksInChain = (totalExtents == 1)
+                ? blocksNeeded
+                : (totalExtents - 1) * ptrsPerEntry
+                  + Math.min(ptrsPerEntry, (totalRecords - (totalExtents - 1) * recordsPerEntry
+                          + fProfile.getBlockSize() / RECORD_SIZE - 1) / (fProfile.getBlockSize() / RECORD_SIZE));
 
         // Блоки перезаписываемого файла уже свободны (их экстенты освобождены): сначала берём их,
         // иначе при перезаписи блоками «с хвоста» каждый проход съедал бы новые блоки диска.
-        final int[] allocatedBlocks = new int[blocksNeeded];
+        final int[] allocatedBlocks = new int[blocksInChain];
         int found = 0;
         for (final int slot : reuseSlots) {
             for (final int blk : readEntryBlocks(dirArea, slot * DIR_ENTRY_SIZE)) {
-                if ((blk <= 0) || (found >= blocksNeeded)) {
+                if ((blk <= 0) || (found >= blocksInChain)) {
                     continue;
                 }
                 allocatedBlocks[found++] = blk;
                 usedBlocks[blk] = true;
             }
         }
-        for (int b = dirBlocksCount(); (b < totalBlocks) && (found < blocksNeeded); b++) {
+        for (int b = dirBlocksCount(); (b < totalBlocks) && (found < blocksInChain); b++) {
             if (!usedBlocks[b]) {
                 allocatedBlocks[found++] = b;
                 usedBlocks[b] = true;
             }
         }
-        if (found < blocksNeeded) {
+        if (found < blocksInChain) {
             throw new IOException("Недостаточно места на диске для файла: " + file.getName());
         }
 
         final byte[] blockBuf = new byte[fProfile.getBlockSize()];
         for (int i = 0; i < blocksNeeded; i++) {
+            // Хвост последнего блока дополняется байтом 0x1A (конец текста CP/M): так же его
+            // заполняет и сама CP/M, записывая файл.
             Arrays.fill(blockBuf, EOF_BYTE);
             final int srcOffset = i * fProfile.getBlockSize();
             final int len       = Math.min(fProfile.getBlockSize(), data.length - srcOffset);
@@ -258,19 +291,14 @@ public final class CpmImageWriter {
             writeBlock(allocatedBlocks[i], blockBuf);
         }
 
-        final boolean is16Bit         = fProfile.is16BitBlockPointers();
-        final int     ptrsPerEntry    = is16Bit ? 8 : 16;
-
         // Экстент — это столько записей по 128 байт, сколько блоков перечислено в записи:
-        // у «Специалиста MX» (блок 1024) 8 указателей × 8 записей = 64 записи, то есть полблока.
-        // Проверено по рабочему диску (tpas.odi): TURBO.COM занимает две записи — EX=0 с rc=128
-        // (первая переполнена на единицу, потому что RC=0 означает 128) и EX=1 с rc=114, каждая
-        // со своими восемью блоками. Файл длиннее 64 записей (8 КБ) поэтому и получает несколько
-        // записей с EX=0, EX=1, EX=2… Подставлять в EX номер блока нельзя: каталог с такой
-        // разметкой BDOS не находит вовсе (DIR показывает «No file»).
-        final int     recordsPerEntry = ptrsPerEntry * (fProfile.getBlockSize() / RECORD_SIZE);
-
-        final int totalExtents = Math.max(1, (totalRecords + recordsPerEntry - 1) / recordsPerEntry);
+        // у «Специалиста MX» (блок 2048, 16-битные указатели) 8 указателей × 16 записей
+        // = 128 записей, то есть 16 КБ. Проверено по рабочему диску (tpas.odi): TURBO.COM
+        // занимает две записи — EX=0 с rc=128 (первая переполнена на единицу, потому что
+        // RC=0 означает 128) и EX=1 с rc=114, каждая со своими восемью блоками. Файл длиннее
+        // 128 записей (16 КБ) поэтому и получает несколько записей с EX=0, EX=1, EX=2…
+        // Подставлять в EX номер блока нельзя: каталог с такой разметкой BDOS не находит
+        // вовсе (DIR показывает «No file»).
         int recordsLeft = totalRecords;
         int blockCursor = 0;
 
@@ -287,11 +315,16 @@ public final class CpmImageWriter {
 
             dirArea[off] = (byte) user;
             System.arraycopy(fName.getBytes(StandardCharsets.US_ASCII), 0, dirArea, off + 1, 8);
-            System.arraycopy(fExt .getBytes(StandardCharsets.US_ASCII), 0, dirArea, off + 9, 3);
+            System.arraycopy(fExt.getBytes(StandardCharsets.US_ASCII), 0, dirArea, off + 9, 3);
 
             if (file.isReadOnly()) {
                 dirArea[off + 9] |= (byte) ATTR_READ_ONLY;
             }
+            // Системный атрибут ставится там, где его видит этот же читатель: старший бит
+            // поля T2 (байт 10). В CP/M 2.2 этот байт — второй символ расширения, и бит
+            // там просто взводится: microdos.kdi хранит системный файл как `44 C1 54`
+            // («DÁT» вместо «DAT»). Писать нулём в позицию, где расширение кончается
+            // пробелом, нельзя: читатель видит этот ноль как конец строки имени.
             if (file.isSystem()) {
                 dirArea[off + 10] |= (byte) ATTR_SYSTEM;
             }
@@ -300,8 +333,8 @@ public final class CpmImageWriter {
             // сколько осталось от файла целиком: лишние блоки в записи BDOS посчитает частью
             // файла и прочитает его длиннее настоящего.
             final int exm = Math.max(0, (recordsPerEntry / RECORD_SIZE) - 1);
-            final int blocksInThisEntry = Math.min(ptrsPerEntry, blocksNeeded - blockCursor);
             final int recordsInThisEntry = Math.min(recordsLeft, recordsPerEntry);
+            final int blocksInThisEntry  = Math.min(ptrsPerEntry, blocksNeeded - blockCursor);
             final int logicalExtent = (recordsInThisEntry == 0)
                     ? (extIdx * (exm + 1))
                     : (extIdx * (exm + 1) + ((recordsInThisEntry - 1) / RECORD_SIZE));
@@ -332,6 +365,11 @@ public final class CpmImageWriter {
         final byte[] dirArea = new byte[fProfile.getDirEntries() * DIR_ENTRY_SIZE];
         Arrays.fill(dirArea, FREE_BYTE);
 
+        // Первая запись с кодом пользователя вне 0–15 — это уже не каталог, а чужие байты
+        // (у Osborne 1 за живыми записями идёт код программы). Всё, что стоит за ней, при
+        // пересборке остаётся пометками «свободно»: иначе освобождение такой «записи»
+        // записало бы в каталог обрывки кода на месте удалённого файла.
+        int entries = fProfile.getDirEntries();
         final int dirBlocks = dirBlocksCount();
         int copied = 0;
         for (int b = 0; (b < dirBlocks) && (copied < dirArea.length); b++) {
@@ -339,10 +377,30 @@ public final class CpmImageWriter {
             final int len = Math.min(block.length, dirArea.length - copied);
             System.arraycopy(block, 0, dirArea, copied, len);
             copied += len;
+            for (int i = 0; (i * DIR_ENTRY_SIZE) < copied; i++) {
+                if ((dirArea[i * DIR_ENTRY_SIZE] & 0xFF) > MAX_USER_NUMBER) {
+                    entries = Math.min(entries, i);
+                }
+            }
         }
+        Arrays.fill(dirArea, entries * DIR_ENTRY_SIZE, dirArea.length, FREE_BYTE);
         return dirArea;
     }
 
+    /**
+     * Записывает область каталога в блоки каталога.
+     *
+     * <p>Блок каталога заполняется байтом {@code 0xE5} целиком, и только потом поверх него
+     * копируется логическое содержимое каталога. Так каталог выглядит на системном диске
+     * «Специалиста MX»: после последней живой записи до последней записи профиля стоит
+     * {@code 0xE5}. Живые записи при этом переносятся целиком, включая те, что CP/M уже
+     * пометила удалёнными: {@code $$$.SUB} от {@code SUBMIT.COM} остаётся записью со
+     * статусом {@code 0xE5} и прежними ссылками на блоки, как их оставила сама CP/M.
+     * Заполнение блока начинается с {@code 0xE5}, поэтому в области каталога не остаётся
+     * мусора от прежнего содержимого диска.
+     *
+     * @param dirArea логическое содержимое области каталога
+     */
     private void writeDirArea(final byte[] dirArea) {
         final int dirBlocks = dirBlocksCount();
         final int blockSize = fProfile.getBlockSize();
@@ -356,7 +414,6 @@ public final class CpmImageWriter {
             offset += len;
         }
     }
-
 
     /**
      * Возвращает число блоков, занятых каталогом.
@@ -375,14 +432,17 @@ public final class CpmImageWriter {
      * @param usedBlocks отметки занятости блоков
      */
     private void markUsedBlocksFromDir(final byte[] dirArea, final boolean[] usedBlocks) {
-        final boolean is16Bit = fProfile.is16BitBlockPointers();
-        final int     ptrs    = is16Bit ? 8 : 16;
         for (int i = 0; i < fProfile.getDirEntries(); i++) {
-            final int off = i * DIR_ENTRY_SIZE;
+            final int off    = i * DIR_ENTRY_SIZE ;
             final int status = dirArea[off] & 0xFF;
-            // Запись за концом каталога (код пользователя вне 0–15) не описывает файл: дальше
-            // в области каталога лежат данные, и их номера блоков нельзя считать указателями.
-            if ((status == (FREE_BYTE & 0xFF)) || (status > MAX_USER_NUMBER)) {
+            // Запись с кодом пользователя вне 0–15 — не запись каталога, а чужие байты:
+            // на Osborne 1 за живыми записями идёт код программы. Номера блоков из такой
+            // «записи» пометили бы занятыми произвольные блоки диска, поэтому поиск
+            // останавливается на первой же такой записи.
+            if (status > MAX_USER_NUMBER) {
+                break;
+            }
+            if (status == (FREE_BYTE & 0xFF)) {
                 continue;
             }
             for (final int blk : readEntryBlocks(dirArea, off)) {
@@ -398,14 +458,14 @@ public final class CpmImageWriter {
      *
      * @param dirArea байты области каталога
      * @param user    код пользователя
-     * @param fName   имя в форме записи каталога (8 байт с пробелами)
-     * @param fExt    расширение в форме записи каталога (3 байта с пробелами)
+     * @param name    имя в форме записи каталога (8 байт с пробелами)
+     * @param ext     расширение в форме записи каталога (3 байта с пробелами)
      * @return true — запись найдена
      */
-    private boolean findFileInDir(final byte[] dirArea, final int user, final String fName, final String fExt) {
+    private boolean findFileInDir(final byte[] dirArea, final int user, final String name, final String ext) {
         for (int i = 0; i < fProfile.getDirEntries(); i++) {
             final int off = i * DIR_ENTRY_SIZE;
-            if (((dirArea[off] & 0xFF) == user) && matchesName(dirArea, off, fName, fExt)) {
+            if (((dirArea[off] & 0xFF) == user) && matchesName(dirArea, off, name, ext)) {
                 return true;
             }
         }
@@ -418,19 +478,24 @@ public final class CpmImageWriter {
      *
      * @param dirArea байты области каталога
      * @param user    код пользователя
-     * @param fName   имя в форме записи каталога
-     * @param fExt    расширение в форме записи каталога
+     * @param name    имя в форме записи каталога
+     * @param ext     расширение в форме записи каталога
      * @return номера освобождённых записей каталога
      */
     private List<Integer> collectFileSlots(final byte[] dirArea,
                                            final int    user,
-                                           final String fName,
-                                           final String fExt) {
+                                           final String name,
+                                           final String ext) {
+
         final List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < fProfile.getDirEntries(); i++) {
             final int off = i * DIR_ENTRY_SIZE;
-            if (((dirArea[off] & 0xFF) == user) && matchesName(dirArea, off, fName, fExt)) {
+            if (((dirArea[off] & 0xFF) == user) && matchesName(dirArea, off, name, ext)) {
                 slots.add(i);
+                // Стирается только байт статуса: на дисках «Специалиста MX» снесённые удалением
+                // записи ($$$.SUB от SUBMIT.COM) выглядят именно так — 0xE5 в статусе, освобождённые
+                // ссылки на блоки на своих местах. Заполнять всю запись 0xE5 было бы расхождением
+                // с BDOS и портило бы побайтную сверку пересобранного образа с эталоном.
                 dirArea[off] = FREE_BYTE;
             }
         }
@@ -461,13 +526,13 @@ public final class CpmImageWriter {
      *
      * @param dirArea байты области каталога
      * @param off     смещение записи каталога
-     * @param fName   имя в форме записи каталога (8 байт с пробелами)
-     * @param fExt    расширение в форме записи каталога (3 байта с пробелами)
+     * @param name    имя в форме записи каталога (8 байт с пробелами)
+     * @param ext     расширение в форме записи каталога (3 байта с пробелами)
      * @return true — имена совпадают
      */
-    private boolean matchesName(final byte[] dirArea, final int off, final String fName, final String fExt) {
-        final byte[] nBytes = fName.getBytes(StandardCharsets.US_ASCII);
-        final byte[] eBytes = fExt .getBytes(StandardCharsets.US_ASCII);
+    private boolean matchesName(final byte[] dirArea, final int off, final String name, final String ext) {
+        final byte[] nBytes = name.getBytes(StandardCharsets.US_ASCII);
+        final byte[] eBytes = ext.getBytes(StandardCharsets.US_ASCII);
         for (int j = 0; j < 8; j++) {
             if ((dirArea[off + 1 + j] & 0x7F) != nBytes[j]) {
                 return false;
@@ -482,18 +547,40 @@ public final class CpmImageWriter {
     }
 
     /**
-     * Находит первую свободную запись каталога.
+     * Находит первую свободную запись каталога начиная с {@link #firstFreeCandidate(byte[])}.
      *
      * @param dirArea байты области каталога
      * @return номер записи или -1, если каталог заполнен
      */
     private int findFreeDirSlot(final byte[] dirArea) {
-        for (int i = 0; i < fProfile.getDirEntries(); i++) {
+        for (int i = firstFreeCandidate(dirArea); i < fProfile.getDirEntries(); i++) {
             if ((dirArea[i * DIR_ENTRY_SIZE] & 0xFF) == (FREE_BYTE & 0xFF)) {
                 return i;
             }
         }
         return -1;
+    }
+
+    /**
+     * Возвращает номер записи, с которой можно искать свободные места: сразу после последней
+     * живой записи каталога.
+     *
+     * Признак — код пользователя больше 15: так выглядит хвост каталога Osborne 1, где после
+     * записей идёт код программы. Байты этого кода вперемешку с {@code 0xE5} не отличить от
+     * пометок «свободно», и запись в такой хвост испортила бы данные. Если хвоста нет, поиск
+     * начинается с нулевой записи, и свободное место ищется по всему каталогу, в том числе
+     * после последней живой записи, — так разместил бы файл сам BDOS.
+     *
+     * @param dirArea байты области каталога
+     * @return номер записи (0, если каталог пуст)
+     */
+    private int firstFreeCandidate(final byte[] dirArea) {
+        for (int i = 0; i < fProfile.getDirEntries(); i++) {
+            if ((dirArea[i * DIR_ENTRY_SIZE] & 0xFF) > MAX_USER_NUMBER) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     /**
@@ -510,8 +597,8 @@ public final class CpmImageWriter {
                                      final int    user,
                                      final String basePaddedName,
                                      final String paddedExt) throws IOException {
-        final String trimmedBase = basePaddedName.trim();
 
+        final String trimmedBase = basePaddedName.trim();
         for (int index = 1; index <= MAX_UNIQUE_NAME_ATTEMPTS; index++) {
             final String suffix     = "~" + index;
             final int    maxBaseLen = 8 - suffix.length();
@@ -535,20 +622,25 @@ public final class CpmImageWriter {
      * @return имя и расширение, каждое дополнено пробелами до 8 и 3 символов
      */
     private String[] format83Name(final String rawName) {
-        final String upper = rawName.toUpperCase().trim();
+        // Имя из каталога пишется обратно как есть, вместе с регистром: в microdos.kdi есть
+        // файл «aa», и перевод в верхний регистр менял его на «AA» при круговой сверке —
+        // запись с другим регистром CP/M находит по тому же имени, но байты каталога
+        // уже другие. Верхний регистр нужен только для имён, которые пришли не из каталога
+        // (введены с клавиатуры, скопированы с ПК), — их приводит вызывающая сторона.
+        final String upper = rawName.trim();
         final int    dot   = upper.lastIndexOf('.');
         String namePart = (dot >= 0) ? upper.substring(0, dot) : upper;
         String extPart  = (dot >= 0) ? upper.substring(dot + 1) : "";
 
         namePart = namePart.replaceAll(INVALID_CPM_CHARS, "_");
-        extPart  = extPart .replaceAll(INVALID_CPM_CHARS, "_");
+        extPart  = extPart.replaceAll(INVALID_CPM_CHARS, "_");
 
         if (namePart.isEmpty()) {
             namePart = "_";
         }
 
         final String paddedName = String.format("%-8s", namePart).substring(0, 8);
-        final String paddedExt  = String.format("%-3s", extPart ).substring(0, 3);
+        final String paddedExt  = String.format("%-3s", extPart).substring(0, 3);
 
         // Запятая в конце имени или расширения — признак удалённого файла (стандартное
         // расширение CP/M для «стёртого»). Имя TEST.BIN. превратилось бы в невидимую запись,
