@@ -16,16 +16,16 @@ package ru.avsh.specialist.mx.cpm;
  * @author -=AVSh=-
  */
 public final class DiskProfile {
-    private final String  fName;
+    private final String  fName  ;
     private final int     fTracks;
-    private final int     fSides;
+    private final int     fSides ;
     private final int     fSectorsPerTrack;
-    private final int     fSectorSize;
-    private final int     fReservedTracks;
-    private final int     fBlockSize;
+    private final int     fSectorSize     ;
+    private final int     fReservedTracks ;
+    private final int     fBlockSize ;
     private final int     fDirEntries;
-    private final int[]   fSkewTable;
-    private final int     fDirOffset;
+    private final int[]   fSkewTable ;
+    private final int     fDirOffset ;
 
     /**
      * Конструктор.
