@@ -45,7 +45,7 @@ public final class FileUtils {
                 : "";
     }
 
-    public static boolean canWrite(final File file) {
-        return (file != null) && (!file.exists() || !file.isDirectory());
+    public static boolean canWrite(final @NotNull File file) {
+        return !file.exists() || !file.isDirectory();
     }
 }
