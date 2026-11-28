@@ -1,9 +1,11 @@
-package ru.avsh.specialist.mx.helpers;
+package ru.avsh.specialist.mx.utils;
 
 import org.jetbrains.annotations.NotNull;
 
 /**
  * Класс "Ловушка".
+ *
+ * @author -=AVSh=-
  */
 public final class Trap implements Comparable<Trap> {
     private int fValue;

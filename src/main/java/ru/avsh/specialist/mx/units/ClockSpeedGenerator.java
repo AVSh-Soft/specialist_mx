@@ -1,9 +1,9 @@
 package ru.avsh.specialist.mx.units;
 
-import ru.avsh.specialist.mx.helpers.RobustIntervalTracker;
 import ru.avsh.specialist.mx.units.types.ClockedUnit;
 import ru.avsh.specialist.mx.units.types.CpuCore;
 import ru.avsh.specialist.mx.units.types.ObserverUnit;
+import ru.avsh.specialist.mx.utils.RobustIntervalTracker;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

@@ -1,4 +1,4 @@
-package ru.avsh.specialist.mx.helpers;
+package ru.avsh.specialist.mx.utils;
 
 import java.io.File;
 import java.io.InputStream;
@@ -48,8 +48,11 @@ public final class Constants {
     public static final String SPMX_ICON_FILE  = "specialist_mx.png";
 
     // Строковые константы
-    public static final String STR_ERROR     = "Ошибка";
-    public static final String STR_OPEN_FILE = "Открыть файл";
+    public static final String TITLE_ERROR = "Ошибка"    ;
+    public static final String TITLE_INFO  = "Информация";
+
+    public static final String STR_OPEN_FILE  = "Открыть файл"  ;
+    public static final String STR_SAVE_FILE  = "Сохранить файл";
 
     // Количество страниц RAM-диска у ПК "Специалист MX" (от 1 до 8)
     // (здесь только количество страницы RAM-диска - без основной памяти и ROM-диска)

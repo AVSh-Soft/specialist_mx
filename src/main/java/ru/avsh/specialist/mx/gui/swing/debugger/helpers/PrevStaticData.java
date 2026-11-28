@@ -1,7 +1,7 @@
 package ru.avsh.specialist.mx.gui.swing.debugger.helpers;
 
 import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
-import ru.avsh.specialist.mx.helpers.Constants;
+import ru.avsh.specialist.mx.utils.Constants;
 
 import java.awt.*;
 import java.util.Arrays;

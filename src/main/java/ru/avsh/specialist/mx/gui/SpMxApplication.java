@@ -25,9 +25,10 @@ import ru.avsh.specialist.mx.gui.swing.BlockSaveDialog;
 import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
 import ru.avsh.specialist.mx.gui.swing.utils.SwingConfig;
 import ru.avsh.specialist.mx.gui.utils.PixelatedImageView;
-import ru.avsh.specialist.mx.helpers.Constants;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.units.Screen;
+import ru.avsh.specialist.mx.utils.Constants;
+import ru.avsh.specialist.mx.utils.FileUtils;
 
 import javax.swing.*;
 import java.io.File;
@@ -45,7 +46,7 @@ import static javafx.scene.control.Alert.AlertType.*;
 import static javafx.stage.WindowEvent.WINDOW_CLOSE_REQUEST;
 import static ru.avsh.specialist.mx.gui.utils.AlertUtil.Option.YES_NO_OPTION;
 import static ru.avsh.specialist.mx.gui.utils.AlertUtil.*;
-import static ru.avsh.specialist.mx.helpers.Constants.*;
+import static ru.avsh.specialist.mx.utils.Constants.*;
 
 /**
  * Класс для формирования главного окна приложения (меню, кнопок обработчики событий).
@@ -70,10 +71,6 @@ public class SpMxApplication extends Application {
     private static final String NO_DISK  = "нет диска";
     private static final String ROM_PREF =  "[ROM] - ";
 
-    private static final String TITLE_INFO  = "Информация";
-    private static final String TITLE_ERROR = "Ошибка"    ;
-
-    private static final String STR_SAVE_FILE    = "Сохранить файл"   ;
     private static final String ODI_DEFAULT_NAME = "specialist_mx.odi";
 
     private static final String FILES_ODI_TEXT = "Файлы: *.odi";
@@ -318,7 +315,7 @@ public class SpMxApplication extends Application {
             saveChooser.setTitle(STR_SAVE_FILE);
             saveChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(FILES_ODI_TEXT, FILES_ODI_MASK));
             saveChooser.setInitialDirectory(source.getParentFile());
-            saveChooser.setInitialFileName(ODI_DEFAULT_NAME);
+            saveChooser.setInitialFileName (FileUtils.getNameWithoutExtension(source).concat(".odi"));
 
             final File target = saveChooser.showSaveDialog(primaryStage);
             if (target != null) {

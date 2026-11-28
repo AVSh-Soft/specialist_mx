@@ -5,10 +5,10 @@ import org.jetbrains.annotations.Nullable;
 import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPU;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
 import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
-import ru.avsh.specialist.mx.helpers.Constants;
-import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
+import ru.avsh.specialist.mx.utils.Constants;
+import ru.avsh.specialist.mx.utils.Trap;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static ru.avsh.specialist.mx.helpers.Constants.SPMX_ICON_FILE;
+import static ru.avsh.specialist.mx.utils.Constants.SPMX_ICON_FILE;
 
 /**
  * Абстрактный класс "Процессор, поддерживающий отладку".

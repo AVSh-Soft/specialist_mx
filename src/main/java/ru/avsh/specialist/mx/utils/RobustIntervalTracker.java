@@ -1,10 +1,12 @@
-package ru.avsh.specialist.mx.helpers;
+package ru.avsh.specialist.mx.utils;
 
 import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Надежный трекер временных интервалов.
+ *
+ * @author -=AVSh=-
  */
 public class RobustIntervalTracker {
     private final long[] window;

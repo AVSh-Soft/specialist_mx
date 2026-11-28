@@ -12,10 +12,9 @@ import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.EventType;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.MemoryPageType;
 import ru.avsh.specialist.mx.gui.swing.utils.JFormattedTextFieldExt;
-import ru.avsh.specialist.mx.helpers.Constants;
-import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.units.MainMemory;
+import ru.avsh.specialist.mx.utils.Trap;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -41,6 +40,7 @@ import java.util.function.UnaryOperator;
 
 import static javax.swing.JOptionPane.*;
 import static javax.swing.plaf.basic.BasicGraphicsUtils.drawStringUnderlineCharAt;
+import static ru.avsh.specialist.mx.utils.Constants.*;
 
 /**
  * Класс "Отладчик для активного процессора эмулятора (I8080 или Z80)".
@@ -810,8 +810,8 @@ public final class DebuggerCPU extends JDialog {
                 // Запоминаем положение окна отладчика
                 PrevStaticData.setPrevLocation(getLocation());
                 // Запоминаем размеры фрейма в ini-файл
-                fSpMX.putIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
-                fSpMX.putIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
+                fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , getWidth ());
+                fSpMX.putIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, getHeight());
             }
         });
 
@@ -822,8 +822,8 @@ public final class DebuggerCPU extends JDialog {
 
         // Восстанавливаем размеры фрейма из ini-файла
         {
-            final Integer width  = fSpMX.getIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
-            final Integer height = fSpMX.getIni(Constants.INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
+            final Integer width  = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_WIDTH , Integer.class);
+            final Integer height = fSpMX.getIni(INI_SECTION_CONFIG, INI_OPTION_FRAME_HEIGHT, Integer.class);
             if ((width != null) && (height != null)) {
                 setSize(width, height);
             }
@@ -1192,7 +1192,7 @@ public final class DebuggerCPU extends JDialog {
                         try {
                             fEmulatorLayer.writeByte(page,rowIndex + columnIndex - DA_COL_BT0, Integer.parseInt((String) aValue, 16));
                         } catch (NumberFormatException e) {
-                            showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                            showMessageDialog(DebuggerCPU.this, e.toString(), TITLE_ERROR, ERROR_MESSAGE);
                         }
                     }
                     break;
@@ -1598,7 +1598,7 @@ public final class DebuggerCPU extends JDialog {
                           fDisAsmTable.gotoAddress(fEmulatorLayer.getValRegPair(DebugRegPair.PC), DA_COL_ADR);
                     }
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerCPU.this, e.toString(), TITLE_ERROR, ERROR_MESSAGE);
                 }
                 return;
             }
@@ -1800,7 +1800,7 @@ public final class DebuggerCPU extends JDialog {
                     fEmulatorLayer.writeByte(page, address, value & 0xFF);
                     fEmulatorLayer.writeByte(page, address + 1, value >> 8);
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerCPU.this, e.toString(), TITLE_ERROR, ERROR_MESSAGE);
                 } finally {
                     if (fEmulatorLayer.isEventsDisabled()) {
                         fEmulatorLayer.enableEvents();
@@ -2654,7 +2654,7 @@ public final class DebuggerCPU extends JDialog {
                     try {
                         fEmulatorLayer.writeByte(page, (rowIndex << 4) + columnIndex - MD_COL_B00, Integer.parseInt((String) aValue, 16));
                     } catch (NumberFormatException e) {
-                        showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                        showMessageDialog(DebuggerCPU.this, e.toString(), TITLE_ERROR, ERROR_MESSAGE);
                     }
                     return;
                 case MD_COL_STR: {
@@ -3089,7 +3089,7 @@ public final class DebuggerCPU extends JDialog {
                         Integer.parseInt((String) inputAddressPanel.fStartAddress.getValue(), 16),
                         Integer.parseInt((String) inputAddressPanel.  fEndAddress.getValue(), 16));
             } catch (NumberFormatException e) {
-                showMessageDialog(this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                showMessageDialog(this, e.toString(), TITLE_ERROR, ERROR_MESSAGE);
             }
         }
     }
@@ -3108,7 +3108,7 @@ public final class DebuggerCPU extends JDialog {
             showMessageDialog(this,
                     "Не выделен диапазон адресов в таблице просмотра данных.\n" +
                              "Выделите его мышью или кнопкой \"Select\".",
-                    Constants.STR_ERROR, ERROR_MESSAGE);
+                    TITLE_ERROR, ERROR_MESSAGE);
             return;
         }
         if (startAddress > endAddress) {
@@ -3127,7 +3127,7 @@ public final class DebuggerCPU extends JDialog {
         final JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle     (String.format("Сохранить в файл данные в диапазоне %04X-%04X из страницы \"%s\"",
                 startAddress, endAddress, fEmulatorLayer.getPageName(page, startAddress)));
-        chooser.setCurrentDirectory(new File(Constants.getCurPath()));
+        chooser.setCurrentDirectory(new File(getCurPath()));
         chooser.setFileFilter      (new FileNameExtensionFilter("Файлы: *.bin", "bin"));
         if (chooser.showSaveDialog (this) != JFileChooser.APPROVE_OPTION) {
             return;
@@ -3138,14 +3138,14 @@ public final class DebuggerCPU extends JDialog {
         if (file.getName().lastIndexOf('.') == -1) {
             file = new File(file.getPath().concat(".bin"));
         }
-        Constants.setCurPath(file.getParent());
+        setCurPath(file.getParent());
 
         try {
             Files.write(file.toPath(), data);
         } catch (IOException ex) {
             showMessageDialog(this,
                     String.format("Ошибка записи файла: \"%s\"%n%s", file.getPath(), ex),
-                    Constants.STR_ERROR, ERROR_MESSAGE);
+                    TITLE_ERROR, ERROR_MESSAGE);
         }
     }
 
@@ -3162,34 +3162,34 @@ public final class DebuggerCPU extends JDialog {
             showMessageDialog(this,
                     String.format("Загрузка в страницу \"%s\" не поддерживается: ROM-диск не перезаписывается.",
                             fEmulatorLayer.getPageName(page)),
-                    Constants.STR_ERROR, ERROR_MESSAGE);
+                    TITLE_ERROR, ERROR_MESSAGE);
             return;
         }
 
         final JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle(String.format(
                 "Загрузка файла с адреса %04X в страницу \"%s\"", address, fEmulatorLayer.getPageName(page, address)));
-        chooser.setCurrentDirectory(new File(Constants.getCurPath()));
+        chooser.setCurrentDirectory(new File(getCurPath()));
         if (chooser.showOpenDialog (this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
 
         final File file = chooser.getSelectedFile() ;
-              Constants.setCurPath(file.getParent());
+              setCurPath(file.getParent());
 
         // Размер берётся у файловой системы до чтения: большой файл отбрасывается без выделения памяти
         final long size;
         try {
             if (!Files.isRegularFile(file.toPath())) {
                 showMessageDialog(this,
-                        String.format("Выбран не файл: \"%s\".", file.getPath()), Constants.STR_ERROR, ERROR_MESSAGE);
+                        String.format("Выбран не файл: \"%s\".", file.getPath()), TITLE_ERROR, ERROR_MESSAGE);
                 return;
             }
             size = Files.size(file.toPath());
         } catch (IOException | SecurityException ex) {
             showMessageDialog(this,
                     String.format("Ошибка чтения файла: \"%s\"%n%s", file.getPath(), ex),
-                    Constants.STR_ERROR, ERROR_MESSAGE);
+                    TITLE_ERROR, ERROR_MESSAGE);
             return;
         }
 
@@ -3200,7 +3200,7 @@ public final class DebuggerCPU extends JDialog {
                                   "загрузка с адреса %04X заканчивается на адресе %08X, " +
                                   "а последний допустимый адрес %04X.",
                             file.getName(), size, address, endAddress, MainMemory.STORAGE_SIZE - 1),
-                    Constants.STR_ERROR, ERROR_MESSAGE);
+                    TITLE_ERROR, ERROR_MESSAGE);
             return;
         }
 
@@ -3210,7 +3210,7 @@ public final class DebuggerCPU extends JDialog {
         } catch (IOException | OutOfMemoryError ex) {
             showMessageDialog(this,
                     String.format("Ошибка чтения файла: \"%s\"%n%s", file.getPath(), ex),
-                    Constants.STR_ERROR, ERROR_MESSAGE);
+                    TITLE_ERROR, ERROR_MESSAGE);
             return;
         }
 
@@ -3219,7 +3219,7 @@ public final class DebuggerCPU extends JDialog {
             showMessageDialog(this,
                     String.format("Файл \"%s\" изменился во время чтения: ожидалось %d байт, прочитано %d.",
                             file.getName(), size, data.length),
-                    Constants.STR_ERROR, ERROR_MESSAGE);
+                    TITLE_ERROR, ERROR_MESSAGE);
             return;
         }
 
@@ -3295,7 +3295,7 @@ public final class DebuggerCPU extends JDialog {
                 try {
                     result = Integer.parseInt((String) (type ? fDataAddress.getValue() : fCodeAddress.getValue()), 16);
                 } catch (NumberFormatException e) {
-                    showMessageDialog(DebuggerCPU.this, e.toString(), Constants.STR_ERROR, ERROR_MESSAGE);
+                    showMessageDialog(DebuggerCPU.this, e.toString(), TITLE_ERROR, ERROR_MESSAGE);
                 }
                 return result;
             }
@@ -3466,7 +3466,7 @@ public final class DebuggerCPU extends JDialog {
                         if (!(strBytes.isEmpty() || strBytes.matches(REGEXP_STRING_BYTES))) {
                             showMessageDialog(DebuggerCPU.this,
                                     String.format("Некорректно заполнена строка из байт:%n[%s]%nПоиск невозможен!", strBytes),
-                                    Constants.STR_ERROR, ERROR_MESSAGE);
+                                    TITLE_ERROR, ERROR_MESSAGE);
                         }
                     }
                 });

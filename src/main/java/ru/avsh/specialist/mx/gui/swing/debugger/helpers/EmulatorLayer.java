@@ -4,11 +4,11 @@ import org.jetbrains.annotations.NotNull;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.DebugRegPair;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.EventType;
 import ru.avsh.specialist.mx.gui.swing.debugger.types.MemoryPageType;
-import ru.avsh.specialist.mx.helpers.Constants;
-import ru.avsh.specialist.mx.helpers.Trap;
 import ru.avsh.specialist.mx.root.SpecialistMX;
 import ru.avsh.specialist.mx.units.memory.units.MainMemory;
 import ru.avsh.specialist.mx.units.types.CpuDebugCore;
+import ru.avsh.specialist.mx.utils.Constants;
+import ru.avsh.specialist.mx.utils.Trap;
 
 import java.util.Observable;
 

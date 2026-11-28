@@ -9,8 +9,6 @@ import org.jetbrains.annotations.Nullable;
 import ru.avsh.specialist.mx.gui.SpMxApplication;
 import ru.avsh.specialist.mx.gui.swing.debugger.DebuggerCPU;
 import ru.avsh.specialist.mx.gui.swing.utils.StubMainFrame;
-import ru.avsh.specialist.mx.helpers.Constants;
-import ru.avsh.specialist.mx.helpers.FileFinder;
 import ru.avsh.specialist.mx.units.ClockSpeedGenerator;
 import ru.avsh.specialist.mx.units.CpuI8080;
 import ru.avsh.specialist.mx.units.CpuZ80;
@@ -19,6 +17,8 @@ import ru.avsh.specialist.mx.units.memory.MemoryManager;
 import ru.avsh.specialist.mx.units.memory.units.*;
 import ru.avsh.specialist.mx.units.types.CpuCore;
 import ru.avsh.specialist.mx.units.types.CpuDebugCore;
+import ru.avsh.specialist.mx.utils.Constants;
+import ru.avsh.specialist.mx.utils.FileFinder;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
@@ -36,7 +36,7 @@ import static javafx.scene.control.Alert.AlertType.CONFIRMATION;
 import static javafx.scene.control.Alert.AlertType.WARNING;
 import static ru.avsh.specialist.mx.gui.utils.AlertUtil.Option.YES_NO_OPTION;
 import static ru.avsh.specialist.mx.gui.utils.AlertUtil.*;
-import static ru.avsh.specialist.mx.helpers.Constants.*;
+import static ru.avsh.specialist.mx.utils.Constants.*;
 
 /**
  * Класс "Компьютер 'Специалист MX'".
@@ -145,7 +145,7 @@ public final class SpecialistMX {
     }
 
     @Nullable
-    private Wini getWini() {
+    private static Wini getWini() {
         Wini ini =  new Wini();
         ini.setFile(new File(INI_FILE));
         try {
@@ -482,7 +482,7 @@ public final class SpecialistMX {
         try {
             fIni.store();
         } catch (IOException e) {
-            showMessageDialog(SpMxApplication.ICON, STR_ERROR, null, e.toString(), AlertType.ERROR);
+            showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null, e.toString(), AlertType.ERROR);
         }
     }
 
@@ -757,7 +757,7 @@ public final class SpecialistMX {
             reset(0x0000, false);
             return true;
         } catch (IOException e) {
-            showMessageDialog(SpMxApplication.ICON, STR_ERROR, null, e.toString(), AlertType.ERROR);
+            showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null, e.toString(), AlertType.ERROR);
         }
         return false;
     }
@@ -786,7 +786,7 @@ public final class SpecialistMX {
             reset(0x0000, false);
             return true;
         } catch (NumberFormatException | IOException e) {
-            showMessageDialog(SpMxApplication.ICON, STR_ERROR, null,
+            showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null,
                     String.format("Ошибка загрузки ROM-файла: \"%s\"%n%s", fileName, e.toString()), AlertType.ERROR);
             return false;
         }
@@ -825,7 +825,7 @@ public final class SpecialistMX {
                 reset(address, true);
                 return true;
             } catch (NumberFormatException | IOException e) {
-                showMessageDialog(SpMxApplication.ICON, STR_ERROR, null,
+                showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null,
                         String.format("Ошибка загрузки MON-файла: \"%s\"%n%s", fileName, e.toString()), AlertType.ERROR);
             }
         }
@@ -979,7 +979,7 @@ public final class SpecialistMX {
             loadHelper(new File(file.getPath().substring(0, file.getPath().length() - 3).concat("i80")), loadAdr, startAdr, 0, 0, -1, btnRun.equals(selected));
             return true;
         } catch (NumberFormatException | IOException e) {
-            showMessageDialog(SpMxApplication.ICON, STR_ERROR, null,
+            showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null,
                     String.format("Ошибка загрузки файла: \"%s\"%n%s", file.getName(), e.toString()), AlertType.ERROR);
         }
         return false;
@@ -1038,7 +1038,7 @@ public final class SpecialistMX {
             loadHelper(file, begAdr, begAdr, 4, length, checksum, btnRun.equals(selected));
             return true;
         } catch (IOException e) {
-            showMessageDialog(SpMxApplication.ICON, STR_ERROR, null,
+            showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null,
                     String.format("Ошибка загрузки файла: %s%n%s", fileName, e.toString()), AlertType.ERROR);
         }
         return false;
@@ -1059,7 +1059,7 @@ public final class SpecialistMX {
             (beginAddress < 0) || (beginAddress > 0xFFFF) ||
             (endAddress   < 0) || (endAddress   > 0xFFFF) ||
             (startAddress < 0) || (startAddress > 0xFFFF)   ) {
-            showMessageDialog(SpMxApplication.ICON, STR_ERROR, null,
+            showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null,
                     "Некоторые параметры переданы неверно - сохранение невозможно!", AlertType.ERROR);
             return false;
         }
@@ -1091,7 +1091,7 @@ public final class SpecialistMX {
             }
             return true;
         } catch (IOException e) {
-            showMessageDialog(SpMxApplication.ICON, STR_ERROR, null,
+            showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null,
                     String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), AlertType.ERROR);
         }
         return false;
@@ -1110,7 +1110,7 @@ public final class SpecialistMX {
         if ((file   ==   null) ||
             (beginAddress < 0) || (beginAddress > 0xFFFF) ||
             (endAddress   < 0) || (endAddress   > 0xFFFF)   ) {
-            showMessageDialog(SpMxApplication.ICON, STR_ERROR, null,
+            showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null,
                     "Некоторые параметры переданы неверно - сохранение невозможно!", AlertType.ERROR);
             return false;
         }
@@ -1141,7 +1141,7 @@ public final class SpecialistMX {
             }
             return true;
         } catch (IOException e) {
-            showMessageDialog(SpMxApplication.ICON, STR_ERROR, null,
+            showMessageDialog(SpMxApplication.ICON, TITLE_ERROR, null,
                     String.format("Ошибка сохранения файла: \"%s\"%n%s", file.getName(), e.toString()), AlertType.ERROR);
         }
         return false;

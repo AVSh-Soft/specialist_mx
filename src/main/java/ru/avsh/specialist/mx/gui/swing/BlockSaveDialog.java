@@ -1,7 +1,6 @@
 package ru.avsh.specialist.mx.gui.swing;
 
 import ru.avsh.specialist.mx.gui.swing.utils.JFormattedTextFieldExt;
-import ru.avsh.specialist.mx.helpers.Constants;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -18,6 +17,7 @@ import java.nio.file.Paths;
 
 import static javax.swing.JOptionPane.ERROR_MESSAGE;
 import static javax.swing.JOptionPane.showMessageDialog;
+import static ru.avsh.specialist.mx.utils.Constants.*;
 
 /**
  * Класс "Диалог сохранения блока".
@@ -211,16 +211,16 @@ public final class BlockSaveDialog extends JDialog {
             final JFileChooser chooser = new JFileChooser();
             chooser.setDialogTitle("Сохранить файл");
             if (fileName.isEmpty()) {
-                chooser.setCurrentDirectory(new File(Constants.getCurPath()));
+                chooser.setCurrentDirectory(new File(getCurPath()));
             } else if (fileName.matches("^[^:/\\\\]+$")) {
-                chooser.setCurrentDirectory(new File(Constants.getCurPath()));
+                chooser.setCurrentDirectory(new File(getCurPath()));
                 chooser.setSelectedFile(new File(fileName));
             } else {
                 file = new File(fileName);
                 if (Paths.get(file.getParent()).toFile().exists()) {
                     chooser.setSelectedFile(file);
                 } else {
-                    chooser.setCurrentDirectory(new File(Constants.getCurPath()));
+                    chooser.setCurrentDirectory(new File(getCurPath()));
                     chooser.setSelectedFile(new File(file.getName()));
                 }
             }
@@ -235,7 +235,7 @@ public final class BlockSaveDialog extends JDialog {
                     fileName = fileName.concat(".").concat(fileType);
                 }
                 fileNameTextField.setText(fileName);
-                Constants.setCurPath(file.getParent());
+                setCurPath(file.getParent());
             }
         });
 
@@ -280,13 +280,13 @@ public final class BlockSaveDialog extends JDialog {
             String s = fileNameTextField.getText().trim();
             if (s.isEmpty()) {
                 showMessageDialog(this, "Не задано имя файла для сохранения",
-                        Constants.STR_ERROR, ERROR_MESSAGE);
+                        TITLE_ERROR, ERROR_MESSAGE);
                 fileNameTextField.requestFocusInWindow();
                 return;
             }
 
             if (s.matches("^[^:/\\\\]+$")) {
-                s = Constants.getCurPath().concat(File.separator).concat(s);
+                s = getCurPath().concat(File.separator).concat(s);
             }
             fFile = new File(s);
 
@@ -294,7 +294,7 @@ public final class BlockSaveDialog extends JDialog {
             if (!Paths.get(s).toFile().exists()) {
                 showMessageDialog(this,
                         String.format("Не найден путь: \"%s\" для сохранения файла: \"%s\"", s, fFile.getName()),
-                        Constants.STR_ERROR, ERROR_MESSAGE);
+                        TITLE_ERROR, ERROR_MESSAGE);
                 fileNameTextField.requestFocusInWindow();
                 return;
             }
@@ -314,8 +314,8 @@ public final class BlockSaveDialog extends JDialog {
                 fStartAddress = Integer.parseInt(s, 16);
             } catch (NumberFormatException ex) {
                 showMessageDialog(this,
-                        String.format("Ошибка задания адреса: [%s]%n%s", s, ex.toString()),
-                        Constants.STR_ERROR, ERROR_MESSAGE);
+                        String.format("Ошибка задания адреса: [%s]%n%s", s, ex),
+                        TITLE_ERROR, ERROR_MESSAGE);
                 curTextField.requestFocusInWindow();
                 return;
             }
@@ -323,7 +323,7 @@ public final class BlockSaveDialog extends JDialog {
             if (fBeginAddress > fEndAddress) {
                 showMessageDialog(this,
                         String.format("Начальный адрес: [%04X] больше конечного: [%04X]", fBeginAddress, fEndAddress),
-                        Constants.STR_ERROR, ERROR_MESSAGE);
+                        TITLE_ERROR, ERROR_MESSAGE);
                 beginAddressTextField.requestFocusInWindow();
                 return;
             }
